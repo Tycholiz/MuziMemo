@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Alert } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { StyleSheet, Text, View, Alert } from 'react-native'
 
-import { SafeAreaWrapper } from '@components/SafeAreaWrapper'
+import { Screen, Container, Spacer } from '@components/Layout'
+import { FileCard, MediaCard } from '@components/Card'
 import { theme } from '@utils/theme'
 import { formatDuration, formatDate, formatFileSize } from '@utils/formatUtils'
 import type { Recording } from 'src/customTypes/Recording'
@@ -68,145 +68,87 @@ export default function BrowseScreen() {
   }
 
   const renderRecordingItem = ({ item }: { item: Recording }) => (
-    <View style={styles.recordingItem}>
-      <View style={styles.recordingInfo}>
-        <Text style={styles.recordingName}>{item.name}</Text>
-        <Text style={styles.recordingDetails}>
-          {formatDuration(item.duration)} • {formatFileSize(item.size)} • {formatDate(item.createdAt)}
-        </Text>
-      </View>
-
-      <View style={styles.recordingActions}>
-        <TouchableOpacity style={[styles.actionButton, styles.playButton]} onPress={() => handlePlayRecording(item)}>
-          <Ionicons name="play" size={20} color={theme.colors.white} />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.actionButton, styles.shareButton]} onPress={() => handleShareRecording(item)}>
-          <Ionicons name="share" size={20} color={theme.colors.white} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => handleDeleteRecording(item)}
-        >
-          <Ionicons name="trash" size={20} color={theme.colors.white} />
-        </TouchableOpacity>
-      </View>
-    </View>
+    <FileCard
+      title={item.name}
+      subtitle={`${formatDuration(item.duration)} • ${formatFileSize(item.size)}`}
+      icon="musical-note"
+      onPress={() => handlePlayRecording(item)}
+    />
   )
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="folder-open-outline" size={64} color={theme.colors.text.tertiary} />
-      <Text style={styles.emptyStateTitle}>No Recordings Yet</Text>
-      <Text style={styles.emptyStateText}>Start recording to see your audio files here</Text>
-    </View>
-  )
+  // Mock data for Quick Access categories
+  const quickAccessCategories = [
+    { id: '1', title: 'Song Ideas', itemCount: 15, icon: 'folder-outline' as const },
+    { id: '2', title: 'Voice Memos', itemCount: 12, icon: 'mic-outline' as const },
+    { id: '3', title: 'Demos', itemCount: 8, icon: 'musical-notes-outline' as const },
+    { id: '4', title: 'Lyrics', itemCount: 5, icon: 'document-text-outline' as const },
+  ]
 
   return (
-    <SafeAreaWrapper style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Recordings</Text>
-          <Text style={styles.subtitle}>
-            {recordings.length} recording{recordings.length !== 1 ? 's' : ''}
-          </Text>
-        </View>
+    <Screen backgroundColor={theme.colors.background.primary} scrollable>
+      <Container padding>
+        {/* Quick Access Section */}
+        <Text style={styles.sectionTitle}>Quick Access</Text>
+        <Spacer size="md" />
+
+        {quickAccessCategories.map(category => (
+          <FileCard
+            key={category.id}
+            title={category.title}
+            itemCount={category.itemCount}
+            icon={category.icon}
+            onPress={() => Alert.alert('Open Category', `Opening ${category.title}`)}
+          />
+        ))}
+
+        <Spacer size="xl" />
+
+        {/* Recent Recordings Section */}
+        <Text style={styles.sectionTitle}>Recent Recordings</Text>
+        <Spacer size="md" />
 
         {recordings.length > 0 ? (
-          <FlatList
-            data={recordings}
-            renderItem={renderRecordingItem}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.listContainer}
-          />
+          recordings.map(item => <View key={item.id}>{renderRecordingItem({ item })}</View>)
         ) : (
-          renderEmptyState()
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateTitle}>No Recordings Yet</Text>
+            <Text style={styles.emptyStateText}>Start recording to see your audio files here</Text>
+          </View>
         )}
-      </View>
-    </SafeAreaWrapper>
+
+        <Spacer size="xl" />
+
+        {/* Media Player (if playing) */}
+        <MediaCard
+          title="Guitar Riff Idea"
+          artist="Song Ideas"
+          duration="0:45"
+          onPlayPause={() => Alert.alert('Play/Pause')}
+          onNext={() => Alert.alert('Next')}
+          onPrevious={() => Alert.alert('Previous')}
+          onMore={() => Alert.alert('More options')}
+          isPlaying={false}
+        />
+      </Container>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
-  header: {
-    marginBottom: theme.spacing.xl,
-  },
-  title: {
-    fontSize: theme.typography.fontSize['3xl'],
-    fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  subtitle: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.secondary,
-  },
-  listContainer: {
-    paddingBottom: theme.spacing.lg,
-  },
-  recordingItem: {
-    backgroundColor: theme.colors.background.secondary,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    ...theme.shadows.sm,
-  },
-  recordingInfo: {
-    flex: 1,
-    marginRight: theme.spacing.md,
-  },
-  recordingName: {
+  sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.semiBold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  recordingDetails: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-  recordingActions: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.borderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playButton: {
-    backgroundColor: theme.colors.primary,
-  },
-  shareButton: {
-    backgroundColor: theme.colors.secondary,
-  },
-  deleteButton: {
-    backgroundColor: theme.colors.error,
+    marginBottom: theme.spacing.sm,
   },
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xl,
   },
   emptyStateTitle: {
-    fontSize: theme.typography.fontSize.xl,
+    fontSize: theme.typography.fontSize.lg,
     fontWeight: theme.typography.fontWeight.semiBold,
     color: theme.colors.text.primary,
-    marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
   },
   emptyStateText: {

@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { StyleSheet, Text, View, Alert } from 'react-native'
 
-import { SafeAreaWrapper } from '@components/SafeAreaWrapper'
+import { Screen, Container, Spacer } from '@components/Layout'
+import { RecordButton, Icon } from '@components/Icon'
 import { useAudioRecording } from '@hooks/useAudioRecording'
 import { theme } from '@utils/theme'
 import { formatDuration } from '@utils/formatUtils'
@@ -40,28 +40,6 @@ export default function RecordScreen() {
     }
   }
 
-  const getRecordButtonIcon = () => {
-    switch (status) {
-      case 'recording':
-        return 'stop'
-      case 'paused':
-        return 'play'
-      default:
-        return 'mic'
-    }
-  }
-
-  const getRecordButtonColor = () => {
-    switch (status) {
-      case 'recording':
-        return theme.colors.error
-      case 'paused':
-        return theme.colors.warning
-      default:
-        return theme.colors.primary
-    }
-  }
-
   const handleRecordPress = () => {
     if (status === 'idle' || status === 'stopped') {
       handleStartRecording()
@@ -71,38 +49,47 @@ export default function RecordScreen() {
   }
 
   return (
-    <SafeAreaWrapper style={styles.container}>
-      <View style={styles.content}>
+    <Screen backgroundColor={theme.colors.background.primary}>
+      <Container flex centered>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Record Audio</Text>
-          <Text style={styles.subtitle}>Tap the microphone to start recording</Text>
+          <Text style={styles.title}>MuziMemo</Text>
+          <Icon name="settings-outline" size="lg" color="secondary" />
         </View>
 
-        <View style={styles.recordingArea}>
-          {/* Duration Display */}
-          <View style={styles.durationContainer}>
-            <Text style={styles.durationText}>{formatDuration(duration)}</Text>
-            <Text style={styles.statusText}>
-              {status === 'recording' ? 'Recording...' : status === 'paused' ? 'Paused' : 'Ready to record'}
-            </Text>
+        <Spacer size="xl" />
+
+        {/* Status Badge */}
+        <View style={styles.statusBadge}>
+          <Text style={styles.statusBadgeText}>Ready to Record</Text>
+        </View>
+
+        <Spacer size="2xl" />
+
+        {/* Duration Display */}
+        <Text style={styles.durationText}>{formatDuration(duration)}</Text>
+
+        <Spacer size="lg" />
+
+        {/* Record Button */}
+        <RecordButton isRecording={status === 'recording'} onPress={handleRecordPress} disabled={!isInitialized} />
+
+        <Spacer size="sm" />
+        <Text style={styles.tapToRecordText}>Tap to Record</Text>
+
+        <Spacer size="2xl" />
+
+        {/* Status Indicator */}
+        {status === 'recording' && (
+          <View style={styles.recordingIndicator}>
+            <View style={styles.recordingDot} />
+            <Text style={styles.recordingText}>REC</Text>
           </View>
+        )}
 
-          {/* Record Button */}
-          <TouchableOpacity
-            style={[styles.recordButton, { backgroundColor: getRecordButtonColor() }]}
-            onPress={handleRecordPress}
-            disabled={!isInitialized}
-          >
-            <Ionicons name={getRecordButtonIcon()} size={48} color={theme.colors.white} />
-          </TouchableOpacity>
-
-          {/* Status Indicator */}
-          {status === 'recording' && (
-            <View style={styles.recordingIndicator}>
-              <View style={styles.recordingDot} />
-              <Text style={styles.recordingText}>REC</Text>
-            </View>
-          )}
+        {/* Bottom Section */}
+        <View style={styles.bottomSection}>
+          <Text style={styles.savingToText}>Saving to: Song Ideas</Text>
         </View>
 
         {/* Error Display */}
@@ -118,84 +105,83 @@ export default function RecordScreen() {
             <Text style={styles.infoText}>Last recording saved successfully!</Text>
           </View>
         )}
-      </View>
-    </SafeAreaWrapper>
+      </Container>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    width: '100%',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
   },
   title: {
-    fontSize: theme.typography.fontSize['3xl'],
+    fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
   },
-  subtitle: {
-    fontSize: theme.typography.fontSize.base,
+  statusBadge: {
+    backgroundColor: theme.colors.surface.secondary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+  },
+  statusBadgeText: {
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
-  recordingArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  durationContainer: {
-    alignItems: 'center',
-    marginBottom: theme.spacing['2xl'],
-  },
   durationText: {
-    fontSize: theme.typography.fontSize['4xl'],
+    fontSize: 48,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
     fontFamily: 'monospace',
+    textAlign: 'center',
   },
-  statusText: {
-    fontSize: theme.typography.fontSize.lg,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.sm,
-  },
-  recordButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...theme.shadows.lg,
+  tapToRecordText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
   },
   recordingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    justifyContent: 'center',
   },
   recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: theme.colors.error,
-    marginRight: theme.spacing.sm,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.primary,
+    marginRight: theme.spacing.xs,
   },
   recordingText: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.error,
+    color: theme.colors.primary,
+  },
+  bottomSection: {
+    position: 'absolute',
+    bottom: theme.spacing.xl,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  savingToText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
   },
   errorContainer: {
     backgroundColor: theme.colors.error,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     marginTop: theme.spacing.lg,
+    marginHorizontal: theme.spacing.lg,
   },
   errorText: {
     color: theme.colors.white,
@@ -207,6 +193,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     marginTop: theme.spacing.lg,
+    marginHorizontal: theme.spacing.lg,
   },
   infoText: {
     color: theme.colors.white,
