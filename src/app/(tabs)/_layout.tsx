@@ -1,6 +1,8 @@
 import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 
+import { theme } from '@utils/theme'
+
 /**
  * Tab navigation layout
  * Defines the bottom tab navigation structure
@@ -9,15 +11,15 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarActiveTintColor: theme.colors.tabBar.active,
+        tabBarInactiveTintColor: theme.colors.tabBar.inactive,
         headerStyle: {
-          backgroundColor: '#F2F2F7',
+          backgroundColor: theme.colors.tabBar.background,
         },
-        headerTintColor: '#000',
+        headerTintColor: theme.colors.text.primary,
         tabBarStyle: {
-          backgroundColor: '#F2F2F7',
-          borderTopColor: '#C6C6C8',
+          backgroundColor: theme.colors.tabBar.background,
+          borderTopColor: theme.colors.tabBar.border,
         },
       }}
     >
