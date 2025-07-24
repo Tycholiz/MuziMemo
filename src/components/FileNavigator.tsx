@@ -22,12 +22,7 @@ export type FileNavigatorProps = {
  * File Navigator modal for browsing and creating folders
  * Matches the design from the mockup screenshots
  */
-export function FileNavigator({
-  visible,
-  onClose,
-  onSelectFolder,
-  currentPath = 'Root',
-}: FileNavigatorProps) {
+export function FileNavigator({ visible, onClose, onSelectFolder, currentPath = 'Root' }: FileNavigatorProps) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
 
   // Mock folder data - in real app this would come from file system
@@ -57,7 +52,7 @@ export function FileNavigator({
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Create',
-          onPress: (folderName) => {
+          onPress: folderName => {
             if (folderName?.trim()) {
               Alert.alert('Success', `Created folder: ${folderName}`)
               // In real app, would create the folder and refresh the list
@@ -71,10 +66,7 @@ export function FileNavigator({
 
   const renderFolder = ({ item }: { item: FileNavigatorFolder }) => (
     <TouchableOpacity
-      style={[
-        styles.folderItem,
-        selectedFolder === item.id && styles.selectedFolder,
-      ]}
+      style={[styles.folderItem, selectedFolder === item.id && styles.selectedFolder]}
       onPress={() => handleSelectFolder(item)}
       activeOpacity={0.7}
     >
@@ -84,24 +76,12 @@ export function FileNavigator({
         color={selectedFolder === item.id ? theme.colors.primary : theme.colors.primary}
         style={styles.folderIcon}
       />
-      <Text
-        style={[
-          styles.folderName,
-          selectedFolder === item.id && styles.selectedFolderName,
-        ]}
-      >
-        {item.name}
-      </Text>
+      <Text style={[styles.folderName, selectedFolder === item.id && styles.selectedFolderName]}>{item.name}</Text>
     </TouchableOpacity>
   )
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <View style={styles.header}>
@@ -125,22 +105,20 @@ export function FileNavigator({
 
           <View style={styles.footer}>
             <Button
+              title="New Folder"
               variant="outline"
               onPress={handleNewFolder}
               icon="add"
               style={styles.newFolderButton}
-            >
-              New Folder
-            </Button>
-            
+            />
+
             <Button
+              title="Select"
               variant="primary"
               onPress={handleConfirmSelection}
               disabled={!selectedFolder}
               style={styles.selectButton}
-            >
-              Select
-            </Button>
+            />
           </View>
         </View>
       </View>
@@ -162,7 +140,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 400,
     maxHeight: '70%',
-    ...theme.shadows.xl,
+    ...theme.shadows.lg,
   },
 
   header: {

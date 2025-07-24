@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native'
+import { View, StyleSheet, ViewStyle, TouchableOpacity, TextStyle } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
@@ -11,10 +11,21 @@ export type IconProps = {
   name: keyof typeof Ionicons.glyphMap
   size?: IconSize | number
   color?: IconColor | string
-  style?: ViewStyle
+  style?: TextStyle
   onPress?: () => void
   disabled?: boolean
   containerStyle?: ViewStyle
+}
+
+export type IconButtonProps = {
+  name: keyof typeof Ionicons.glyphMap
+  size?: IconSize | number
+  color?: IconColor | string
+  style?: ViewStyle
+  onPress?: () => void
+  disabled?: boolean
+  backgroundColor?: string
+  variant?: 'default' | 'filled' | 'outlined' | 'ghost'
 }
 
 /**
@@ -34,12 +45,7 @@ export function Icon({
   const iconColor = getIconColor(color)
 
   const iconElement = (
-    <Ionicons
-      name={name}
-      size={iconSize}
-      color={disabled ? theme.colors.text.disabled : iconColor}
-      style={style}
-    />
+    <Ionicons name={name} size={iconSize} color={disabled ? theme.colors.text.disabled : iconColor} style={style} />
   )
 
   if (onPress) {
@@ -71,13 +77,10 @@ export function IconButton({
   onPress,
   disabled = false,
   style,
-}: IconProps & {
-  backgroundColor?: string
-  variant?: 'default' | 'filled' | 'outlined' | 'ghost'
-}) {
+}: IconButtonProps) {
   const iconSize = getIconSize(size)
   const iconColor = getIconColor(color)
-  
+
   const buttonStyles = [
     styles.iconButton,
     styles[variant],
@@ -87,17 +90,8 @@ export function IconButton({
   ]
 
   return (
-    <TouchableOpacity
-      style={buttonStyles}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-    >
-      <Ionicons
-        name={name}
-        size={iconSize}
-        color={disabled ? theme.colors.text.disabled : iconColor}
-      />
+    <TouchableOpacity style={buttonStyles} onPress={onPress} disabled={disabled} activeOpacity={0.7}>
+      <Ionicons name={name} size={iconSize} color={disabled ? theme.colors.text.disabled : iconColor} />
     </TouchableOpacity>
   )
 }
@@ -124,11 +118,7 @@ export function RecordButton({
       activeOpacity={0.8}
     >
       <View style={styles.recordButtonInner}>
-        <Ionicons
-          name={isRecording ? 'stop' : 'mic'}
-          size={32}
-          color={theme.colors.white}
-        />
+        <Ionicons name={isRecording ? 'stop' : 'mic'} size={32} color={theme.colors.white} />
       </View>
     </TouchableOpacity>
   )
@@ -170,7 +160,7 @@ const styles = StyleSheet.create({
   touchableContainer: {
     padding: theme.spacing.xs,
   },
-  
+
   iconButton: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -179,30 +169,30 @@ const styles = StyleSheet.create({
     minWidth: 44,
     minHeight: 44,
   },
-  
+
   // Icon button variants
   default: {
     backgroundColor: 'transparent',
   },
-  
+
   filled: {
     backgroundColor: theme.colors.primary,
   },
-  
+
   outlined: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: theme.colors.border.light,
   },
-  
+
   ghost: {
     backgroundColor: 'transparent',
   },
-  
+
   disabled: {
     opacity: 0.5,
   },
-  
+
   // Record button styles
   recordButton: {
     width: 80,
@@ -213,7 +203,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...theme.shadows.lg,
   },
-  
+
   recordButtonInner: {
     width: 64,
     height: 64,

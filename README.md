@@ -145,7 +145,7 @@ The app uses a centralized theme system with:
 
 ### Audio & File System
 
-- expo-av (audio recording/playback)
+- expo-audio (audio recording/playback)
 - expo-file-system (file operations)
 
 ### UI & Icons

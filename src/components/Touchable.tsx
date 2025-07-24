@@ -7,6 +7,8 @@ import {
   ViewStyle,
   GestureResponderEvent,
   Platform,
+  AccessibilityRole,
+  StyleProp,
 } from 'react-native'
 
 import { theme } from '@utils/theme'
@@ -20,7 +22,7 @@ export type TouchableProps = {
   onPressIn?: (event: GestureResponderEvent) => void
   onPressOut?: (event: GestureResponderEvent) => void
   disabled?: boolean
-  style?: ViewStyle
+  style?: StyleProp<ViewStyle>
   variant?: TouchableVariant
   activeOpacity?: number
   underlayColor?: string
@@ -28,7 +30,7 @@ export type TouchableProps = {
   borderless?: boolean
   accessibilityLabel?: string
   accessibilityHint?: string
-  accessibilityRole?: string
+  accessibilityRole?: AccessibilityRole
   testID?: string
 }
 
@@ -85,10 +87,7 @@ export function Touchable({
       return (
         <Pressable
           {...commonProps}
-          style={({ pressed }) => [
-            touchableStyle,
-            pressed && { opacity: activeOpacity },
-          ]}
+          style={({ pressed }) => [touchableStyle, pressed && { opacity: activeOpacity }]}
           android_ripple={{
             color: rippleColor,
             borderless,
@@ -101,11 +100,7 @@ export function Touchable({
     case 'opacity':
     default:
       return (
-        <TouchableOpacity
-          {...commonProps}
-          style={touchableStyle}
-          activeOpacity={activeOpacity}
-        >
+        <TouchableOpacity {...commonProps} style={touchableStyle} activeOpacity={activeOpacity}>
           {children}
         </TouchableOpacity>
       )
@@ -160,11 +155,7 @@ export function TouchableCard({
       variant="opacity"
       onPress={onPress}
       disabled={disabled}
-      style={[
-        styles.card,
-        elevated && styles.cardElevated,
-        style,
-      ]}
+      style={[styles.card, elevated && styles.cardElevated, style]}
       activeOpacity={0.8}
       {...props}
     >
@@ -211,28 +202,28 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.5,
   },
-  
+
   listItem: {
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     backgroundColor: theme.colors.background.primary,
   },
-  
+
   listItemWithDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: theme.colors.border.light,
   },
-  
+
   card: {
     backgroundColor: theme.colors.surface.primary,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
   },
-  
+
   cardElevated: {
     ...theme.shadows.md,
   },
-  
+
   fab: {
     backgroundColor: theme.colors.primary,
     borderRadius: 28,
@@ -240,19 +231,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...theme.shadows.lg,
   },
-  
+
   fabSmall: {
     width: 40,
     height: 40,
     borderRadius: 20,
   },
-  
+
   fabMedium: {
     width: 56,
     height: 56,
     borderRadius: 28,
   },
-  
+
   fabLarge: {
     width: 72,
     height: 72,

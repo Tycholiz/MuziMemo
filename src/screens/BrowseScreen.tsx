@@ -4,7 +4,7 @@ import { StyleSheet, Text, View, Alert } from 'react-native'
 import { Screen, Container, Spacer } from '@components/Layout'
 import { FileCard, MediaCard } from '@components/Card'
 import { theme } from '@utils/theme'
-import { formatDuration, formatDate, formatFileSize } from '@utils/formatUtils'
+import { formatDuration, formatFileSize } from '@utils/formatUtils'
 import type { Recording } from 'src/customTypes/Recording'
 
 /**
@@ -46,25 +46,6 @@ export default function BrowseScreen() {
   const handlePlayRecording = (recording: Recording) => {
     Alert.alert('Play Recording', `Playing: ${recording.name}`)
     // TODO: Implement audio playback
-  }
-
-  const handleDeleteRecording = (recording: Recording) => {
-    Alert.alert('Delete Recording', `Are you sure you want to delete "${recording.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          // TODO: Implement deletion
-          Alert.alert('Deleted', `"${recording.name}" has been deleted.`)
-        },
-      },
-    ])
-  }
-
-  const handleShareRecording = (recording: Recording) => {
-    Alert.alert('Share Recording', `Sharing: ${recording.name}`)
-    // TODO: Implement sharing functionality
   }
 
   const renderRecordingItem = ({ item }: { item: Recording }) => (

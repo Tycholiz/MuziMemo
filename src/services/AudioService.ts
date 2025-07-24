@@ -1,21 +1,45 @@
-import { Audio } from 'expo-av'
+import { Platform } from 'react-native'
+
+// Conditional import for expo-audio (only on native platforms)
+let AudioRecorder: any = null
+let AudioPlayer: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    const expoAudio = require('expo-audio')
+    AudioRecorder = expoAudio.AudioRecorder
+    AudioPlayer = expoAudio.AudioPlayer
+  } catch (error) {
+    console.warn('expo-audio not available:', error)
+  }
+}
 
 /**
  * Audio service for handling recording and playback functionality
+ * Supports both native platforms (with expo-audio) and web (with fallback)
  */
 export class AudioService {
-  private recording: Audio.Recording | null = null
-  private sound: Audio.Sound | null = null
+  private recording: any = null
+  private player: any = null
+  private mediaRecorder: MediaRecorder | null = null
 
   /**
    * Initialize audio service and set audio mode
    */
   async initialize(): Promise<void> {
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      })
+      if (Platform.OS === 'web') {
+        // Web initialization
+        if (typeof window !== 'undefined' && 'MediaRecorder' in window) {
+          // Web audio is available
+          console.log('Web audio initialized')
+        } else {
+          throw new Error('Web audio not supported in this browser')
+        }
+      } else {
+        // Native initialization - expo-audio handles this automatically
+        console.log('Native audio initialized')
+      }
     } catch (error) {
       console.error('Failed to initialize audio service:', error)
       throw error
@@ -25,20 +49,53 @@ export class AudioService {
   /**
    * Start recording audio
    */
-  async startRecording(): Promise<Audio.Recording> {
+  async startRecording(): Promise<any> {
     try {
-      const { status } = await Audio.requestPermissionsAsync()
-      if (status !== 'granted') {
-        throw new Error('Audio recording permission not granted')
+      if (Platform.OS === 'web') {
+        // Web implementation using MediaRecorder
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        this.mediaRecorder = new MediaRecorder(stream)
+
+        const chunks: BlobPart[] = []
+        this.mediaRecorder.ondataavailable = event => {
+          chunks.push(event.data)
+        }
+
+        this.mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'audio/webm' })
+          this.recording = { uri: URL.createObjectURL(blob), blob }
+        }
+
+        this.mediaRecorder.start()
+        return this.mediaRecorder
+      } else {
+        // Native implementation using expo-audio
+        if (!AudioRecorder) {
+          throw new Error('AudioRecorder not available on this platform')
+        }
+
+        const recording = new AudioRecorder({
+          android: {
+            extension: '.m4a',
+            outputFormat: 'mpeg4',
+            audioEncoder: 'aac',
+            sampleRate: 44100,
+          },
+          ios: {
+            extension: '.m4a',
+            outputFormat: 'mpeg4aac',
+            audioQuality: 1.0,
+            sampleRate: 44100,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+          },
+        })
+
+        await recording.record()
+        this.recording = recording
+        return recording
       }
-
-      const recording = new Audio.Recording()
-      // @ts-expect-error
-      await recording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY)
-      await recording.startAsync()
-
-      this.recording = recording
-      return recording
     } catch (error) {
       console.error('Failed to start recording:', error)
       throw error
@@ -50,15 +107,30 @@ export class AudioService {
    */
   async stopRecording(): Promise<string | null> {
     try {
-      if (!this.recording) {
-        return null
+      if (Platform.OS === 'web') {
+        if (!this.mediaRecorder) {
+          return null
+        }
+
+        return new Promise(resolve => {
+          this.mediaRecorder!.onstop = () => {
+            const uri = this.recording?.uri || null
+            this.mediaRecorder = null
+            resolve(uri)
+          }
+          this.mediaRecorder!.stop()
+        })
+      } else {
+        if (!this.recording) {
+          return null
+        }
+
+        await this.recording.stop()
+        const uri = this.recording.uri
+        this.recording = null
+
+        return uri
       }
-
-      await this.recording.stopAndUnloadAsync()
-      const uri = this.recording.getURI()
-      this.recording = null
-
-      return uri
     } catch (error) {
       console.error('Failed to stop recording:', error)
       throw error
@@ -70,13 +142,28 @@ export class AudioService {
    */
   async playAudio(uri: string): Promise<void> {
     try {
-      if (this.sound) {
-        await this.sound.unloadAsync()
-      }
+      if (Platform.OS === 'web') {
+        // Web implementation using HTML5 Audio
+        if (this.player) {
+          this.player.pause()
+          this.player = null
+        }
 
-      const { sound } = await Audio.Sound.createAsync({ uri })
-      this.sound = sound
-      await sound.playAsync()
+        this.player = new Audio(uri)
+        await this.player.play()
+      } else {
+        // Native implementation using expo-audio
+        if (!AudioPlayer) {
+          throw new Error('AudioPlayer not available on this platform')
+        }
+
+        if (this.player) {
+          this.player.remove()
+        }
+
+        this.player = new AudioPlayer({ uri }, 100)
+        await this.player.play()
+      }
     } catch (error) {
       console.error('Failed to play audio:', error)
       throw error
@@ -88,10 +175,17 @@ export class AudioService {
    */
   async stopPlayback(): Promise<void> {
     try {
-      if (this.sound) {
-        await this.sound.stopAsync()
-        await this.sound.unloadAsync()
-        this.sound = null
+      if (Platform.OS === 'web') {
+        if (this.player) {
+          this.player.pause()
+          this.player = null
+        }
+      } else {
+        if (this.player) {
+          await this.player.pause()
+          this.player.remove()
+          this.player = null
+        }
       }
     } catch (error) {
       console.error('Failed to stop playback:', error)
@@ -102,9 +196,12 @@ export class AudioService {
   /**
    * Get recording status
    */
-  getRecordingStatus(): Audio.RecordingStatus | null {
-    // @ts-expect-error
-    return this.recording?.getStatusAsync() || null
+  getRecordingStatus(): boolean {
+    if (Platform.OS === 'web') {
+      return this.mediaRecorder?.state === 'recording' || false
+    } else {
+      return this.recording?.isRecording || false
+    }
   }
 
   /**
@@ -112,13 +209,24 @@ export class AudioService {
    */
   async cleanup(): Promise<void> {
     try {
-      if (this.recording) {
-        await this.recording.stopAndUnloadAsync()
-        this.recording = null
-      }
-      if (this.sound) {
-        await this.sound.unloadAsync()
-        this.sound = null
+      if (Platform.OS === 'web') {
+        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+          this.mediaRecorder.stop()
+        }
+        this.mediaRecorder = null
+        if (this.player) {
+          this.player.pause()
+          this.player = null
+        }
+      } else {
+        if (this.recording) {
+          await this.recording.stop()
+          this.recording = null
+        }
+        if (this.player) {
+          this.player.remove()
+          this.player = null
+        }
       }
     } catch (error) {
       console.error('Failed to cleanup audio service:', error)
