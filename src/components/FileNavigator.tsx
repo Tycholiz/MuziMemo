@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 import { Button } from './Button'
+import { fileSystemService } from '@services/FileSystemService'
+import { generateBreadcrumbs, getRecordingsDirectory } from '@utils/pathUtils'
 
 export type FileNavigatorFolder = {
   id: string
@@ -22,15 +24,44 @@ export type FileNavigatorProps = {
  * File Navigator modal for browsing and creating folders
  * Matches the design from the mockup screenshots
  */
-export function FileNavigator({ visible, onClose, onSelectFolder, currentPath = 'Root' }: FileNavigatorProps) {
+export function FileNavigator({ visible, onClose, onSelectFolder, currentPath }: FileNavigatorProps) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
+  const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
+  const [loading, setLoading] = useState(false)
+  const [currentFolderPath, setCurrentFolderPath] = useState(currentPath || getRecordingsDirectory())
+  const [breadcrumbs, setBreadcrumbs] = useState(generateBreadcrumbs(currentFolderPath))
 
-  // Mock folder data - in real app this would come from file system
-  const folders: FileNavigatorFolder[] = [
-    { id: 'song-ideas', name: 'Song Ideas', path: '/Song Ideas' },
-    { id: 'demos', name: 'Demos', path: '/Demos' },
-    { id: 'voice-memos', name: 'Voice Memos', path: '/Voice Memos' },
-  ]
+  // Load folder contents when component mounts or path changes
+  useEffect(() => {
+    if (visible) {
+      loadFolderContents()
+    }
+  }, [visible, currentFolderPath])
+
+  const loadFolderContents = async () => {
+    setLoading(true)
+    try {
+      await fileSystemService.initialize()
+      const contents = await fileSystemService.getFolderContents(currentFolderPath)
+
+      // Filter to only show folders
+      const folderItems = contents
+        .filter(item => item.type === 'folder')
+        .map(item => ({
+          id: item.id,
+          name: item.name,
+          path: item.path,
+        }))
+
+      setFolders(folderItems)
+      setBreadcrumbs(generateBreadcrumbs(currentFolderPath))
+    } catch (error) {
+      console.error('Failed to load folder contents:', error)
+      Alert.alert('Error', 'Failed to load folders')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSelectFolder = (folder: FileNavigatorFolder) => {
     setSelectedFolder(folder.id)
@@ -52,10 +83,18 @@ export function FileNavigator({ visible, onClose, onSelectFolder, currentPath = 
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Create',
-          onPress: folderName => {
+          onPress: async folderName => {
             if (folderName?.trim()) {
-              Alert.alert('Success', `Created folder: ${folderName}`)
-              // In real app, would create the folder and refresh the list
+              try {
+                await fileSystemService.createFolder({
+                  name: folderName.trim(),
+                  parentPath: currentFolderPath,
+                })
+                Alert.alert('Success', `Folder "${folderName}" created successfully`)
+                loadFolderContents() // Refresh the list
+              } catch (error: any) {
+                Alert.alert('Error', error.message || 'Failed to create folder')
+              }
             }
           },
         },
@@ -64,21 +103,50 @@ export function FileNavigator({ visible, onClose, onSelectFolder, currentPath = 
     )
   }
 
-  const renderFolder = ({ item }: { item: FileNavigatorFolder }) => (
-    <TouchableOpacity
-      style={[styles.folderItem, selectedFolder === item.id && styles.selectedFolder]}
-      onPress={() => handleSelectFolder(item)}
-      activeOpacity={0.7}
-    >
-      <Ionicons
-        name="folder-outline"
-        size={24}
-        color={selectedFolder === item.id ? theme.colors.primary : theme.colors.primary}
-        style={styles.folderIcon}
-      />
-      <Text style={[styles.folderName, selectedFolder === item.id && styles.selectedFolderName]}>{item.name}</Text>
-    </TouchableOpacity>
-  )
+  const handleBreadcrumbPress = (path: string) => {
+    setCurrentFolderPath(path)
+    setSelectedFolder(null)
+  }
+
+  const handleFolderDoublePress = (folder: FileNavigatorFolder) => {
+    // Navigate into the folder
+    setCurrentFolderPath(folder.path)
+    setSelectedFolder(null)
+  }
+
+  const renderFolder = ({ item }: { item: FileNavigatorFolder }) => {
+    let lastTap = 0
+
+    const handlePress = () => {
+      const now = Date.now()
+      const DOUBLE_PRESS_DELAY = 300
+
+      if (now - lastTap < DOUBLE_PRESS_DELAY) {
+        // Double tap - navigate into folder
+        handleFolderDoublePress(item)
+      } else {
+        // Single tap - select folder
+        handleSelectFolder(item)
+      }
+      lastTap = now
+    }
+
+    return (
+      <TouchableOpacity
+        style={[styles.folderItem, selectedFolder === item.id && styles.selectedFolder]}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
+        <Ionicons
+          name="folder-outline"
+          size={24}
+          color={selectedFolder === item.id ? theme.colors.primary : theme.colors.primary}
+          style={styles.folderIcon}
+        />
+        <Text style={[styles.folderName, selectedFolder === item.id && styles.selectedFolderName]}>{item.name}</Text>
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -92,16 +160,39 @@ export function FileNavigator({ visible, onClose, onSelectFolder, currentPath = 
           </View>
 
           <View style={styles.pathContainer}>
-            <Text style={styles.pathText}>{currentPath}</Text>
+            <View style={styles.breadcrumbs}>
+              {breadcrumbs.map(crumb => (
+                <View key={crumb.path} style={styles.breadcrumbContainer}>
+                  <TouchableOpacity onPress={() => handleBreadcrumbPress(crumb.path)} style={styles.breadcrumbButton}>
+                    <Text style={[styles.breadcrumbText, crumb.isLast && styles.breadcrumbTextLast]}>{crumb.name}</Text>
+                  </TouchableOpacity>
+                  {!crumb.isLast && (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={theme.colors.text.tertiary}
+                      style={styles.breadcrumbSeparator}
+                    />
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
 
-          <FlatList
-            data={folders}
-            renderItem={renderFolder}
-            keyExtractor={item => item.id}
-            style={styles.foldersList}
-            showsVerticalScrollIndicator={false}
-          />
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Loading folders...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={folders}
+              renderItem={renderFolder}
+              keyExtractor={item => item.id}
+              style={styles.foldersList}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
 
           <View style={styles.footer}>
             <Button
@@ -223,5 +314,48 @@ const styles = StyleSheet.create({
 
   selectButton: {
     flex: 1,
+  },
+
+  breadcrumbs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  breadcrumbContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  breadcrumbButton: {
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+  },
+
+  breadcrumbText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+  },
+
+  breadcrumbTextLast: {
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+
+  breadcrumbSeparator: {
+    marginHorizontal: theme.spacing.xs,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+
+  loadingText: {
+    marginTop: theme.spacing.md,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
   },
 })

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { StyleSheet, Text, View, Alert } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native'
 
 import { Screen, Container, Spacer } from '@components/Layout'
 import { RecordButton, Icon } from '@components/Icon'
@@ -8,6 +8,8 @@ import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/in
 import { useAudioRecording } from '@hooks/useAudioRecording'
 import { theme } from '@utils/theme'
 import { formatDuration } from '@utils/formatUtils'
+import { fileSystemService } from '@services/FileSystemService'
+import { getRecordingsDirectory } from '@utils/pathUtils'
 
 /**
  * RecordScreen Component
@@ -20,18 +22,60 @@ export default function RecordScreen() {
   // State for folder selection
   const [selectedFolder, setSelectedFolder] = useState('song-ideas')
   const [showFileNavigator, setShowFileNavigator] = useState(false)
+  const [folders, setFolders] = useState<Folder[]>([])
+  const [loading, setLoading] = useState(false)
 
   // State for audio quality
   const [audioQuality, setAudioQuality] = useState('high')
 
-  // Mock folder data
-  const folders: Folder[] = [
-    { id: 'song-ideas', name: 'Song Ideas', itemCount: 15 },
-    { id: 'voice-memos', name: 'Voice Memos', itemCount: 12 },
-    { id: 'demos', name: 'Demos', itemCount: 8 },
-    { id: 'lyrics', name: 'Lyrics', itemCount: 5 },
-    { id: 'drafts', name: 'Drafts', itemCount: 3 },
-  ]
+  // Load folders on component mount
+  useEffect(() => {
+    loadFolders()
+  }, [])
+
+  const loadFolders = async () => {
+    setLoading(true)
+    try {
+      await fileSystemService.initialize()
+      const contents = await fileSystemService.getFolderContents(getRecordingsDirectory())
+
+      // Convert to Folder format and count items in each folder
+      const folderData: Folder[] = []
+      for (const item of contents) {
+        if (item.type === 'folder') {
+          try {
+            const folderContents = await fileSystemService.getFolderContents(item.path)
+            const fileCount = folderContents.filter(subItem => subItem.type === 'file').length
+
+            folderData.push({
+              id: item.id,
+              name: item.name,
+              itemCount: fileCount,
+            })
+          } catch (error) {
+            // If we can't read the folder, add it with 0 count
+            folderData.push({
+              id: item.id,
+              name: item.name,
+              itemCount: 0,
+            })
+          }
+        }
+      }
+
+      setFolders(folderData)
+
+      // Set default selection to first folder if none selected
+      if (folderData.length > 0 && !selectedFolder) {
+        setSelectedFolder(folderData[0].id)
+      }
+    } catch (error) {
+      console.error('Failed to load folders:', error)
+      Alert.alert('Error', 'Failed to load folders')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Audio quality options
   const audioQualityOptions: DropdownOption[] = [
@@ -78,9 +122,11 @@ export default function RecordScreen() {
   }
 
   const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
-    // In a real app, this would update the folder list and select the folder
-    Alert.alert('Folder Selected', `Selected: ${folder.name}`)
+    // Update the selected folder and refresh the folder list
     setSelectedFolder(folder.id)
+    setShowFileNavigator(false)
+    loadFolders() // Refresh the folder list to include any new folders
+    Alert.alert('Folder Selected', `Selected: ${folder.name}`)
   }
 
   const handleAudioQualitySelect = (option: DropdownOption) => {
@@ -130,13 +176,20 @@ export default function RecordScreen() {
         <Spacer size="2xl" />
 
         {/* Folder Selector */}
-        <FolderSelector
-          label="Saving to:"
-          selectedFolder={selectedFolder}
-          folders={folders}
-          onSelectFolder={handleFolderSelect}
-          onOpenFileNavigator={() => setShowFileNavigator(true)}
-        />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading folders...</Text>
+          </View>
+        ) : (
+          <FolderSelector
+            label="Saving to:"
+            selectedFolder={selectedFolder}
+            folders={folders}
+            onSelectFolder={handleFolderSelect}
+            onOpenFileNavigator={() => setShowFileNavigator(true)}
+          />
+        )}
 
         <Spacer size="lg" />
 
@@ -282,5 +335,16 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     textAlign: 'center',
     fontSize: theme.typography.fontSize.sm,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.md,
+  },
+  loadingText: {
+    marginLeft: theme.spacing.sm,
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
   },
 })
