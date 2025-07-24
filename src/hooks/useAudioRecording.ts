@@ -66,19 +66,19 @@ export function useAudioRecording() {
   }, [])
 
   /**
-   * Pause recording (placeholder - expo-av doesn't support pause)
+   * Pause recording (placeholder - not yet implemented)
    */
   const pauseRecording = useCallback(() => {
-    // Note: expo-av doesn't support pausing recordings
+    // Note: Pause/resume functionality can be implemented with expo-audio
     // This is a placeholder for future implementation
     setStatus('paused')
   }, [])
 
   /**
-   * Resume recording (placeholder - expo-av doesn't support resume)
+   * Resume recording (placeholder - not yet implemented)
    */
   const resumeRecording = useCallback(() => {
-    // Note: expo-av doesn't support resuming recordings
+    // Note: Pause/resume functionality can be implemented with expo-audio
     // This is a placeholder for future implementation
     setStatus('recording')
   }, [])

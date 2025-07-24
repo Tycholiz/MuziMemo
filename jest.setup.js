@@ -8,12 +8,18 @@ jest.mock('react-native-reanimated', () => {
 })
 
 // Mock expo modules
-jest.mock('expo-av', () => ({
-  Audio: {
-    Recording: jest.fn(),
-    Sound: jest.fn(),
-    setAudioModeAsync: jest.fn(),
-  },
+jest.mock('expo-audio', () => ({
+  AudioRecorder: jest.fn().mockImplementation(() => ({
+    record: jest.fn(),
+    stop: jest.fn(),
+    uri: 'mock://recording.m4a',
+    isRecording: false,
+  })),
+  AudioPlayer: jest.fn().mockImplementation(() => ({
+    play: jest.fn(),
+    pause: jest.fn(),
+    remove: jest.fn(),
+  })),
 }))
 
 jest.mock('expo-file-system', () => ({

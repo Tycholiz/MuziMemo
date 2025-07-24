@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { StyleSheet, Text, View, Alert } from 'react-native'
 
-import { SafeAreaWrapper } from '@components/SafeAreaWrapper'
+import { Screen, Container, Spacer } from '@components/Layout'
+import { RecordButton, Icon } from '@components/Icon'
+import { FolderSelector, Dropdown, FileNavigator } from '@components/index'
+import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/index'
 import { useAudioRecording } from '@hooks/useAudioRecording'
 import { theme } from '@utils/theme'
 import { formatDuration } from '@utils/formatUtils'
@@ -14,6 +16,29 @@ import { formatDuration } from '@utils/formatUtils'
 export default function RecordScreen() {
   const { status, duration, isInitialized, error, startRecording, stopRecording } = useAudioRecording()
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
+
+  // State for folder selection
+  const [selectedFolder, setSelectedFolder] = useState('song-ideas')
+  const [showFileNavigator, setShowFileNavigator] = useState(false)
+
+  // State for audio quality
+  const [audioQuality, setAudioQuality] = useState('high')
+
+  // Mock folder data
+  const folders: Folder[] = [
+    { id: 'song-ideas', name: 'Song Ideas', itemCount: 15 },
+    { id: 'voice-memos', name: 'Voice Memos', itemCount: 12 },
+    { id: 'demos', name: 'Demos', itemCount: 8 },
+    { id: 'lyrics', name: 'Lyrics', itemCount: 5 },
+    { id: 'drafts', name: 'Drafts', itemCount: 3 },
+  ]
+
+  // Audio quality options
+  const audioQualityOptions: DropdownOption[] = [
+    { label: 'High (320kbps)', value: 'high' },
+    { label: 'Medium (192kbps)', value: 'medium' },
+    { label: 'Low (128kbps)', value: 'low' },
+  ]
 
   const handleStartRecording = async () => {
     if (!isInitialized) {
@@ -40,28 +65,6 @@ export default function RecordScreen() {
     }
   }
 
-  const getRecordButtonIcon = () => {
-    switch (status) {
-      case 'recording':
-        return 'stop'
-      case 'paused':
-        return 'play'
-      default:
-        return 'mic'
-    }
-  }
-
-  const getRecordButtonColor = () => {
-    switch (status) {
-      case 'recording':
-        return theme.colors.error
-      case 'paused':
-        return theme.colors.warning
-      default:
-        return theme.colors.primary
-    }
-  }
-
   const handleRecordPress = () => {
     if (status === 'idle' || status === 'stopped') {
       handleStartRecording()
@@ -70,40 +73,80 @@ export default function RecordScreen() {
     }
   }
 
+  const handleFolderSelect = (folderId: string) => {
+    setSelectedFolder(folderId)
+  }
+
+  const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
+    // In a real app, this would update the folder list and select the folder
+    Alert.alert('Folder Selected', `Selected: ${folder.name}`)
+    setSelectedFolder(folder.id)
+  }
+
+  const handleAudioQualitySelect = (option: DropdownOption) => {
+    setAudioQuality(option.value)
+  }
+
   return (
-    <SafeAreaWrapper style={styles.container}>
-      <View style={styles.content}>
+    <Screen backgroundColor={theme.colors.background.primary}>
+      <Container flex>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Record Audio</Text>
-          <Text style={styles.subtitle}>Tap the microphone to start recording</Text>
+          <Text style={styles.title}>MuziMemo</Text>
+          <Icon name="settings-outline" size="lg" color="secondary" />
         </View>
 
-        <View style={styles.recordingArea}>
-          {/* Duration Display */}
-          <View style={styles.durationContainer}>
-            <Text style={styles.durationText}>{formatDuration(duration)}</Text>
-            <Text style={styles.statusText}>
-              {status === 'recording' ? 'Recording...' : status === 'paused' ? 'Paused' : 'Ready to record'}
-            </Text>
+        <Spacer size="xl" />
+
+        {/* Status Badge */}
+        <View style={styles.statusBadgeContainer}>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusBadgeText}>{status === 'recording' ? 'Recording' : 'Ready to Record'}</Text>
           </View>
-
-          {/* Record Button */}
-          <TouchableOpacity
-            style={[styles.recordButton, { backgroundColor: getRecordButtonColor() }]}
-            onPress={handleRecordPress}
-            disabled={!isInitialized}
-          >
-            <Ionicons name={getRecordButtonIcon()} size={48} color={theme.colors.white} />
-          </TouchableOpacity>
-
-          {/* Status Indicator */}
-          {status === 'recording' && (
-            <View style={styles.recordingIndicator}>
-              <View style={styles.recordingDot} />
-              <Text style={styles.recordingText}>REC</Text>
-            </View>
-          )}
         </View>
+
+        <Spacer size="2xl" />
+
+        {/* Orange dotted line */}
+        <View style={styles.dottedLine} />
+
+        <Spacer size="2xl" />
+
+        {/* Duration Display */}
+        <View style={styles.durationContainer}>
+          <Text style={styles.durationText}>{formatDuration(duration)}</Text>
+        </View>
+
+        <Spacer size="lg" />
+
+        {/* Record Button */}
+        <View style={styles.recordButtonContainer}>
+          <RecordButton isRecording={status === 'recording'} onPress={handleRecordPress} disabled={!isInitialized} />
+        </View>
+
+        <Spacer size="sm" />
+        <Text style={styles.tapToRecordText}>Tap to Record</Text>
+
+        <Spacer size="2xl" />
+
+        {/* Folder Selector */}
+        <FolderSelector
+          label="Saving to:"
+          selectedFolder={selectedFolder}
+          folders={folders}
+          onSelectFolder={handleFolderSelect}
+          onOpenFileNavigator={() => setShowFileNavigator(true)}
+        />
+
+        <Spacer size="lg" />
+
+        {/* Audio Quality Dropdown */}
+        <Dropdown
+          label="Audio Quality:"
+          value={audioQuality}
+          options={audioQualityOptions}
+          onSelect={handleAudioQualitySelect}
+        />
 
         {/* Error Display */}
         {error && (
@@ -118,84 +161,110 @@ export default function RecordScreen() {
             <Text style={styles.infoText}>Last recording saved successfully!</Text>
           </View>
         )}
-      </View>
-    </SafeAreaWrapper>
+      </Container>
+
+      {/* File Navigator Modal */}
+      <FileNavigator
+        visible={showFileNavigator}
+        onClose={() => setShowFileNavigator(false)}
+        onSelectFolder={handleFileNavigatorSelect}
+      />
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: theme.colors.background.primary,
-  },
-  content: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    width: '100%',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
   },
   title: {
-    fontSize: theme.typography.fontSize['3xl'],
+    fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
   },
-  subtitle: {
-    fontSize: theme.typography.fontSize.base,
+  statusBadgeContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  statusBadge: {
+    backgroundColor: theme.colors.surface.secondary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+  },
+  statusBadgeText: {
+    fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
-  recordingArea: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  dottedLine: {
+    height: 2,
+    width: '80%',
+    alignSelf: 'center',
+    borderStyle: 'dotted',
+    borderWidth: 1,
+    borderColor: '#FF8C00', // Orange color from mockup
   },
   durationContainer: {
     alignItems: 'center',
-    marginBottom: theme.spacing['2xl'],
+    width: '100%',
   },
   durationText: {
-    fontSize: theme.typography.fontSize['4xl'],
+    fontSize: 48,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
     fontFamily: 'monospace',
+    textAlign: 'center',
   },
-  statusText: {
-    fontSize: theme.typography.fontSize.lg,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.sm,
-  },
-  recordButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
+  recordButtonContainer: {
     alignItems: 'center',
-    ...theme.shadows.lg,
+    width: '100%',
+  },
+  tapToRecordText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
   },
   recordingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    justifyContent: 'center',
   },
   recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: theme.colors.error,
-    marginRight: theme.spacing.sm,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.primary,
+    marginRight: theme.spacing.xs,
   },
   recordingText: {
     fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.bold,
-    color: theme.colors.error,
+    color: theme.colors.primary,
+  },
+  bottomSection: {
+    position: 'absolute',
+    bottom: theme.spacing.xl,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  savingToText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    textAlign: 'center',
   },
   errorContainer: {
     backgroundColor: theme.colors.error,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     marginTop: theme.spacing.lg,
+    marginHorizontal: theme.spacing.lg,
   },
   errorText: {
     color: theme.colors.white,
@@ -207,6 +276,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
     marginTop: theme.spacing.lg,
+    marginHorizontal: theme.spacing.lg,
   },
   infoText: {
     color: theme.colors.white,
