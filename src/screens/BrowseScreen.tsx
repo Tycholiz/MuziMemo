@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaWrapper } from '@components/SafeAreaWrapper'
 import { theme } from '@utils/theme'
 import { formatDuration, formatDate, formatFileSize } from '@utils/formatUtils'
-import type { Recording } from '@types/Recording'
+import type { Recording } from 'src/customTypes/Recording'
 
 /**
  * BrowseScreen Component
@@ -49,21 +49,17 @@ export default function BrowseScreen() {
   }
 
   const handleDeleteRecording = (recording: Recording) => {
-    Alert.alert(
-      'Delete Recording',
-      `Are you sure you want to delete "${recording.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            // TODO: Implement deletion
-            Alert.alert('Deleted', `"${recording.name}" has been deleted.`)
-          },
+    Alert.alert('Delete Recording', `Are you sure you want to delete "${recording.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          // TODO: Implement deletion
+          Alert.alert('Deleted', `"${recording.name}" has been deleted.`)
         },
-      ]
-    )
+      },
+    ])
   }
 
   const handleShareRecording = (recording: Recording) => {
@@ -79,22 +75,16 @@ export default function BrowseScreen() {
           {formatDuration(item.duration)} • {formatFileSize(item.size)} • {formatDate(item.createdAt)}
         </Text>
       </View>
-      
+
       <View style={styles.recordingActions}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.playButton]}
-          onPress={() => handlePlayRecording(item)}
-        >
+        <TouchableOpacity style={[styles.actionButton, styles.playButton]} onPress={() => handlePlayRecording(item)}>
           <Ionicons name="play" size={20} color={theme.colors.white} />
         </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[styles.actionButton, styles.shareButton]}
-          onPress={() => handleShareRecording(item)}
-        >
+
+        <TouchableOpacity style={[styles.actionButton, styles.shareButton]} onPress={() => handleShareRecording(item)}>
           <Ionicons name="share" size={20} color={theme.colors.white} />
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={[styles.actionButton, styles.deleteButton]}
           onPress={() => handleDeleteRecording(item)}
@@ -109,9 +99,7 @@ export default function BrowseScreen() {
     <View style={styles.emptyState}>
       <Ionicons name="folder-open-outline" size={64} color={theme.colors.text.tertiary} />
       <Text style={styles.emptyStateTitle}>No Recordings Yet</Text>
-      <Text style={styles.emptyStateText}>
-        Start recording to see your audio files here
-      </Text>
+      <Text style={styles.emptyStateText}>Start recording to see your audio files here</Text>
     </View>
   )
 

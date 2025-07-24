@@ -10,7 +10,7 @@ type SafeAreaWrapperProps = {
 /**
  * Safe Area Wrapper component to handle safe area insets consistently
  */
-export function SafeAreaWrapper({ children, style, edges = ['top', 'bottom'] }: SafeAreaWrapperProps) {
+export function SafeAreaWrapper({ children, style }: SafeAreaWrapperProps) {
   return <SafeAreaView style={[styles.container, style]}>{children}</SafeAreaView>
 }
 

@@ -21,7 +21,7 @@
         "src/utils/*"
       ],
       "@types/*": [
-        "src/types/*"
+        "src/customTypes/*"
       ],
       "@constants/*": [
         "src/constants/*"

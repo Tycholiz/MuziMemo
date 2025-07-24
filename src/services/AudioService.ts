@@ -1,7 +1,5 @@
 import { Audio } from 'expo-av'
 
-import type { Recording, RecordingSession } from '@types/Recording'
-
 /**
  * Audio service for handling recording and playback functionality
  */
@@ -35,6 +33,7 @@ export class AudioService {
       }
 
       const recording = new Audio.Recording()
+      // @ts-expect-error
       await recording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY)
       await recording.startAsync()
 

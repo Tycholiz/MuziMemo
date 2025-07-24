@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
 import { audioService } from '@services/AudioService'
-import type { RecordingStatus } from '@types/Recording'
+import { RecordingStatus } from 'src/customTypes/Recording'
 
 /**
  * Custom hook for managing audio recording state and operations
