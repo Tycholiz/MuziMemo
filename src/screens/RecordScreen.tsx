@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, Alert } from 'react-native'
 
 import { Screen, Container, Spacer } from '@components/Layout'
 import { RecordButton, Icon } from '@components/Icon'
+import { FolderSelector, Dropdown, FileNavigator } from '@components/index'
+import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/index'
 import { useAudioRecording } from '@hooks/useAudioRecording'
 import { theme } from '@utils/theme'
 import { formatDuration } from '@utils/formatUtils'
@@ -14,6 +16,29 @@ import { formatDuration } from '@utils/formatUtils'
 export default function RecordScreen() {
   const { status, duration, isInitialized, error, startRecording, stopRecording } = useAudioRecording()
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
+
+  // State for folder selection
+  const [selectedFolder, setSelectedFolder] = useState('song-ideas')
+  const [showFileNavigator, setShowFileNavigator] = useState(false)
+
+  // State for audio quality
+  const [audioQuality, setAudioQuality] = useState('high')
+
+  // Mock folder data
+  const folders: Folder[] = [
+    { id: 'song-ideas', name: 'Song Ideas', itemCount: 15 },
+    { id: 'voice-memos', name: 'Voice Memos', itemCount: 12 },
+    { id: 'demos', name: 'Demos', itemCount: 8 },
+    { id: 'lyrics', name: 'Lyrics', itemCount: 5 },
+    { id: 'drafts', name: 'Drafts', itemCount: 3 },
+  ]
+
+  // Audio quality options
+  const audioQualityOptions: DropdownOption[] = [
+    { label: 'High (320kbps)', value: 'high' },
+    { label: 'Medium (192kbps)', value: 'medium' },
+    { label: 'Low (128kbps)', value: 'low' },
+  ]
 
   const handleStartRecording = async () => {
     if (!isInitialized) {
@@ -48,9 +73,23 @@ export default function RecordScreen() {
     }
   }
 
+  const handleFolderSelect = (folderId: string) => {
+    setSelectedFolder(folderId)
+  }
+
+  const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
+    // In a real app, this would update the folder list and select the folder
+    Alert.alert('Folder Selected', `Selected: ${folder.name}`)
+    setSelectedFolder(folder.id)
+  }
+
+  const handleAudioQualitySelect = (option: DropdownOption) => {
+    setAudioQuality(option.value)
+  }
+
   return (
     <Screen backgroundColor={theme.colors.background.primary}>
-      <Container flex centered>
+      <Container flex>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>MuziMemo</Text>
@@ -60,37 +99,54 @@ export default function RecordScreen() {
         <Spacer size="xl" />
 
         {/* Status Badge */}
-        <View style={styles.statusBadge}>
-          <Text style={styles.statusBadgeText}>Ready to Record</Text>
+        <View style={styles.statusBadgeContainer}>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusBadgeText}>{status === 'recording' ? 'Recording' : 'Ready to Record'}</Text>
+          </View>
         </View>
 
         <Spacer size="2xl" />
 
+        {/* Orange dotted line */}
+        <View style={styles.dottedLine} />
+
+        <Spacer size="2xl" />
+
         {/* Duration Display */}
-        <Text style={styles.durationText}>{formatDuration(duration)}</Text>
+        <View style={styles.durationContainer}>
+          <Text style={styles.durationText}>{formatDuration(duration)}</Text>
+        </View>
 
         <Spacer size="lg" />
 
         {/* Record Button */}
-        <RecordButton isRecording={status === 'recording'} onPress={handleRecordPress} disabled={!isInitialized} />
+        <View style={styles.recordButtonContainer}>
+          <RecordButton isRecording={status === 'recording'} onPress={handleRecordPress} disabled={!isInitialized} />
+        </View>
 
         <Spacer size="sm" />
         <Text style={styles.tapToRecordText}>Tap to Record</Text>
 
         <Spacer size="2xl" />
 
-        {/* Status Indicator */}
-        {status === 'recording' && (
-          <View style={styles.recordingIndicator}>
-            <View style={styles.recordingDot} />
-            <Text style={styles.recordingText}>REC</Text>
-          </View>
-        )}
+        {/* Folder Selector */}
+        <FolderSelector
+          label="Saving to:"
+          selectedFolder={selectedFolder}
+          folders={folders}
+          onSelectFolder={handleFolderSelect}
+          onOpenFileNavigator={() => setShowFileNavigator(true)}
+        />
 
-        {/* Bottom Section */}
-        <View style={styles.bottomSection}>
-          <Text style={styles.savingToText}>Saving to: Song Ideas</Text>
-        </View>
+        <Spacer size="lg" />
+
+        {/* Audio Quality Dropdown */}
+        <Dropdown
+          label="Audio Quality:"
+          value={audioQuality}
+          options={audioQualityOptions}
+          onSelect={handleAudioQualitySelect}
+        />
 
         {/* Error Display */}
         {error && (
@@ -106,6 +162,13 @@ export default function RecordScreen() {
           </View>
         )}
       </Container>
+
+      {/* File Navigator Modal */}
+      <FileNavigator
+        visible={showFileNavigator}
+        onClose={() => setShowFileNavigator(false)}
+        onSelectFolder={handleFileNavigatorSelect}
+      />
     </Screen>
   )
 }
@@ -124,6 +187,10 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
   },
+  statusBadgeContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
   statusBadge: {
     backgroundColor: theme.colors.surface.secondary,
     paddingHorizontal: theme.spacing.md,
@@ -135,12 +202,28 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
+  dottedLine: {
+    height: 2,
+    width: '80%',
+    alignSelf: 'center',
+    borderStyle: 'dotted',
+    borderWidth: 1,
+    borderColor: '#FF8C00', // Orange color from mockup
+  },
+  durationContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
   durationText: {
     fontSize: 48,
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
     fontFamily: 'monospace',
     textAlign: 'center',
+  },
+  recordButtonContainer: {
+    alignItems: 'center',
+    width: '100%',
   },
   tapToRecordText: {
     fontSize: theme.typography.fontSize.base,

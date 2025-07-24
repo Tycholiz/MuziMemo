@@ -22,3 +22,12 @@ export type { ScreenProps, ContainerProps } from './Layout'
 
 export { Touchable, TouchableListItem, TouchableCard, TouchableFAB } from './Touchable'
 export type { TouchableProps, TouchableVariant } from './Touchable'
+
+export { Dropdown } from './Dropdown'
+export type { DropdownProps, DropdownOption } from './Dropdown'
+
+export { FolderSelector } from './FolderSelector'
+export type { FolderSelectorProps, Folder } from './FolderSelector'
+
+export { FileNavigator } from './FileNavigator'
+export type { FileNavigatorProps, FileNavigatorFolder } from './FileNavigator'
