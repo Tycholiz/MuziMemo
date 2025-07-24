@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, Text, View, Alert, TouchableOpacity, TextInput } from 'react-native'
+import { StyleSheet, Text, View, Alert, TouchableOpacity, TextInput, ScrollView } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { Screen } from '@components/Layout'
@@ -27,34 +27,56 @@ type ClipData = {
 export default function BrowseScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [currentPath, setCurrentPath] = useState('Song Ideas')
+  const [currentPath, setCurrentPath] = useState<string[]>([]) // Empty array means root
   const [folders, setFolders] = useState<FolderCardData[]>([])
   const [clips, setClips] = useState<ClipData[]>([])
-  // Mock data for folders
-  const mockFolders: FolderCardData[] = [
+  // Mock data for root folders
+  const rootFolders: FolderCardData[] = [
     { id: '1', name: 'Song Ideas', itemCount: 12 },
     { id: '2', name: 'Demos', itemCount: 8 },
     { id: '3', name: 'Voice Memos', itemCount: 15 },
     { id: '4', name: 'Lyrics', itemCount: 5 },
   ]
 
-  // Mock data for clips
-  const mockClips: ClipData[] = [
-    { id: '1', name: 'Guitar Riff Idea', folder: 'Song Ideas', duration: '0:45', date: 'Today' },
-    { id: '2', name: 'Vocal Melody Hook', folder: 'Song Ideas', duration: '1:23', date: 'Yesterday' },
-    { id: '3', name: 'Chord Progression', folder: 'Song Ideas', duration: '2:10', date: '2 days ago' },
-    { id: '4', name: 'Bass Line Test', folder: 'Song Ideas', duration: '0:38', date: '3 days ago' },
-  ]
+  // Mock data for clips in different folders
+  const allClips: Record<string, ClipData[]> = {
+    'Song Ideas': [
+      { id: '1', name: 'Guitar Riff Idea', folder: 'Song Ideas', duration: '0:45', date: 'Today' },
+      { id: '2', name: 'Vocal Melody Hook', folder: 'Song Ideas', duration: '1:23', date: 'Yesterday' },
+      { id: '3', name: 'Chord Progression', folder: 'Song Ideas', duration: '2:10', date: '2 days ago' },
+      { id: '4', name: 'Bass Line Test', folder: 'Song Ideas', duration: '0:38', date: '3 days ago' },
+    ],
+    Demos: [
+      { id: '5', name: 'Full Song Demo', folder: 'Demos', duration: '3:24', date: 'Today' },
+      { id: '6', name: 'Acoustic Version', folder: 'Demos', duration: '2:45', date: 'Yesterday' },
+    ],
+    'Voice Memos': [
+      { id: '7', name: 'Quick Idea', folder: 'Voice Memos', duration: '0:15', date: 'Today' },
+      { id: '8', name: 'Melody Hum', folder: 'Voice Memos', duration: '0:32', date: 'Today' },
+    ],
+    Lyrics: [{ id: '9', name: 'Verse 1 Draft', folder: 'Lyrics', duration: '1:12', date: 'Yesterday' }],
+  }
 
   useEffect(() => {
-    // Initialize with mock data
-    setFolders(mockFolders)
-    setClips(mockClips)
-  }, [])
+    loadCurrentFolderData()
+  }, [currentPath])
+
+  const loadCurrentFolderData = () => {
+    if (currentPath.length === 0) {
+      // At root - show all folders, no clips
+      setFolders(rootFolders)
+      setClips([])
+    } else {
+      // In a specific folder - show no subfolders, show clips for that folder
+      const currentFolderName = currentPath[currentPath.length - 1]
+      setFolders([])
+      setClips(allClips[currentFolderName] || [])
+    }
+  }
 
   const handleFolderPress = (folder: FolderCardData) => {
-    setCurrentPath(folder.name)
-    Alert.alert('Open Folder', `Opening ${folder.name}`)
+    // Navigate into the folder
+    setCurrentPath([...currentPath, folder.name])
   }
 
   const handleClipPress = (clip: ClipData) => {
@@ -67,6 +89,20 @@ export default function BrowseScreen() {
 
   const handleImport = () => {
     Alert.alert('Import', 'Import functionality')
+  }
+
+  const handleHomePress = () => {
+    // Navigate to root
+    setCurrentPath([])
+  }
+
+  const handleBreadcrumbPress = (index: number) => {
+    // Navigate to specific level in breadcrumb
+    if (index === 0) {
+      setCurrentPath([])
+    } else {
+      setCurrentPath(currentPath.slice(0, index))
+    }
   }
 
   const renderFolderCard = (folder: FolderCardData) => (
@@ -132,36 +168,68 @@ export default function BrowseScreen() {
 
         {/* Breadcrumb */}
         <View style={styles.breadcrumbContainer}>
-          <TouchableOpacity style={styles.breadcrumbItem}>
+          <TouchableOpacity style={styles.breadcrumbItem} onPress={handleHomePress}>
             <Ionicons name="home-outline" size={16} color={theme.colors.text.secondary} />
           </TouchableOpacity>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
-          <Text style={styles.breadcrumbText}>{currentPath}</Text>
+          {currentPath.length > 0 && (
+            <>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
+              {currentPath.map((pathSegment, index) => (
+                <React.Fragment key={index}>
+                  <TouchableOpacity onPress={() => handleBreadcrumbPress(index + 1)}>
+                    <Text style={styles.breadcrumbText}>{pathSegment}</Text>
+                  </TouchableOpacity>
+                  {index < currentPath.length - 1 && (
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
+                  )}
+                </React.Fragment>
+              ))}
+            </>
+          )}
         </View>
 
-        {/* Folders Grid */}
-        <View style={styles.foldersContainer}>
-          <View style={styles.foldersGrid}>{folders.map(renderFolderCard)}</View>
-        </View>
+        <ScrollView
+          style={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Folders Grid - only show when at root */}
+          {currentPath.length === 0 && (
+            <View style={styles.foldersContainer}>
+              <View style={styles.foldersGrid}>{folders.map(renderFolderCard)}</View>
+            </View>
+          )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleNewFolder}>
-            <Ionicons name="add" size={20} color={theme.colors.text.primary} />
-            <Text style={styles.actionButtonText}>New Folder</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton} onPress={handleImport}>
-            <Text style={styles.actionButtonText}>Import</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Action Buttons - only show when at root */}
+          {currentPath.length === 0 && (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity style={styles.actionButton} onPress={handleNewFolder}>
+                <Ionicons name="add" size={20} color={theme.colors.text.primary} />
+                <Text style={styles.actionButtonText}>New Folder</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton} onPress={handleImport}>
+                <Text style={styles.actionButtonText}>Import</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {/* Clips Section */}
-        <View style={styles.clipsSection}>
-          <Text style={styles.clipsTitle}>{clips.length} clips</Text>
-          <View style={styles.clipsList}>{clips.map(renderClipItem)}</View>
-        </View>
+          {/* Clips Section - show when there are clips */}
+          {clips.length > 0 && (
+            <View style={styles.clipsSection}>
+              <Text style={styles.clipsTitle}>{clips.length} clips</Text>
+              <View style={styles.clipsList}>{clips.map(renderClipItem)}</View>
+            </View>
+          )}
 
-        {/* Bottom Media Player */}
+          {/* Empty state when in folder with no clips */}
+          {currentPath.length > 0 && clips.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No clips in this folder yet</Text>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Bottom Media Player - Fixed at bottom */}
         <View style={styles.mediaPlayerContainer}>
           <MediaCard
             title="Guitar Riff Idea"
@@ -248,11 +316,11 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
-    minHeight: 120,
+    minHeight: 100,
     justifyContent: 'center',
   },
   folderIconContainer: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   folderName: {
     fontSize: theme.typography.fontSize.base,
@@ -318,5 +386,22 @@ const styles = StyleSheet.create({
   },
   mediaPlayerContainer: {
     paddingBottom: theme.spacing.lg,
+  },
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: theme.spacing.lg,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+  emptyStateText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
   },
 })
