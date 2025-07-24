@@ -4,11 +4,15 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { Screen } from '@components/Layout'
 import { MediaCard } from '@components/Card'
+import { TextInputDialog, ConfirmationDialog, FolderContextMenu } from '@components/index'
 import { theme } from '@utils/theme'
+import { fileSystemService } from '@services/FileSystemService'
+import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
 
 type FolderCardData = {
   id: string
   name: string
+  path: string
   itemCount: number
 }
 
@@ -30,47 +34,84 @@ export default function BrowseScreen() {
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Empty array means root
   const [folders, setFolders] = useState<FolderCardData[]>([])
   const [clips, setClips] = useState<ClipData[]>([])
-  // Mock data for root folders
-  const rootFolders: FolderCardData[] = [
-    { id: '1', name: 'Song Ideas', itemCount: 12 },
-    { id: '2', name: 'Demos', itemCount: 8 },
-    { id: '3', name: 'Voice Memos', itemCount: 15 },
-    { id: '4', name: 'Lyrics', itemCount: 5 },
-  ]
+  const [loading, setLoading] = useState(false)
 
-  // Mock data for clips in different folders
-  const allClips: Record<string, ClipData[]> = {
-    'Song Ideas': [
-      { id: '1', name: 'Guitar Riff Idea', folder: 'Song Ideas', duration: '0:45', date: 'Today' },
-      { id: '2', name: 'Vocal Melody Hook', folder: 'Song Ideas', duration: '1:23', date: 'Yesterday' },
-      { id: '3', name: 'Chord Progression', folder: 'Song Ideas', duration: '2:10', date: '2 days ago' },
-      { id: '4', name: 'Bass Line Test', folder: 'Song Ideas', duration: '0:38', date: '3 days ago' },
-    ],
-    Demos: [
-      { id: '5', name: 'Full Song Demo', folder: 'Demos', duration: '3:24', date: 'Today' },
-      { id: '6', name: 'Acoustic Version', folder: 'Demos', duration: '2:45', date: 'Yesterday' },
-    ],
-    'Voice Memos': [
-      { id: '7', name: 'Quick Idea', folder: 'Voice Memos', duration: '0:15', date: 'Today' },
-      { id: '8', name: 'Melody Hum', folder: 'Voice Memos', duration: '0:32', date: 'Today' },
-    ],
-    Lyrics: [{ id: '9', name: 'Verse 1 Draft', folder: 'Lyrics', duration: '1:12', date: 'Yesterday' }],
-  }
+  // Dialog states
+  const [createFolderVisible, setCreateFolderVisible] = useState(false)
+  const [renameFolderVisible, setRenameFolderVisible] = useState(false)
+  const [deleteFolderVisible, setDeleteFolderVisible] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState<FolderCardData | null>(null)
 
   useEffect(() => {
     loadCurrentFolderData()
   }, [currentPath])
 
-  const loadCurrentFolderData = () => {
+  const getCurrentFolderPath = (): string => {
     if (currentPath.length === 0) {
-      // At root - show all folders, no clips
-      setFolders(rootFolders)
-      setClips([])
-    } else {
-      // In a specific folder - show no subfolders, show clips for that folder
-      const currentFolderName = currentPath[currentPath.length - 1]
-      setFolders([])
-      setClips(allClips[currentFolderName] || [])
+      return getRecordingsDirectory()
+    }
+    return joinPath(getRecordingsDirectory(), ...currentPath)
+  }
+
+  const getCurrentDisplayPath = (): string => {
+    if (currentPath.length === 0) {
+      return '/'
+    }
+    return '/' + currentPath.join('/')
+  }
+
+  const loadCurrentFolderData = async () => {
+    setLoading(true)
+    try {
+      await fileSystemService.initialize()
+      const folderPath = getCurrentFolderPath()
+      const contents = await fileSystemService.getFolderContents(folderPath)
+
+      // Separate folders and files
+      const folderItems: FolderCardData[] = []
+      const fileItems: ClipData[] = []
+
+      for (const item of contents) {
+        if (item.type === 'folder') {
+          // Count items in folder
+          try {
+            const folderContents = await fileSystemService.getFolderContents(item.path)
+            const itemCount = folderContents.filter(subItem => subItem.type === 'file').length
+
+            folderItems.push({
+              id: item.id,
+              name: item.name,
+              path: item.path,
+              itemCount,
+            })
+          } catch (error) {
+            // If we can't read the folder, add it with 0 count
+            folderItems.push({
+              id: item.id,
+              name: item.name,
+              path: item.path,
+              itemCount: 0,
+            })
+          }
+        } else if (item.type === 'file') {
+          // Convert file to clip data (simplified for now)
+          fileItems.push({
+            id: item.id,
+            name: item.name,
+            folder: currentPath[currentPath.length - 1] || 'Root',
+            duration: '0:00', // TODO: Get actual duration
+            date: item.modifiedAt.toLocaleDateString(),
+          })
+        }
+      }
+
+      setFolders(folderItems)
+      setClips(fileItems)
+    } catch (error) {
+      console.error('Failed to load folder contents:', error)
+      Alert.alert('Error', 'Failed to load folder contents')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -84,7 +125,64 @@ export default function BrowseScreen() {
   }
 
   const handleNewFolder = () => {
-    Alert.alert('New Folder', 'Create new folder functionality')
+    setCreateFolderVisible(true)
+  }
+
+  const handleCreateFolder = async (folderName: string) => {
+    try {
+      const parentPath = getCurrentFolderPath()
+      await fileSystemService.createFolder({
+        name: folderName,
+        parentPath,
+      })
+      setCreateFolderVisible(false)
+      loadCurrentFolderData() // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create folder')
+    }
+  }
+
+  const handleRenameFolder = (folder: FolderCardData) => {
+    setSelectedFolder(folder)
+    setRenameFolderVisible(true)
+  }
+
+  const handleConfirmRename = async (newName: string) => {
+    if (!selectedFolder) return
+
+    try {
+      await fileSystemService.renameFolder({
+        oldPath: selectedFolder.path,
+        newName,
+      })
+      setRenameFolderVisible(false)
+      setSelectedFolder(null)
+      loadCurrentFolderData() // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to rename folder')
+    }
+  }
+
+  const handleDeleteFolder = (folder: FolderCardData) => {
+    setSelectedFolder(folder)
+    setDeleteFolderVisible(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!selectedFolder) return
+
+    try {
+      await fileSystemService.deleteFolder(selectedFolder.path)
+      setDeleteFolderVisible(false)
+      setSelectedFolder(null)
+      loadCurrentFolderData() // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to delete folder')
+    }
+  }
+
+  const handleMoveFolder = () => {
+    console.log('Move folder functionality - to be implemented')
   }
 
   const handleHomePress = () => {
@@ -102,18 +200,23 @@ export default function BrowseScreen() {
   }
 
   const renderFolderCard = (folder: FolderCardData) => (
-    <TouchableOpacity
-      key={folder.id}
-      style={styles.folderCard}
-      onPress={() => handleFolderPress(folder)}
-      activeOpacity={0.7}
-    >
-      <View style={styles.folderIconContainer}>
-        <Ionicons name="folder" size={32} color="#FF6B6B" />
+    <View key={folder.id} style={styles.folderCard}>
+      <TouchableOpacity style={styles.folderCardContent} onPress={() => handleFolderPress(folder)} activeOpacity={0.7}>
+        <View style={styles.folderIconContainer}>
+          <Ionicons name="folder" size={32} color="#FF6B6B" />
+        </View>
+        <Text style={styles.folderName}>{folder.name}</Text>
+        <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
+      </TouchableOpacity>
+
+      <View style={styles.folderMenuContainer}>
+        <FolderContextMenu
+          onRename={() => handleRenameFolder(folder)}
+          onMove={handleMoveFolder}
+          onDelete={() => handleDeleteFolder(folder)}
+        />
       </View>
-      <Text style={styles.folderName}>{folder.name}</Text>
-      <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
-    </TouchableOpacity>
+    </View>
   )
 
   const renderClipItem = (clip: ClipData) => (
@@ -192,7 +295,7 @@ export default function BrowseScreen() {
           {/* New Folder Button - always show at top */}
           <View style={styles.newFolderContainer}>
             <TouchableOpacity style={styles.newFolderButton} onPress={handleNewFolder}>
-              <Ionicons name="add" size={20} color={theme.colors.text.primary} />
+              <Ionicons name="add" size={20} color="#FFFFFF" />
               <Text style={styles.newFolderButtonText}>New Folder</Text>
             </TouchableOpacity>
           </View>
@@ -234,6 +337,44 @@ export default function BrowseScreen() {
           isPlaying={false}
         />
       </View>
+
+      {/* Dialogs */}
+      <TextInputDialog
+        visible={createFolderVisible}
+        title="Create Folder"
+        message={`Create new folder in: ${getCurrentDisplayPath()}`}
+        placeholder="Folder name"
+        confirmText="Create"
+        onConfirm={handleCreateFolder}
+        onCancel={() => setCreateFolderVisible(false)}
+      />
+
+      <TextInputDialog
+        visible={renameFolderVisible}
+        title="Rename Folder"
+        message="Enter new folder name:"
+        placeholder="Folder name"
+        initialValue={selectedFolder?.name || ''}
+        confirmText="Rename"
+        onConfirm={handleConfirmRename}
+        onCancel={() => {
+          setRenameFolderVisible(false)
+          setSelectedFolder(null)
+        }}
+      />
+
+      <ConfirmationDialog
+        visible={deleteFolderVisible}
+        title="Delete Folder"
+        message={`Are you sure you want to delete "${selectedFolder?.name}"? This folder contains ${selectedFolder?.itemCount || 0} items and cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteFolderVisible(false)
+          setSelectedFolder(null)
+        }}
+      />
     </Screen>
   )
 }
@@ -299,7 +440,7 @@ const styles = StyleSheet.create({
   newFolderButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.surface.secondary,
+    backgroundColor: '#22C55E', // Green color for primary action
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
@@ -308,7 +449,7 @@ const styles = StyleSheet.create({
   },
   newFolderButtonText: {
     fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.primary,
+    color: '#FFFFFF', // White text on green background
     fontWeight: theme.typography.fontWeight.medium,
   },
   foldersContainer: {
@@ -323,10 +464,19 @@ const styles = StyleSheet.create({
     width: '45%',
     backgroundColor: theme.colors.surface.secondary,
     borderRadius: theme.borderRadius.lg,
+    minHeight: 100,
+    position: 'relative',
+  },
+  folderCardContent: {
     padding: theme.spacing.lg,
     alignItems: 'center',
-    minHeight: 100,
     justifyContent: 'center',
+    flex: 1,
+  },
+  folderMenuContainer: {
+    position: 'absolute',
+    top: theme.spacing.xs,
+    right: theme.spacing.xs,
   },
   folderIconContainer: {
     marginBottom: theme.spacing.sm,

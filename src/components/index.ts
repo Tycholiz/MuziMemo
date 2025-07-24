@@ -31,3 +31,9 @@ export type { FolderSelectorProps, Folder } from './FolderSelector'
 
 export { FileNavigator } from './FileNavigator'
 export type { FileNavigatorProps, FileNavigatorFolder } from './FileNavigator'
+
+export { TextInputDialog, ConfirmationDialog } from './Dialog'
+export type { TextInputDialogProps, ConfirmationDialogProps } from './Dialog'
+
+export { FolderContextMenu } from './FolderContextMenu'
+export type { FolderContextMenuProps } from './FolderContextMenu'
