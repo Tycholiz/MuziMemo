@@ -104,7 +104,7 @@ export class FileSystemService {
    * Create default folder structure on first launch
    */
   async initializeFolderStructure(): Promise<void> {
-    const defaultFolders: readonly string[] = ['Song Ideas', 'Demos', 'Voice Memos', 'Lyrics', 'Drafts']
+    const defaultFolders: readonly string[] = ['Song Ideas', 'Demos', 'Lyrics', 'Drafts']
 
     for (const folderName of defaultFolders) {
       try {
