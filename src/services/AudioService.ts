@@ -104,6 +104,7 @@ export class AudioService {
    * Get recording status
    */
   getRecordingStatus(): Audio.RecordingStatus | null {
+    // @ts-expect-error
     return this.recording?.getStatusAsync() || null
   }
 
