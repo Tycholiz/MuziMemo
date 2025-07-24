@@ -27,6 +27,7 @@ export default function TabLayout() {
         name="record"
         options={{
           title: 'Record',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="mic" size={size} color={color} />,
         }}
       />
@@ -34,6 +35,7 @@ export default function TabLayout() {
         name="browse"
         options={{
           title: 'Browse',
+          headerShown: false,
           tabBarIcon: ({ color, size }) => <Ionicons name="folder" size={size} color={color} />,
         }}
       />

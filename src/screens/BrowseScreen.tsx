@@ -87,10 +87,6 @@ export default function BrowseScreen() {
     Alert.alert('New Folder', 'Create new folder functionality')
   }
 
-  const handleImport = () => {
-    Alert.alert('Import', 'Import functionality')
-  }
-
   const handleHomePress = () => {
     // Navigate to root
     setCurrentPath([])
@@ -193,23 +189,18 @@ export default function BrowseScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {/* New Folder Button - always show at top */}
+          <View style={styles.newFolderContainer}>
+            <TouchableOpacity style={styles.newFolderButton} onPress={handleNewFolder}>
+              <Ionicons name="add" size={20} color={theme.colors.text.primary} />
+              <Text style={styles.newFolderButtonText}>New Folder</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Folders Grid - only show when at root */}
           {currentPath.length === 0 && (
             <View style={styles.foldersContainer}>
               <View style={styles.foldersGrid}>{folders.map(renderFolderCard)}</View>
-            </View>
-          )}
-
-          {/* Action Buttons - only show when at root */}
-          {currentPath.length === 0 && (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleNewFolder}>
-                <Ionicons name="add" size={20} color={theme.colors.text.primary} />
-                <Text style={styles.actionButtonText}>New Folder</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionButton} onPress={handleImport}>
-                <Text style={styles.actionButtonText}>Import</Text>
-              </TouchableOpacity>
             </View>
           )}
 
@@ -228,20 +219,20 @@ export default function BrowseScreen() {
             </View>
           )}
         </ScrollView>
+      </View>
 
-        {/* Bottom Media Player - Fixed at bottom */}
-        <View style={styles.mediaPlayerContainer}>
-          <MediaCard
-            title="Guitar Riff Idea"
-            artist="Song Ideas • 0:45"
-            duration="0:45"
-            onPlayPause={() => Alert.alert('Play/Pause')}
-            onNext={() => Alert.alert('Next')}
-            onPrevious={() => Alert.alert('Previous')}
-            onMore={() => Alert.alert('More options')}
-            isPlaying={false}
-          />
-        </View>
+      {/* Bottom Media Player - Fixed at bottom, full width */}
+      <View style={styles.mediaPlayerContainer}>
+        <MediaCard
+          title="Guitar Riff Idea"
+          artist="Song Ideas • 0:45"
+          duration="0:45"
+          onPlayPause={() => Alert.alert('Play/Pause')}
+          onNext={() => Alert.alert('Next')}
+          onPrevious={() => Alert.alert('Previous')}
+          onMore={() => Alert.alert('More options')}
+          isPlaying={false}
+        />
       </View>
     </Screen>
   )
@@ -302,13 +293,31 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     fontWeight: theme.typography.fontWeight.medium,
   },
+  newFolderContainer: {
+    marginBottom: theme.spacing.md,
+  },
+  newFolderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface.secondary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    gap: theme.spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  newFolderButtonText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
   foldersContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
   foldersGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.lg,
+    gap: theme.spacing.md,
   },
   folderCard: {
     width: '45%',
@@ -334,42 +343,23 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textAlign: 'center',
   },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface.secondary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    gap: theme.spacing.sm,
-  },
-  actionButtonText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.fontWeight.medium,
-  },
   clipsSection: {
     flex: 1,
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
   clipsTitle: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
     fontWeight: theme.typography.fontWeight.medium,
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   clipsList: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   clipItem: {
     backgroundColor: theme.colors.surface.secondary,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   clipInfo: {
     flex: 1,
@@ -385,13 +375,14 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
   },
   mediaPlayerContainer: {
+    paddingHorizontal: 0,
     paddingBottom: theme.spacing.lg,
   },
   scrollContainer: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
   },
   emptyState: {
     flex: 1,
