@@ -6,6 +6,7 @@ import { RecordingStatus } from 'src/customTypes/Recording'
 // Import expo-audio conditionally
 let useAudioRecorder: any = null
 let AudioModule: any = null
+let setAudioModeAsync: any = null
 let RecordingPresets: any = null
 
 if (Platform.OS !== 'web') {
@@ -13,7 +14,10 @@ if (Platform.OS !== 'web') {
     const expoAudio = require('expo-audio')
     useAudioRecorder = expoAudio.useAudioRecorder
     AudioModule = expoAudio.AudioModule
+    setAudioModeAsync = expoAudio.setAudioModeAsync
     RecordingPresets = expoAudio.RecordingPresets
+    console.log('expo-audio imported successfully for recording')
+    console.log('Available RecordingPresets:', Object.keys(RecordingPresets || {}))
   } catch (error) {
     console.warn('expo-audio not available:', error)
   }
@@ -38,13 +42,29 @@ export function useAudioRecording() {
   // Create audio recorder instance using expo-audio hook
   const audioRecorder =
     Platform.OS !== 'web' && useAudioRecorder && RecordingPresets
-      ? useAudioRecorder(RecordingPresets.HIGH_QUALITY)
+      ? useAudioRecorder(RecordingPresets.LOW_QUALITY)
       : null
 
   // Initialize audio service on mount
   useEffect(() => {
     const initializeAudio = async () => {
       try {
+        // Set up audio mode for recording
+        if (Platform.OS !== 'web' && setAudioModeAsync) {
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            allowsRecording: true,
+            shouldPlayInBackground: false,
+            // Add iOS-specific audio session category
+            ...(Platform.OS === 'ios' && {
+              iosCategory: 'playAndRecord',
+              iosCategoryMode: 'default',
+              iosCategoryOptions: ['defaultToSpeaker', 'allowBluetooth'],
+            }),
+          })
+          console.log('Audio mode set for recording')
+        }
+
         setIsInitialized(true)
 
         // Check if we already have permissions
@@ -150,6 +170,11 @@ export function useAudioRecording() {
    * Start recording
    */
   const startRecording = useCallback(async () => {
+    console.log('=== START RECORDING DEBUG ===')
+    console.log('Is initialized:', isInitialized)
+    console.log('Has permissions:', hasPermissions)
+    console.log('Audio recorder available:', !!audioRecorder)
+
     if (!isInitialized) {
       setError('Audio service not initialized')
       return
@@ -173,8 +198,44 @@ export function useAudioRecording() {
         return
       } else if (audioRecorder) {
         // Use expo-audio recorder
-        await audioRecorder.prepareToRecordAsync()
-        audioRecorder.record()
+        console.log('Preparing to record...')
+        console.log('AudioRecorder object:', audioRecorder)
+        console.log('Initial recorder state - isRecording:', audioRecorder.isRecording)
+
+        // Try to prepare the recorder
+        try {
+          await audioRecorder.prepareToRecordAsync()
+          console.log('Recorder prepared successfully')
+          console.log('After prepare - isRecording:', audioRecorder.isRecording)
+        } catch (prepareError) {
+          console.error('Failed to prepare recorder:', prepareError)
+          const errorMessage = prepareError instanceof Error ? prepareError.message : 'Unknown error'
+          throw new Error(`Failed to prepare recorder: ${errorMessage}`)
+        }
+
+        console.log('Starting recording...')
+
+        // Try the record method and check if it actually starts
+        try {
+          await audioRecorder.record()
+          console.log('Record method called')
+
+          // Give it a moment and check again
+          setTimeout(() => {
+            console.log('After timeout - isRecording:', audioRecorder.isRecording)
+            if (!audioRecorder.isRecording) {
+              console.error('Recording failed to start - isRecording is still false')
+              setError('Failed to start recording - recorder not active')
+              setStatus('idle')
+              return
+            }
+          }, 100)
+        } catch (recordError) {
+          console.error('Failed to call record():', recordError)
+          throw recordError
+        }
+
+        console.log('Recording started, status:', audioRecorder.isRecording)
         setStatus('recording')
         startDurationTracking()
         startAudioLevelMonitoring()
@@ -182,6 +243,7 @@ export function useAudioRecording() {
         setError('Audio recorder not available')
       }
     } catch (err) {
+      console.error('Start recording error:', err)
       setError(err instanceof Error ? err.message : 'Failed to start recording')
     }
   }, [
@@ -198,6 +260,11 @@ export function useAudioRecording() {
    */
   const stopRecording = useCallback(async () => {
     try {
+      console.log('=== STOP RECORDING DEBUG ===')
+      console.log('Stopping recording...')
+      console.log('Audio recorder available:', !!audioRecorder)
+      console.log('Is recording before stop:', audioRecorder?.isRecording)
+
       setError(null)
       stopDurationTracking()
       stopAudioLevelMonitoring()
@@ -210,6 +277,16 @@ export function useAudioRecording() {
         // Use expo-audio recorder
         await audioRecorder.stop()
         const uri = audioRecorder.uri
+        console.log('Recording stopped, URI:', uri)
+        console.log('Is recording after stop:', audioRecorder.isRecording)
+
+        // Check if the file exists and get its size
+        if (uri) {
+          const FileSystem = require('expo-file-system')
+          const fileInfo = await FileSystem.getInfoAsync(uri)
+          console.log('Recorded file info:', JSON.stringify(fileInfo, null, 2))
+        }
+
         setStatus('stopped')
         return uri
       } else {
@@ -218,6 +295,7 @@ export function useAudioRecording() {
         return null
       }
     } catch (err) {
+      console.error('Stop recording error:', err)
       setError(err instanceof Error ? err.message : 'Failed to stop recording')
       return null
     }
