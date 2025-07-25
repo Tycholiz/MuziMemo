@@ -17,6 +17,9 @@ export type { CardProps, FileCardProps, CardVariant } from './Card'
 export { Icon, IconButton, RecordButton } from './Icon'
 export type { IconProps, IconSize, IconColor } from './Icon'
 
+export { SoundWave } from './SoundWave'
+export type { SoundWaveProps } from './SoundWave'
+
 export { Screen, Container, Row, Column, Spacer } from './Layout'
 export type { ScreenProps, ContainerProps } from './Layout'
 

@@ -3,12 +3,17 @@ import { Platform } from 'react-native'
 // Conditional import for expo-audio (only on native platforms)
 let AudioRecorder: any = null
 let AudioPlayer: any = null
+let getRecordingPermissionsAsync: any = null
+let requestRecordingPermissionsAsync: any = null
 
 if (Platform.OS !== 'web') {
   try {
     const expoAudio = require('expo-audio')
-    AudioRecorder = expoAudio.AudioRecorder
-    AudioPlayer = expoAudio.AudioPlayer
+    console.log('expoAudio AudioModule: ', expoAudio.AudioModule)
+    AudioRecorder = expoAudio.AudioModule.AudioRecorder
+    AudioPlayer = expoAudio.AudioModule.AudioPlayer
+    getRecordingPermissionsAsync = expoAudio.getRecordingPermissionsAsync
+    requestRecordingPermissionsAsync = expoAudio.requestRecordingPermissionsAsync
   } catch (error) {
     console.warn('expo-audio not available:', error)
   }
@@ -43,6 +48,60 @@ export class AudioService {
     } catch (error) {
       console.error('Failed to initialize audio service:', error)
       throw error
+    }
+  }
+
+  /**
+   * Check if recording permissions are granted
+   */
+  async hasRecordingPermissions(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'web') {
+        // Web permissions are handled by getUserMedia
+        return true
+      } else {
+        if (!getRecordingPermissionsAsync) {
+          console.warn('getRecordingPermissionsAsync not available')
+          return false
+        }
+
+        const { status } = await getRecordingPermissionsAsync()
+        return status === 'granted'
+      }
+    } catch (error) {
+      console.error('Failed to check recording permissions:', error)
+      return false
+    }
+  }
+
+  /**
+   * Request recording permissions
+   */
+  async requestRecordingPermissions(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'web') {
+        // Web permissions are handled by getUserMedia
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          // Stop the stream immediately as we just wanted to check permissions
+          stream.getTracks().forEach(track => track.stop())
+          return true
+        } catch (error) {
+          console.error('Web audio permission denied:', error)
+          return false
+        }
+      } else {
+        if (!requestRecordingPermissionsAsync) {
+          console.warn('requestRecordingPermissionsAsync not available')
+          return false
+        }
+
+        const { status } = await requestRecordingPermissionsAsync()
+        return status === 'granted'
+      }
+    } catch (error) {
+      console.error('Failed to request recording permissions:', error)
+      return false
     }
   }
 

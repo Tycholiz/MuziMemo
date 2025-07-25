@@ -117,8 +117,8 @@ export function RecordButton({
       disabled={disabled}
       activeOpacity={0.8}
     >
-      <View style={styles.recordButtonInner}>
-        <Ionicons name={isRecording ? 'stop' : 'mic'} size={32} color={theme.colors.white} />
+      <View style={[styles.recordButtonInner, isRecording && styles.recordButtonRecording]}>
+        <Ionicons name={isRecording ? 'pause' : 'mic'} size={32} color={theme.colors.white} />
       </View>
     </TouchableOpacity>
   )
@@ -211,5 +211,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  recordButtonRecording: {
+    backgroundColor: theme.colors.warning, // Orange color when recording
   },
 })

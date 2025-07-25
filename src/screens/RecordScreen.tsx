@@ -3,20 +3,31 @@ import { StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native'
 
 import { Screen, Container, Spacer } from '@components/Layout'
 import { RecordButton, Icon } from '@components/Icon'
-import { FolderSelector, Dropdown, FileNavigatorModal } from '@components/index'
+import { FolderSelector, Dropdown, FileNavigatorModal, Button, SoundWave } from '@components/index'
 import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/index'
 import { useAudioRecording } from '@hooks/useAudioRecording'
 import { theme } from '@utils/theme'
 import { formatDuration } from '@utils/formatUtils'
 import { fileSystemService } from '@services/FileSystemService'
-import { getRecordingsDirectory } from '@utils/pathUtils'
+import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
+import * as FileSystem from 'expo-file-system'
 
 /**
  * RecordScreen Component
  * Main screen for audio recording functionality
  */
 export default function RecordScreen() {
-  const { status, duration, isInitialized, error, startRecording, stopRecording } = useAudioRecording()
+  const {
+    status,
+    duration,
+    audioLevel,
+    isInitialized,
+    hasPermissions,
+    error,
+    startRecording,
+    stopRecording,
+    requestPermissions,
+  } = useAudioRecording()
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
   // State for folder selection
@@ -90,6 +101,35 @@ export default function RecordScreen() {
       return
     }
 
+    // Check permissions first and request if needed
+    if (!hasPermissions) {
+      Alert.alert(
+        'Microphone Permission Required',
+        'This app needs access to your microphone to record audio. Please grant permission to continue.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Grant Permission',
+            onPress: async () => {
+              const granted = await requestPermissions()
+              if (granted) {
+                await startRecording()
+              } else {
+                Alert.alert(
+                  'Permission Denied',
+                  'Recording permission is required to use this feature. Please enable it in your device settings.'
+                )
+              }
+            },
+          },
+        ]
+      )
+      return
+    }
+
     try {
       await startRecording()
     } catch (err) {
@@ -101,11 +141,68 @@ export default function RecordScreen() {
     try {
       const uri = await stopRecording()
       if (uri) {
+        await saveRecordingToFolder(uri)
         setRecordingUri(uri)
-        Alert.alert('Recording Complete', 'Your recording has been saved!')
       }
     } catch (err) {
       Alert.alert('Recording Error', 'Failed to stop recording')
+    }
+  }
+
+  const saveRecordingToFolder = async (recordingUri: string) => {
+    try {
+      console.log('Saving recording from URI:', recordingUri)
+
+      // Check if source file exists
+      const sourceInfo = await FileSystem.getInfoAsync(recordingUri)
+      if (!sourceInfo.exists) {
+        throw new Error(`Source recording file does not exist: ${recordingUri}`)
+      }
+
+      console.log('Source file info:', sourceInfo)
+
+      // Generate a unique filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const fileName = `Recording_${timestamp}.m4a`
+
+      // Get the target folder path
+      const selectedFolderData = folders.find(f => f.id === selectedFolder)
+      const folderName = selectedFolderData?.name || 'song-ideas'
+      const targetFolderPath = joinPath(getRecordingsDirectory(), folderName)
+      const targetFilePath = joinPath(targetFolderPath, fileName)
+
+      console.log('Target folder path:', targetFolderPath)
+      console.log('Target file path:', targetFilePath)
+
+      // Ensure the target folder exists
+      const folderInfo = await FileSystem.getInfoAsync(targetFolderPath)
+      if (!folderInfo.exists) {
+        console.log('Creating target folder:', targetFolderPath)
+        await FileSystem.makeDirectoryAsync(targetFolderPath, { intermediates: true })
+      }
+
+      // Try to copy the recording file to the selected folder
+      try {
+        await FileSystem.copyAsync({
+          from: recordingUri,
+          to: targetFilePath,
+        })
+        console.log('Recording saved successfully to:', targetFilePath)
+        Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
+      } catch (copyError) {
+        console.error('Copy failed, trying move instead:', copyError)
+
+        // If copy fails, try moving the file instead
+        await FileSystem.moveAsync({
+          from: recordingUri,
+          to: targetFilePath,
+        })
+        console.log('Recording moved successfully to:', targetFilePath)
+        Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
+      }
+    } catch (error) {
+      console.error('Failed to save recording:', error)
+      Alert.alert('Save Error', `Failed to save recording to folder: ${error}`)
     }
   }
 
@@ -113,8 +210,14 @@ export default function RecordScreen() {
     if (status === 'idle' || status === 'stopped') {
       handleStartRecording()
     } else if (status === 'recording') {
+      // For now, we'll stop the recording when pause is pressed
+      // In a full implementation, this would pause and the button would show a resume icon
       handleStopRecording()
     }
+  }
+
+  const handleDonePress = async () => {
+    await handleStopRecording()
   }
 
   const handleFolderSelect = (folderId: string) => {
@@ -147,7 +250,15 @@ export default function RecordScreen() {
         {/* Status Badge */}
         <View style={styles.statusBadgeContainer}>
           <View style={styles.statusBadge}>
-            <Text style={styles.statusBadgeText}>{status === 'recording' ? 'Recording' : 'Ready to Record'}</Text>
+            <Text style={styles.statusBadgeText}>
+              {!isInitialized
+                ? 'Initializing...'
+                : !hasPermissions
+                  ? 'Microphone Permission Required'
+                  : status === 'recording'
+                    ? 'Recording'
+                    : 'Ready to Record'}
+            </Text>
           </View>
         </View>
 
@@ -165,13 +276,34 @@ export default function RecordScreen() {
 
         <Spacer size="lg" />
 
+        {/* Sound Wave Visualization */}
+        <SoundWave audioLevel={audioLevel} isActive={status === 'recording'} style={styles.soundWave} />
+
+        <Spacer size="lg" />
+
         {/* Record Button */}
         <View style={styles.recordButtonContainer}>
           <RecordButton isRecording={status === 'recording'} onPress={handleRecordPress} disabled={!isInitialized} />
         </View>
 
         <Spacer size="sm" />
-        <Text style={styles.tapToRecordText}>Tap to Record</Text>
+        <Text style={styles.tapToRecordText}>{status === 'recording' ? 'Tap to Pause' : 'Tap to Record'}</Text>
+
+        {/* Done Button - Only show when recording */}
+        {status === 'recording' && (
+          <>
+            <Spacer size="lg" />
+            <View style={styles.doneButtonContainer}>
+              <Button
+                title="Done"
+                variant="primary"
+                onPress={handleDonePress}
+                style={styles.doneButton}
+                icon="checkmark"
+              />
+            </View>
+          </>
+        )}
 
         <Spacer size="2xl" />
 
@@ -282,6 +414,19 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.tertiary,
     textAlign: 'center',
+  },
+  soundWave: {
+    alignSelf: 'center',
+    width: '80%',
+  },
+  doneButtonContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  doneButton: {
+    backgroundColor: theme.colors.success,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
   },
   recordingIndicator: {
     flexDirection: 'row',
