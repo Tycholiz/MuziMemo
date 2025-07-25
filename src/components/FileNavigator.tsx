@@ -11,6 +11,7 @@ export type FileNavigatorFolder = {
   id: string
   name: string
   path: string
+  isBeingMoved?: boolean
 }
 
 export type FileNavigatorProps = {
@@ -61,13 +62,14 @@ export function FileNavigator({
       await fileSystemService.initialize()
       const contents = await fileSystemService.getFolderContents(currentFolderPath)
 
-      // Filter to only show folders, excluding the specified path if provided
+      // Filter to only show folders, but include the excluded folder for display purposes
       const folderItems = contents
-        .filter(item => item.type === 'folder' && (!excludePath || item.path !== excludePath))
+        .filter(item => item.type === 'folder')
         .map(item => ({
           id: item.id,
           name: item.name,
           path: item.path,
+          isBeingMoved: excludePath === item.path,
         }))
 
       setFolders(folderItems)
@@ -78,10 +80,6 @@ export function FileNavigator({
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleSelectFolder = (folder: FileNavigatorFolder) => {
-    setSelectedFolder(folder.id)
   }
 
   const handleConfirmSelection = () => {
@@ -139,35 +137,31 @@ export function FileNavigator({
   }
 
   const renderFolder = ({ item }: { item: FileNavigatorFolder }) => {
-    let lastTap = 0
-
     const handlePress = () => {
-      const now = Date.now()
-      const DOUBLE_PRESS_DELAY = 300
-
-      if (now - lastTap < DOUBLE_PRESS_DELAY) {
-        // Double tap - navigate into folder
-        handleFolderDoublePress(item)
-      } else {
-        // Single tap - select folder
-        handleSelectFolder(item)
+      if (item.isBeingMoved) {
+        // Don't allow navigation into the folder being moved
+        return
       }
-      lastTap = now
+      // Single tap - navigate into folder
+      handleFolderDoublePress(item)
     }
 
     return (
       <TouchableOpacity
-        style={[styles.folderItem, selectedFolder === item.id && styles.selectedFolder]}
+        style={[styles.folderItem, item.isBeingMoved && styles.folderBeingMoved]}
         onPress={handlePress}
-        activeOpacity={0.7}
+        activeOpacity={item.isBeingMoved ? 1 : 0.7}
       >
         <Ionicons
           name="folder-outline"
           size={24}
-          color={selectedFolder === item.id ? theme.colors.primary : theme.colors.primary}
+          color={item.isBeingMoved ? theme.colors.text.tertiary : theme.colors.primary}
           style={styles.folderIcon}
         />
-        <Text style={[styles.folderName, selectedFolder === item.id && styles.selectedFolderName]}>{item.name}</Text>
+        <Text style={[styles.folderName, item.isBeingMoved && styles.folderBeingMovedText]}>
+          {item.name}
+          {item.isBeingMoved && ' (being moved)'}
+        </Text>
       </TouchableOpacity>
     )
   }
@@ -185,10 +179,20 @@ export function FileNavigator({
 
           <View style={styles.pathContainer}>
             <View style={styles.breadcrumbs}>
-              {breadcrumbs.map(crumb => (
+              {breadcrumbs.map((crumb, index) => (
                 <View key={crumb.path} style={styles.breadcrumbContainer}>
                   <TouchableOpacity onPress={() => handleBreadcrumbPress(crumb.path)} style={styles.breadcrumbButton}>
-                    <Text style={[styles.breadcrumbText, crumb.isLast && styles.breadcrumbTextLast]}>{crumb.name}</Text>
+                    {index === 0 ? (
+                      <Ionicons
+                        name="home"
+                        size={16}
+                        color={crumb.isLast ? theme.colors.text.primary : theme.colors.text.secondary}
+                      />
+                    ) : (
+                      <Text style={[styles.breadcrumbText, crumb.isLast && styles.breadcrumbTextLast]}>
+                        {crumb.name}
+                      </Text>
+                    )}
                   </TouchableOpacity>
                   {!crumb.isLast && (
                     <Ionicons
@@ -324,6 +328,16 @@ const styles = StyleSheet.create({
 
   selectedFolderName: {
     color: theme.colors.primary,
+  },
+
+  folderBeingMoved: {
+    backgroundColor: theme.colors.surface.secondary,
+    opacity: 0.6,
+  },
+
+  folderBeingMovedText: {
+    color: theme.colors.text.tertiary,
+    fontStyle: 'italic',
   },
 
   footer: {
