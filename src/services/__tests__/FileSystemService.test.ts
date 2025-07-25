@@ -1,5 +1,4 @@
 import { fileSystemService } from '../FileSystemService'
-import { DEFAULT_AUDIO_FILES } from '../../customTypes/FileSystem'
 
 // Mock expo-file-system for testing
 jest.mock('expo-file-system', () => ({
@@ -24,7 +23,7 @@ describe('FileSystemService', () => {
     // Reset the service instance
     ;(fileSystemService as any).isInitialized = false
     ;(fileSystemService as any).webStorage = new Map()
-    
+
     // Mock localStorage for web platform
     Object.defineProperty(window, 'localStorage', {
       value: {
@@ -40,13 +39,11 @@ describe('FileSystemService', () => {
   describe('initialization', () => {
     it('should initialize and create default folders and files', async () => {
       await fileSystemService.initialize()
-      
+
       // Check that default folders are created
       const contents = await fileSystemService.getFolderContents('/muzimemo/recordings/')
-      const folderNames = contents
-        .filter(item => item.type === 'folder')
-        .map(item => item.name)
-      
+      const folderNames = contents.filter(item => item.type === 'folder').map(item => item.name)
+
       expect(folderNames).toContain('Song Ideas')
       expect(folderNames).toContain('Demos')
       expect(folderNames).toContain('Voice Memos')
@@ -56,11 +53,11 @@ describe('FileSystemService', () => {
 
     it('should create default audio files in appropriate folders', async () => {
       await fileSystemService.initialize()
-      
+
       // Check Song Ideas folder for audio files
       const songIdeasContents = await fileSystemService.getFolderContents('/muzimemo/recordings/Song Ideas/')
       const audioFiles = songIdeasContents.filter(item => item.type === 'file')
-      
+
       expect(audioFiles.length).toBeGreaterThan(0)
       expect(audioFiles.some(file => file.name.includes('Guitar Riff Idea'))).toBe(true)
       expect(audioFiles.some(file => file.name.includes('Verse Melody'))).toBe(true)
@@ -171,9 +168,7 @@ describe('FileSystemService', () => {
     })
 
     it('should throw error when trying to delete non-existent file', async () => {
-      await expect(
-        fileSystemService.deleteFile('/muzimemo/recordings/non-existent.mp3')
-      ).rejects.toThrow()
+      await expect(fileSystemService.deleteFile('/muzimemo/recordings/non-existent.mp3')).rejects.toThrow()
     })
   })
 })

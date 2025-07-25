@@ -4,7 +4,7 @@ import { Modal, View, Text, TextInput, StyleSheet, TouchableWithoutFeedback, Key
 import { Button } from './Button'
 import { theme } from '@utils/theme'
 
-export type TextInputDialogProps = {
+export type TextInputDialogModalProps = {
   visible: boolean
   title: string
   message?: string
@@ -16,7 +16,7 @@ export type TextInputDialogProps = {
   onCancel: () => void
 }
 
-export type ConfirmationDialogProps = {
+export type ConfirmationDialogModalProps = {
   visible: boolean
   title: string
   message: string
@@ -28,10 +28,10 @@ export type ConfirmationDialogProps = {
 }
 
 /**
- * TextInputDialog Component
+ * TextInputDialogModal Component
  * A modal dialog with a text input field that automatically focuses when opened
  */
-export function TextInputDialog({
+export function TextInputDialogModal({
   visible,
   title,
   message,
@@ -41,7 +41,7 @@ export function TextInputDialog({
   cancelText = 'Cancel',
   onConfirm,
   onCancel,
-}: TextInputDialogProps) {
+}: TextInputDialogModalProps) {
   const [inputValue, setInputValue] = useState(initialValue)
   const inputRef = useRef<TextInput>(null)
 
@@ -122,10 +122,10 @@ export function TextInputDialog({
 }
 
 /**
- * ConfirmationDialog Component
+ * ConfirmationDialogModal Component
  * A modal dialog for confirming actions with customizable button variants
  */
-export function ConfirmationDialog({
+export function ConfirmationDialogModal({
   visible,
   title,
   message,
@@ -134,7 +134,7 @@ export function ConfirmationDialog({
   confirmVariant = 'primary',
   onConfirm,
   onCancel,
-}: ConfirmationDialogProps) {
+}: ConfirmationDialogModalProps) {
   const handleBackdropPress = () => {
     onCancel()
   }

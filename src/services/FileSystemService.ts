@@ -630,7 +630,11 @@ export class FileSystemService {
       }
 
       if (!overwrite && (await this.fileExists(destinationPath))) {
-        throw this.createError(FILE_SYSTEM_ERRORS.FOLDER_EXISTS, 'Destination file already exists', destinationPath)
+        throw this.createError(
+          FILE_SYSTEM_ERRORS.FOLDER_EXISTS,
+          'A file by this name already exists in the selected location',
+          destinationPath
+        )
       }
 
       if (Platform.OS === 'web') {

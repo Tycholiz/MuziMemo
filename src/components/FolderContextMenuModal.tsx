@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 
-export type FolderContextMenuProps = {
+export type FolderContextMenuModalProps = {
   onRename: () => void
   onMove: () => void
   onDelete: () => void
@@ -19,10 +19,10 @@ type MenuOption = {
 }
 
 /**
- * FolderContextMenu Component
+ * FolderContextMenuModal Component
  * Provides an ellipsis menu with folder management options (rename, move, delete)
  */
-export function FolderContextMenu({ onRename, onMove, onDelete }: FolderContextMenuProps) {
+export function FolderContextMenuModal({ onRename, onMove, onDelete }: FolderContextMenuModalProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   const menuOptions: MenuOption[] = [
@@ -65,26 +65,14 @@ export function FolderContextMenu({ onRename, onMove, onDelete }: FolderContextM
   }
 
   const renderMenuItem = (option: MenuOption) => (
-    <TouchableOpacity
-      key={option.id}
-      style={styles.menuItem}
-      onPress={option.onPress}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity key={option.id} style={styles.menuItem} onPress={option.onPress} activeOpacity={0.7}>
       <Ionicons
         name={option.icon}
         size={20}
         color={option.variant === 'danger' ? theme.colors.error : theme.colors.text.secondary}
         style={styles.menuIcon}
       />
-      <Text
-        style={[
-          styles.menuLabel,
-          option.variant === 'danger' && styles.menuLabelDanger,
-        ]}
-      >
-        {option.label}
-      </Text>
+      <Text style={[styles.menuLabel, option.variant === 'danger' && styles.menuLabelDanger]}>{option.label}</Text>
     </TouchableOpacity>
   )
 
@@ -96,27 +84,12 @@ export function FolderContextMenu({ onRename, onMove, onDelete }: FolderContextM
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons
-          name="ellipsis-vertical"
-          size={20}
-          color={theme.colors.text.tertiary}
-        />
+        <Ionicons name="ellipsis-vertical" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
-      <Modal
-        visible={isVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleClose}
-      >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={handleClose}
-        >
-          <View style={styles.menu}>
-            {menuOptions.map(renderMenuItem)}
-          </View>
+      <Modal visible={isVisible} transparent animationType="fade" onRequestClose={handleClose}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={handleClose}>
+          <View style={styles.menu}>{menuOptions.map(renderMenuItem)}</View>
         </TouchableOpacity>
       </Modal>
     </>
@@ -129,14 +102,14 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
     backgroundColor: 'transparent',
   },
-  
+
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
+
   menu: {
     backgroundColor: theme.colors.surface.primary,
     borderRadius: theme.borderRadius.md,
@@ -144,7 +117,7 @@ const styles = StyleSheet.create({
     ...theme.shadows.lg,
     overflow: 'hidden',
   },
-  
+
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -153,17 +126,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border.light,
   },
-  
+
   menuIcon: {
     marginRight: theme.spacing.sm,
   },
-  
+
   menuLabel: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
     fontWeight: theme.typography.fontWeight.medium,
   },
-  
+
   menuLabelDanger: {
     color: theme.colors.error,
   },
