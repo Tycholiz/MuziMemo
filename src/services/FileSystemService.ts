@@ -7,6 +7,7 @@ import type {
   FileItem,
   CreateFolderOptions,
   MoveFileOptions,
+  MoveFolderOptions,
   RenameOptions,
   FileSystemError,
   FileSystemErrorCode,
@@ -376,6 +377,122 @@ export class FileSystemService {
       createdAt: new Date(),
       modifiedAt: new Date(),
       parentPath: getParentDirectory(newPath),
+      children: [],
+      itemCount: 0,
+    }
+  }
+
+  /**
+   * Move a folder from source to destination
+   */
+  async moveFolder(options: MoveFolderOptions): Promise<FolderItem> {
+    const { sourcePath, destinationPath, overwrite = false } = options
+
+    try {
+      if (!(await this.fileExists(sourcePath))) {
+        throw this.createError(FILE_SYSTEM_ERRORS.FOLDER_NOT_FOUND, 'Source folder not found', sourcePath)
+      }
+
+      // Prevent moving folder to itself or its subdirectories
+      if (destinationPath === sourcePath || destinationPath.startsWith(sourcePath + '/')) {
+        throw this.createError(
+          FILE_SYSTEM_ERRORS.OPERATION_FAILED,
+          'Cannot move folder to its current location or into itself',
+          sourcePath
+        )
+      }
+
+      const folderName = getFileName(sourcePath)
+      const currentParentPath = getParentDirectory(sourcePath)
+      const finalDestinationPath = joinPath(destinationPath, folderName)
+
+      // Prevent moving folder to its current parent (no-op)
+      if (destinationPath === currentParentPath) {
+        throw this.createError(
+          FILE_SYSTEM_ERRORS.OPERATION_FAILED,
+          'Cannot move folder to its current location',
+          sourcePath
+        )
+      }
+
+      if (!overwrite && (await this.fileExists(finalDestinationPath))) {
+        throw this.createError(
+          FILE_SYSTEM_ERRORS.FOLDER_EXISTS,
+          'A folder by this name already exists',
+          finalDestinationPath
+        )
+      }
+
+      if (Platform.OS === 'web') {
+        return await this.moveFolderWeb(sourcePath, finalDestinationPath, folderName)
+      } else {
+        return await this.moveFolderNative(sourcePath, finalDestinationPath, folderName)
+      }
+    } catch (error) {
+      if (error instanceof Error && 'code' in error) {
+        throw error
+      }
+      throw this.createError(FILE_SYSTEM_ERRORS.OPERATION_FAILED, 'Failed to move folder', sourcePath, error as Error)
+    }
+  }
+
+  /**
+   * Move folder on web platform
+   */
+  private async moveFolderWeb(sourcePath: string, destinationPath: string, folderName: string): Promise<FolderItem> {
+    const folder = this.webStorage.get(sourcePath) as FolderItem
+    if (!folder) {
+      throw this.createError(FILE_SYSTEM_ERRORS.FOLDER_NOT_FOUND, 'Folder not found', sourcePath)
+    }
+
+    // Update folder
+    const updatedFolder: FolderItem = {
+      ...folder,
+      name: folderName,
+      path: destinationPath,
+      parentPath: getParentDirectory(destinationPath),
+      modifiedAt: new Date(),
+    }
+
+    // Remove old entry and add new one
+    this.webStorage.delete(sourcePath)
+    this.webStorage.set(destinationPath, updatedFolder)
+
+    // Update all children paths
+    const keysToUpdate = Array.from(this.webStorage.keys()).filter(key => key.startsWith(sourcePath + '/'))
+
+    keysToUpdate.forEach(key => {
+      const item = this.webStorage.get(key)
+      if (item) {
+        const newKey = key.replace(sourcePath, destinationPath)
+        const updatedItem = {
+          ...item,
+          path: newKey,
+          parentPath: item.type === 'folder' ? getParentDirectory(newKey) : destinationPath,
+        }
+        this.webStorage.delete(key)
+        this.webStorage.set(newKey, updatedItem)
+      }
+    })
+
+    await this.saveWebStorage()
+    return updatedFolder
+  }
+
+  /**
+   * Move folder on native platform
+   */
+  private async moveFolderNative(sourcePath: string, destinationPath: string, folderName: string): Promise<FolderItem> {
+    await FileSystem.moveAsync({ from: sourcePath, to: destinationPath })
+
+    return {
+      id: this.generateId(),
+      name: folderName,
+      path: destinationPath,
+      type: 'folder',
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+      parentPath: getParentDirectory(destinationPath),
       children: [],
       itemCount: 0,
     }

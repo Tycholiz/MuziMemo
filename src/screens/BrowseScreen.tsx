@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { Screen } from '@components/Layout'
 import { MediaCard } from '@components/Card'
-import { TextInputDialog, ConfirmationDialog, FolderContextMenu } from '@components/index'
+import { TextInputDialog, ConfirmationDialog, FolderContextMenu, FileNavigator } from '@components/index'
 import { theme } from '@utils/theme'
 import { fileSystemService } from '@services/FileSystemService'
 import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
@@ -34,12 +34,13 @@ export default function BrowseScreen() {
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Empty array means root
   const [folders, setFolders] = useState<FolderCardData[]>([])
   const [clips, setClips] = useState<ClipData[]>([])
-  const [loading, setLoading] = useState(false)
+  const [, setLoading] = useState(false)
 
   // Dialog states
   const [createFolderVisible, setCreateFolderVisible] = useState(false)
   const [renameFolderVisible, setRenameFolderVisible] = useState(false)
   const [deleteFolderVisible, setDeleteFolderVisible] = useState(false)
+  const [moveFolderVisible, setMoveFolderVisible] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<FolderCardData | null>(null)
 
   useEffect(() => {
@@ -181,8 +182,25 @@ export default function BrowseScreen() {
     }
   }
 
-  const handleMoveFolder = () => {
-    console.log('Move folder functionality - to be implemented')
+  const handleMoveFolder = (folder: FolderCardData) => {
+    setSelectedFolder(folder)
+    setMoveFolderVisible(true)
+  }
+
+  const handleConfirmMove = async (destinationPath: string) => {
+    if (!selectedFolder) return
+
+    try {
+      await fileSystemService.moveFolder({
+        sourcePath: selectedFolder.path,
+        destinationPath,
+      })
+      setMoveFolderVisible(false)
+      setSelectedFolder(null)
+      loadCurrentFolderData() // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to move folder')
+    }
   }
 
   const handleHomePress = () => {
@@ -212,7 +230,7 @@ export default function BrowseScreen() {
       <View style={styles.folderMenuContainer}>
         <FolderContextMenu
           onRename={() => handleRenameFolder(folder)}
-          onMove={handleMoveFolder}
+          onMove={() => handleMoveFolder(folder)}
           onDelete={() => handleDeleteFolder(folder)}
         />
       </View>
@@ -374,6 +392,21 @@ export default function BrowseScreen() {
           setDeleteFolderVisible(false)
           setSelectedFolder(null)
         }}
+      />
+
+      <FileNavigator
+        visible={moveFolderVisible}
+        title="Move Folder"
+        primaryButtonText="Move Here"
+        primaryButtonIcon="folder-outline"
+        onClose={() => {
+          setMoveFolderVisible(false)
+          setSelectedFolder(null)
+        }}
+        onSelectFolder={() => {}} // Not used in move mode
+        onPrimaryAction={handleConfirmMove}
+        currentPath={getRecordingsDirectory()}
+        excludePath={selectedFolder?.path} // Prevent moving folder to itself
       />
     </Screen>
   )
