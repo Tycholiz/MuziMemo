@@ -36,7 +36,6 @@ export default function RecordScreen() {
   } = useAudioRecording(audioQuality)
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
-  console.log('duration: ', duration)
   // State for folder selection
   const [selectedFolder, setSelectedFolder] = useState('song-ideas')
   const [showFileNavigator, setShowFileNavigator] = useState(false)
