@@ -6,6 +6,7 @@ import type {
   FolderItem,
   FileItem,
   CreateFolderOptions,
+  CreateFileOptions,
   MoveFileOptions,
   MoveFolderOptions,
   RenameOptions,
@@ -13,7 +14,7 @@ import type {
   FileSystemErrorCode,
   FileSystemStats,
 } from '../customTypes/FileSystem'
-import { FILE_SYSTEM_ERRORS } from '../customTypes/FileSystem'
+import { FILE_SYSTEM_ERRORS, DEFAULT_AUDIO_FILES } from '../customTypes/FileSystem'
 import {
   getRecordingsDirectory,
   joinPath,
@@ -102,11 +103,12 @@ export class FileSystemService {
   }
 
   /**
-   * Create default folder structure on first launch
+   * Create default folder structure and audio files on first launch
    */
   async initializeFolderStructure(): Promise<void> {
-    const defaultFolders: readonly string[] = ['Song Ideas', 'Demos', 'Lyrics', 'Drafts']
+    const defaultFolders: readonly string[] = ['Song Ideas', 'Demos', 'Voice Memos', 'Lyrics', 'Drafts']
 
+    // Create default folders
     for (const folderName of defaultFolders) {
       try {
         await this.createFolder({ name: folderName })
@@ -115,6 +117,25 @@ export class FileSystemService {
         const fsError = error as FileSystemError
         if (fsError.code !== FILE_SYSTEM_ERRORS.FOLDER_EXISTS) {
           console.warn(`Failed to create default folder "${folderName}":`, error)
+        }
+      }
+    }
+
+    // Create default audio files
+    for (const audioFile of DEFAULT_AUDIO_FILES) {
+      try {
+        const folderPath = joinPath(getRecordingsDirectory(), audioFile.folder)
+        await this.createFile({
+          name: `${audioFile.name}.${audioFile.format}`,
+          parentPath: folderPath,
+          extension: audioFile.format,
+          mimeType: `audio/${audioFile.format}`,
+        })
+      } catch (error) {
+        // Ignore if file already exists
+        const fsError = error as FileSystemError
+        if (fsError.code !== FILE_SYSTEM_ERRORS.FOLDER_EXISTS) {
+          console.warn(`Failed to create default audio file "${audioFile.name}":`, error)
         }
       }
     }
@@ -206,6 +227,105 @@ export class FileSystemService {
     }
 
     return folder
+  }
+
+  /**
+   * Create a new file
+   */
+  async createFile(options: CreateFileOptions): Promise<FileItem> {
+    const { name, content = '', parentPath, extension, mimeType } = options
+
+    // Validate file name
+    const validation = validateFileName(name)
+    if (!validation.isValid) {
+      throw this.createError(FILE_SYSTEM_ERRORS.INVALID_NAME, validation.error || 'Invalid file name', name)
+    }
+
+    const sanitizedName = sanitizeFileName(name)
+    const basePath = parentPath || getRecordingsDirectory()
+    const filePath = joinPath(basePath, sanitizedName)
+
+    try {
+      // Check if file already exists
+      if (await this.fileExists(filePath)) {
+        throw this.createError(FILE_SYSTEM_ERRORS.FOLDER_EXISTS, `File "${sanitizedName}" already exists`, filePath)
+      }
+
+      if (Platform.OS === 'web') {
+        return await this.createFileWeb(filePath, sanitizedName, basePath, content, extension, mimeType)
+      } else {
+        return await this.createFileNative(filePath, sanitizedName, basePath, content, extension, mimeType)
+      }
+    } catch (error) {
+      if (error instanceof Error && 'code' in error) {
+        throw error // Re-throw FileSystemError
+      }
+      throw this.createError(
+        FILE_SYSTEM_ERRORS.OPERATION_FAILED,
+        `Failed to create file "${sanitizedName}"`,
+        filePath,
+        error as Error
+      )
+    }
+  }
+
+  /**
+   * Create file on web platform
+   */
+  private async createFileWeb(
+    filePath: string,
+    name: string,
+    parentPath: string,
+    content: string,
+    extension?: string,
+    mimeType?: string
+  ): Promise<FileItem> {
+    const file: FileItem = {
+      id: this.generateId(),
+      name,
+      path: filePath,
+      type: 'file',
+      size: content.length,
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+      parentPath,
+      extension: extension || name.split('.').pop() || '',
+      mimeType,
+    }
+
+    this.webStorage.set(filePath, file)
+    await this.saveWebStorage()
+
+    return file
+  }
+
+  /**
+   * Create file on native platform
+   */
+  private async createFileNative(
+    filePath: string,
+    name: string,
+    parentPath: string,
+    content: string,
+    extension?: string,
+    mimeType?: string
+  ): Promise<FileItem> {
+    await FileSystem.writeAsStringAsync(filePath, content)
+
+    const file: FileItem = {
+      id: this.generateId(),
+      name,
+      path: filePath,
+      type: 'file',
+      size: content.length,
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+      parentPath,
+      extension: extension || name.split('.').pop() || '',
+      mimeType,
+    }
+
+    return file
   }
 
   /**

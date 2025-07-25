@@ -37,3 +37,6 @@ export type { TextInputDialogProps, ConfirmationDialogProps } from './Dialog'
 
 export { FolderContextMenu } from './FolderContextMenu'
 export type { FolderContextMenuProps } from './FolderContextMenu'
+
+export { FileContextMenu } from './FileContextMenu'
+export type { FileContextMenuProps } from './FileContextMenu'

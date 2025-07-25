@@ -4,7 +4,13 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { Screen } from '@components/Layout'
 import { MediaCard } from '@components/Card'
-import { TextInputDialog, ConfirmationDialog, FolderContextMenu, FileNavigator } from '@components/index'
+import {
+  TextInputDialog,
+  ConfirmationDialog,
+  FolderContextMenu,
+  FileContextMenu,
+  FileNavigator,
+} from '@components/index'
 import { theme } from '@utils/theme'
 import { fileSystemService } from '@services/FileSystemService'
 import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
@@ -19,6 +25,7 @@ type FolderCardData = {
 type ClipData = {
   id: string
   name: string
+  path: string
   folder: string
   duration: string
   date: string
@@ -42,6 +49,12 @@ export default function BrowseScreen() {
   const [deleteFolderVisible, setDeleteFolderVisible] = useState(false)
   const [moveFolderVisible, setMoveFolderVisible] = useState(false)
   const [selectedFolder, setSelectedFolder] = useState<FolderCardData | null>(null)
+
+  // File operation states
+  const [renameFileVisible, setRenameFileVisible] = useState(false)
+  const [deleteFileVisible, setDeleteFileVisible] = useState(false)
+  const [moveFileVisible, setMoveFileVisible] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<ClipData | null>(null)
 
   useEffect(() => {
     loadCurrentFolderData()
@@ -99,6 +112,7 @@ export default function BrowseScreen() {
           fileItems.push({
             id: item.id,
             name: item.name,
+            path: item.path,
             folder: currentPath[currentPath.length - 1] || 'Root',
             duration: '0:00', // TODO: Get actual duration
             date: item.modifiedAt.toLocaleDateString(),
@@ -203,6 +217,70 @@ export default function BrowseScreen() {
     }
   }
 
+  // File operation handlers
+  const handleRenameFile = (file: ClipData) => {
+    setSelectedFile(file)
+    setRenameFileVisible(true)
+  }
+
+  const handleConfirmRenameFile = async (newName: string) => {
+    if (!selectedFile) return
+
+    try {
+      await fileSystemService.renameFile({
+        oldPath: selectedFile.path,
+        newName,
+      })
+      setRenameFileVisible(false)
+      setSelectedFile(null)
+      loadCurrentFolderData() // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to rename file')
+    }
+  }
+
+  const handleDeleteFile = (file: ClipData) => {
+    setSelectedFile(file)
+    setDeleteFileVisible(true)
+  }
+
+  const handleConfirmDeleteFile = async () => {
+    if (!selectedFile) return
+
+    try {
+      await fileSystemService.deleteFile(selectedFile.path)
+      setDeleteFileVisible(false)
+      setSelectedFile(null)
+      loadCurrentFolderData() // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to delete file')
+    }
+  }
+
+  const handleMoveFile = (file: ClipData) => {
+    setSelectedFile(file)
+    setMoveFileVisible(true)
+  }
+
+  const handleConfirmMoveFile = async (destinationPath: string) => {
+    if (!selectedFile) return
+
+    try {
+      const fileName = selectedFile.name
+      const destinationFilePath = joinPath(destinationPath, fileName)
+
+      await fileSystemService.moveFile({
+        sourcePath: selectedFile.path,
+        destinationPath: destinationFilePath,
+      })
+      setMoveFileVisible(false)
+      setSelectedFile(null)
+      loadCurrentFolderData() // Refresh the list
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to move file')
+    }
+  }
+
   const handleHomePress = () => {
     // Navigate to root
     setCurrentPath([])
@@ -245,6 +323,11 @@ export default function BrowseScreen() {
           {clip.date} • {clip.duration}
         </Text>
       </View>
+      <FileContextMenu
+        onRename={() => handleRenameFile(clip)}
+        onMove={() => handleMoveFile(clip)}
+        onDelete={() => handleDeleteFile(clip)}
+      />
     </TouchableOpacity>
   )
 
@@ -410,6 +493,48 @@ export default function BrowseScreen() {
         currentPath={getRecordingsDirectory()}
         excludePath={selectedFolder?.path} // Prevent moving folder to itself
       />
+
+      {/* File Operation Dialogs */}
+      <TextInputDialog
+        visible={renameFileVisible}
+        title="Rename File"
+        message="Enter new file name:"
+        placeholder="File name"
+        initialValue={selectedFile?.name || ''}
+        confirmText="Rename"
+        onConfirm={handleConfirmRenameFile}
+        onCancel={() => {
+          setRenameFileVisible(false)
+          setSelectedFile(null)
+        }}
+      />
+
+      <ConfirmationDialog
+        visible={deleteFileVisible}
+        title="Delete File"
+        message={`Are you sure you want to delete "${selectedFile?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        confirmVariant="danger"
+        onConfirm={handleConfirmDeleteFile}
+        onCancel={() => {
+          setDeleteFileVisible(false)
+          setSelectedFile(null)
+        }}
+      />
+
+      <FileNavigator
+        visible={moveFileVisible}
+        title="Move File"
+        primaryButtonText="Move Here"
+        primaryButtonIcon="document-outline"
+        onClose={() => {
+          setMoveFileVisible(false)
+          setSelectedFile(null)
+        }}
+        onSelectFolder={() => {}} // Not used in move mode
+        onPrimaryAction={handleConfirmMoveFile}
+        currentPath={getRecordingsDirectory()}
+      />
     </Screen>
   )
 }
@@ -545,6 +670,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface.secondary,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   clipInfo: {
     flex: 1,
