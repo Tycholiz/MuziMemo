@@ -26,6 +26,8 @@ export default function RecordScreen() {
     error,
     startRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
     requestPermissions,
   } = useAudioRecording()
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
@@ -218,9 +220,25 @@ export default function RecordScreen() {
     if (status === 'idle' || status === 'stopped') {
       handleStartRecording()
     } else if (status === 'recording') {
-      // For now, we'll stop the recording when pause is pressed
-      // In a full implementation, this would pause and the button would show a resume icon
-      handleStopRecording()
+      handlePauseRecording()
+    } else if (status === 'paused') {
+      handleResumeRecording()
+    }
+  }
+
+  const handlePauseRecording = async () => {
+    try {
+      await pauseRecording()
+    } catch (err) {
+      Alert.alert('Recording Error', 'Failed to pause recording')
+    }
+  }
+
+  const handleResumeRecording = async () => {
+    try {
+      await resumeRecording()
+    } catch (err) {
+      Alert.alert('Recording Error', 'Failed to resume recording')
     }
   }
 
@@ -257,7 +275,7 @@ export default function RecordScreen() {
 
         {/* Status Badge */}
         <View style={styles.statusBadgeContainer}>
-          <View style={styles.statusBadge}>
+          <View style={[styles.statusBadge, status === 'paused' && styles.statusBadgePaused]}>
             <Text style={styles.statusBadgeText}>
               {!isInitialized
                 ? 'Initializing...'
@@ -265,7 +283,9 @@ export default function RecordScreen() {
                   ? 'Microphone Permission Required'
                   : status === 'recording'
                     ? 'Recording'
-                    : 'Ready to Record'}
+                    : status === 'paused'
+                      ? 'Paused'
+                      : 'Ready to Record'}
             </Text>
           </View>
         </View>
@@ -291,14 +311,21 @@ export default function RecordScreen() {
 
         {/* Record Button */}
         <View style={styles.recordButtonContainer}>
-          <RecordButton isRecording={status === 'recording'} onPress={handleRecordPress} disabled={!isInitialized} />
+          <RecordButton
+            isRecording={status === 'recording'}
+            isPaused={status === 'paused'}
+            onPress={handleRecordPress}
+            disabled={!isInitialized}
+          />
         </View>
 
         <Spacer size="sm" />
-        <Text style={styles.tapToRecordText}>{status === 'recording' ? 'Tap to Pause' : 'Tap to Record'}</Text>
+        <Text style={styles.tapToRecordText}>
+          {status === 'recording' ? 'Tap to Pause' : status === 'paused' ? 'Tap to Resume' : 'Tap to Record'}
+        </Text>
 
-        {/* Done Button - Only show when recording */}
-        {status === 'recording' && (
+        {/* Done Button - Show when recording or paused */}
+        {(status === 'recording' || status === 'paused') && (
           <>
             <Spacer size="lg" />
             <View style={styles.doneButtonContainer}>
@@ -389,6 +416,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.borderRadius.full,
+  },
+  statusBadgePaused: {
+    backgroundColor: theme.colors.secondary,
   },
   statusBadgeText: {
     fontSize: theme.typography.fontSize.sm,

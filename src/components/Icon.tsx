@@ -101,15 +101,31 @@ export function IconButton({
  */
 export function RecordButton({
   isRecording = false,
+  isPaused = false,
   onPress,
   disabled = false,
   style,
 }: {
   isRecording?: boolean
+  isPaused?: boolean
   onPress?: () => void
   disabled?: boolean
   style?: ViewStyle
 }) {
+  // Determine the icon to show
+  const getIconName = () => {
+    if (isPaused) return 'play'
+    if (isRecording) return 'pause'
+    return 'mic'
+  }
+
+  // Determine the button color
+  const getButtonStyle = () => {
+    if (isPaused) return styles.recordButtonPaused
+    if (isRecording) return styles.recordButtonRecording
+    return null
+  }
+
   return (
     <TouchableOpacity
       style={[styles.recordButton, disabled && styles.disabled, style]}
@@ -117,8 +133,8 @@ export function RecordButton({
       disabled={disabled}
       activeOpacity={0.8}
     >
-      <View style={[styles.recordButtonInner, isRecording && styles.recordButtonRecording]}>
-        <Ionicons name={isRecording ? 'pause' : 'mic'} size={32} color={theme.colors.white} />
+      <View style={[styles.recordButtonInner, getButtonStyle()]}>
+        <Ionicons name={getIconName()} size={32} color={theme.colors.white} />
       </View>
     </TouchableOpacity>
   )
@@ -215,5 +231,9 @@ const styles = StyleSheet.create({
 
   recordButtonRecording: {
     backgroundColor: theme.colors.warning, // Orange color when recording
+  },
+
+  recordButtonPaused: {
+    backgroundColor: theme.colors.secondary, // Different color when paused
   },
 })

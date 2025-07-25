@@ -224,22 +224,78 @@ export function useAudioRecording() {
   }, [stopDurationTracking, stopAudioLevelMonitoring, audioRecorder])
 
   /**
-   * Pause recording (placeholder - not yet implemented)
+   * Pause recording
    */
-  const pauseRecording = useCallback(() => {
-    // Note: Pause/resume functionality can be implemented with expo-audio
-    // This is a placeholder for future implementation
-    setStatus('paused')
-  }, [])
+  const pauseRecording = useCallback(async () => {
+    try {
+      setError(null)
+
+      if (Platform.OS === 'web') {
+        // Web implementation would go here
+        setStatus('paused')
+        stopAudioLevelMonitoring()
+        // Keep duration tracking running but pause the timer
+        if (durationInterval.current) {
+          clearInterval(durationInterval.current)
+          durationInterval.current = null
+        }
+      } else if (audioRecorder) {
+        audioRecorder.pause()
+        setStatus('paused')
+        stopAudioLevelMonitoring()
+        // Keep duration tracking running but pause the timer
+        if (durationInterval.current) {
+          clearInterval(durationInterval.current)
+          durationInterval.current = null
+        }
+      } else {
+        setError('Audio recorder not available')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to pause recording')
+    }
+  }, [audioRecorder, stopAudioLevelMonitoring])
 
   /**
-   * Resume recording (placeholder - not yet implemented)
+   * Resume recording
    */
-  const resumeRecording = useCallback(() => {
-    // Note: Pause/resume functionality can be implemented with expo-audio
-    // This is a placeholder for future implementation
-    setStatus('recording')
-  }, [])
+  const resumeRecording = useCallback(async () => {
+    try {
+      setError(null)
+
+      if (Platform.OS === 'web') {
+        // Web implementation would go here
+        setStatus('recording')
+        startAudioLevelMonitoring()
+        // Resume duration tracking from where we left off
+        if (recordingStartTime.current) {
+          durationInterval.current = setInterval(() => {
+            if (recordingStartTime.current) {
+              const elapsed = Math.floor((Date.now() - recordingStartTime.current) / 1000)
+              setDuration(elapsed)
+            }
+          }, 1000)
+        }
+      } else if (audioRecorder) {
+        audioRecorder.record()
+        setStatus('recording')
+        startAudioLevelMonitoring()
+        // Resume duration tracking from where we left off
+        if (recordingStartTime.current) {
+          durationInterval.current = setInterval(() => {
+            if (recordingStartTime.current) {
+              const elapsed = Math.floor((Date.now() - recordingStartTime.current) / 1000)
+              setDuration(elapsed)
+            }
+          }, 1000)
+        }
+      } else {
+        setError('Audio recorder not available')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resume recording')
+    }
+  }, [audioRecorder, startAudioLevelMonitoring])
 
   return {
     status,
