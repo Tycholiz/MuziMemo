@@ -57,6 +57,12 @@ export type MoveFileOptions = {
   overwrite?: boolean
 }
 
+export type MoveFolderOptions = {
+  sourcePath: string
+  destinationPath: string
+  overwrite?: boolean
+}
+
 export type RenameOptions = {
   oldPath: string
   newName: string
@@ -70,15 +76,9 @@ export type FileSystemStats = {
   lastModified: Date
 }
 
-export const DEFAULT_FOLDERS = [
-  'Song Ideas',
-  'Demos', 
-  'Voice Memos',
-  'Lyrics',
-  'Drafts'
-] as const
+export const DEFAULT_FOLDERS = ['Song Ideas', 'Demos', 'Voice Memos', 'Lyrics', 'Drafts'] as const
 
-export type DefaultFolder = typeof DEFAULT_FOLDERS[number]
+export type DefaultFolder = (typeof DEFAULT_FOLDERS)[number]
 
 export const FILE_SYSTEM_ERRORS = {
   FOLDER_EXISTS: 'FOLDER_EXISTS',
@@ -88,7 +88,7 @@ export const FILE_SYSTEM_ERRORS = {
   PERMISSION_DENIED: 'PERMISSION_DENIED',
   STORAGE_FULL: 'STORAGE_FULL',
   OPERATION_FAILED: 'OPERATION_FAILED',
-  PLATFORM_NOT_SUPPORTED: 'PLATFORM_NOT_SUPPORTED'
+  PLATFORM_NOT_SUPPORTED: 'PLATFORM_NOT_SUPPORTED',
 } as const
 
-export type FileSystemErrorCode = typeof FILE_SYSTEM_ERRORS[keyof typeof FILE_SYSTEM_ERRORS]
+export type FileSystemErrorCode = (typeof FILE_SYSTEM_ERRORS)[keyof typeof FILE_SYSTEM_ERRORS]

@@ -18,13 +18,30 @@ export type FileNavigatorProps = {
   onClose: () => void
   onSelectFolder: (folder: FileNavigatorFolder) => void
   currentPath?: string
+  title?: string
+  primaryButtonText?: string
+  primaryButtonIcon?: keyof typeof Ionicons.glyphMap
+  onPrimaryAction?: (currentPath: string) => void
+  disablePrimaryButton?: boolean
+  excludePath?: string // Path to exclude from navigation (e.g., the folder being moved)
 }
 
 /**
  * File Navigator modal for browsing and creating folders
  * Matches the design from the mockup screenshots
  */
-export function FileNavigator({ visible, onClose, onSelectFolder, currentPath }: FileNavigatorProps) {
+export function FileNavigator({
+  visible,
+  onClose,
+  onSelectFolder,
+  currentPath,
+  title = 'Select Folder',
+  primaryButtonText = 'Select',
+  primaryButtonIcon,
+  onPrimaryAction,
+  disablePrimaryButton = false,
+  excludePath,
+}: FileNavigatorProps) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
   const [loading, setLoading] = useState(false)
@@ -44,9 +61,9 @@ export function FileNavigator({ visible, onClose, onSelectFolder, currentPath }:
       await fileSystemService.initialize()
       const contents = await fileSystemService.getFolderContents(currentFolderPath)
 
-      // Filter to only show folders
+      // Filter to only show folders, excluding the specified path if provided
       const folderItems = contents
-        .filter(item => item.type === 'folder')
+        .filter(item => item.type === 'folder' && (!excludePath || item.path !== excludePath))
         .map(item => ({
           id: item.id,
           name: item.name,
@@ -68,10 +85,17 @@ export function FileNavigator({ visible, onClose, onSelectFolder, currentPath }:
   }
 
   const handleConfirmSelection = () => {
-    const folder = folders.find(f => f.id === selectedFolder)
-    if (folder) {
-      onSelectFolder(folder)
+    if (onPrimaryAction) {
+      // Use custom primary action (e.g., "Move Here")
+      onPrimaryAction(currentFolderPath)
       onClose()
+    } else {
+      // Default behavior - select a specific folder
+      const folder = folders.find(f => f.id === selectedFolder)
+      if (folder) {
+        onSelectFolder(folder)
+        onClose()
+      }
     }
   }
 
@@ -153,7 +177,7 @@ export function FileNavigator({ visible, onClose, onSelectFolder, currentPath }:
       <View style={styles.overlay}>
         <View style={styles.modal}>
           <View style={styles.header}>
-            <Text style={styles.title}>Select Folder</Text>
+            <Text style={styles.title}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
             </TouchableOpacity>
@@ -204,10 +228,11 @@ export function FileNavigator({ visible, onClose, onSelectFolder, currentPath }:
             />
 
             <Button
-              title="Select"
+              title={primaryButtonText}
               variant="primary"
               onPress={handleConfirmSelection}
-              disabled={!selectedFolder}
+              disabled={disablePrimaryButton || (!onPrimaryAction && !selectedFolder)}
+              icon={primaryButtonIcon}
               style={styles.selectButton}
             />
           </View>
@@ -230,7 +255,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
     width: '90%',
     maxWidth: 400,
-    maxHeight: '70%',
+    height: '70%',
+    display: 'flex',
+    flexDirection: 'column',
     ...theme.shadows.lg,
   },
 
