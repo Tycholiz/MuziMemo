@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Platform } from 'react-native'
 
+import { AudioMetadataService } from '@services/AudioMetadataService'
+
 export type PlaybackStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'stopped' | 'error'
 
 export type AudioPlayerState = {
@@ -14,16 +16,13 @@ export type AudioPlayerState = {
 
 // Import expo-audio conditionally
 let useAudioPlayer: any = null
-let createAudioPlayer: any = null
 let setAudioModeAsync: any = null
 
 if (Platform.OS !== 'web') {
   try {
     const expoAudio = require('expo-audio')
     useAudioPlayer = expoAudio.useAudioPlayer
-    createAudioPlayer = expoAudio.createAudioPlayer
     setAudioModeAsync = expoAudio.setAudioModeAsync
-    console.log('expo-audio imported successfully for playback')
   } catch (error) {
     console.warn('expo-audio not available:', error)
   }
@@ -63,7 +62,6 @@ export function useAudioPlayerHook() {
               iosCategoryOptions: ['defaultToSpeaker'],
             }),
           })
-          console.log('Audio mode set for playback - using main speaker')
         } catch (error) {
           console.warn('Failed to set audio mode:', error)
         }
@@ -96,10 +94,6 @@ export function useAudioPlayerHook() {
   const loadAudio = useCallback(
     async (uri: string) => {
       try {
-        console.log('=== AUDIO PLAYER DEBUG ===')
-        console.log('Loading audio from URI:', uri)
-        console.log('Platform:', Platform.OS)
-
         // Set audio mode for playback before loading
         if (Platform.OS !== 'web' && setAudioModeAsync) {
           try {
@@ -114,7 +108,6 @@ export function useAudioPlayerHook() {
                 iosCategoryOptions: ['defaultToSpeaker'],
               }),
             })
-            console.log('Audio mode set for playback before loading')
           } catch (audioModeError) {
             console.warn('Failed to set audio mode for playback:', audioModeError)
           }
@@ -155,34 +148,48 @@ export function useAudioPlayerHook() {
           audio.load()
         } else if (audioPlayer) {
           // Native implementation using expo-audio
-          console.log('Using expo-audio for playback')
-          console.log('AudioPlayer available:', !!audioPlayer)
-
           // Check if file exists first
           const FileSystem = require('expo-file-system')
           const fileInfo = await FileSystem.getInfoAsync(uri)
-          console.log('File exists:', fileInfo.exists)
-          console.log('File info:', JSON.stringify(fileInfo, null, 2))
 
           if (!fileInfo.exists) {
             throw new Error(`Audio file does not exist: ${uri}`)
           }
 
           audioPlayer.replace({ uri })
-          console.log('Audio replaced with URI:', uri)
 
-          // Wait for the audio to load
-          // Note: expo-audio handles loading automatically
+          // Wait for the audio to load and get duration
           setIsLoaded(true)
           setStatus('stopped')
-          setDuration(audioPlayer.duration || 0)
-          console.log('Audio duration:', audioPlayer.duration)
+
+          // Try to get duration from expo-audio first, then fallback to metadata service
+          setTimeout(async () => {
+            let duration = audioPlayer.duration || 0
+
+            // If expo-audio doesn't have duration, try metadata service
+            if (duration <= 0) {
+              try {
+                const metadata = await AudioMetadataService.getMetadata(uri)
+                duration = metadata.duration
+              } catch (error) {
+                console.warn('Failed to get duration from metadata service:', error)
+              }
+            }
+
+            if (duration > 0) {
+              setDuration(duration)
+            }
+          }, 500)
 
           // Set up time tracking
           timeUpdateInterval.current = setInterval(() => {
             if (audioPlayer.playing) {
               setCurrentTime(audioPlayer.currentTime || 0)
-              setDuration(audioPlayer.duration || 0)
+              // Update duration if it becomes available
+              const currentDuration = audioPlayer.duration || 0
+              if (currentDuration > 0) {
+                setDuration(currentDuration)
+              }
             }
           }, 100)
         } else {
@@ -201,27 +208,13 @@ export function useAudioPlayerHook() {
   // Play audio
   const play = useCallback(async () => {
     try {
-      console.log('=== PLAY AUDIO DEBUG ===')
-      console.log('Attempting to play audio')
-      console.log('Current status:', status)
-      console.log('Is loaded:', isLoaded)
-      console.log('Current track:', currentTrack)
-
       setError(null)
 
       if (Platform.OS === 'web' && webAudioRef.current) {
-        console.log('Playing via web audio')
         await webAudioRef.current.play()
         setStatus('playing')
       } else if (audioPlayer) {
-        console.log('Playing via expo-audio')
-        console.log('AudioPlayer playing before:', audioPlayer.playing)
-        console.log('AudioPlayer paused before:', audioPlayer.paused)
-
         audioPlayer.play()
-
-        console.log('AudioPlayer playing after:', audioPlayer.playing)
-        console.log('AudioPlayer paused after:', audioPlayer.paused)
         setStatus('playing')
       } else {
         throw new Error('No audio loaded')
@@ -231,7 +224,7 @@ export function useAudioPlayerHook() {
       setError(err instanceof Error ? err.message : 'Failed to play audio')
       setStatus('error')
     }
-  }, [audioPlayer, status, isLoaded, currentTrack])
+  }, [audioPlayer])
 
   // Pause audio
   const pause = useCallback(async () => {

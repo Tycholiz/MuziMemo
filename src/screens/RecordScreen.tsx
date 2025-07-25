@@ -142,10 +142,7 @@ export default function RecordScreen() {
   const handleStopRecording = async () => {
     try {
       const uri = await stopRecording()
-      console.log('Recording stopped, URI received:', uri)
       if (uri) {
-        // Add a small delay to ensure the file is fully written
-        await new Promise(resolve => setTimeout(resolve, 100))
         await saveRecordingToFolder(uri)
         setRecordingUri(uri)
       }
@@ -157,16 +154,8 @@ export default function RecordScreen() {
 
   const saveRecordingToFolder = async (recordingUri: string) => {
     try {
-      console.log('=== SAVE RECORDING DEBUG ===')
-      console.log('Recording URI received:', recordingUri)
-      console.log('Timestamp:', new Date().toISOString())
-
       // Check if source file exists
-      console.log('Checking if source file exists...')
       const sourceInfo = await FileSystem.getInfoAsync(recordingUri)
-      console.log('Source file exists:', sourceInfo.exists)
-      console.log('Source file info:', JSON.stringify(sourceInfo, null, 2))
-
       if (!sourceInfo.exists) {
         throw new Error(`Source recording file does not exist: ${recordingUri}`)
       }
@@ -187,7 +176,6 @@ export default function RecordScreen() {
       // Ensure the target folder exists
       const folderInfo = await FileSystem.getInfoAsync(targetFolderPath)
       if (!folderInfo.exists) {
-        console.log('Creating target folder:', targetFolderPath)
         await FileSystem.makeDirectoryAsync(targetFolderPath, { intermediates: true })
       }
 
@@ -197,17 +185,13 @@ export default function RecordScreen() {
           from: recordingUri,
           to: targetFilePath,
         })
-        console.log('Recording saved successfully to:', targetFilePath)
         Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
       } catch (copyError) {
-        console.error('Copy failed, trying move instead:', copyError)
-
         // If copy fails, try moving the file instead
         await FileSystem.moveAsync({
           from: recordingUri,
           to: targetFilePath,
         })
-        console.log('Recording moved successfully to:', targetFilePath)
         Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
       }
     } catch (error) {

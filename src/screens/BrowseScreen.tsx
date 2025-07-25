@@ -25,7 +25,6 @@ import {
 import { useAudioPlayerHook } from '@hooks/useAudioPlayer'
 import { theme } from '@utils/theme'
 import { getRecordingsDirectory, joinPath, generateBreadcrumbs } from '@utils/pathUtils'
-import * as FileSystem from 'expo-file-system'
 
 // Utility function to format time in MM:SS format
 const formatTime = (seconds: number): string => {
@@ -69,29 +68,8 @@ export default function BrowseScreen() {
 
   const handleClipPress = async (clip: ClipData) => {
     try {
-      console.log('=== BROWSE SCREEN CLIP PRESS ===')
-      console.log('Clip pressed:', clip.name)
-      console.log('Clip path:', clip.path)
-      console.log('Clip data:', JSON.stringify(clip, null, 2))
-
-      // Debug: Check if file actually exists
-      const fileInfo = await FileSystem.getInfoAsync(clip.path)
-      console.log('File exists at path:', fileInfo.exists)
-      console.log('File info:', JSON.stringify(fileInfo, null, 2))
-
-      // Debug: List all files in current directory
-      const currentDir = getCurrentFolderPath()
-      console.log('Current directory:', currentDir)
-      try {
-        const dirContents = await FileSystem.readDirectoryAsync(currentDir)
-        console.log('Directory contents:', dirContents)
-      } catch (dirError) {
-        console.log('Could not read directory:', dirError)
-      }
-
       // If the same clip is already selected, toggle play/pause
       if (selectedClip?.id === clip.id) {
-        console.log('Same clip selected, toggling play/pause')
         await audioPlayer.togglePlayPause()
         return
       }
@@ -100,7 +78,6 @@ export default function BrowseScreen() {
       setSelectedClip(clip)
 
       // Load and play the new audio file
-      console.log('Loading new audio file:', clip.path)
       await audioPlayer.loadAudio(clip.path)
       await audioPlayer.play()
     } catch (error) {
