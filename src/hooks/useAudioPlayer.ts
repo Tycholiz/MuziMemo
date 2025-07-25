@@ -56,8 +56,14 @@ export function useAudioPlayerHook() {
             playsInSilentMode: true,
             allowsRecording: false,
             shouldPlayInBackground: false,
+            // Force audio to use main speaker for playback
+            ...(Platform.OS === 'ios' && {
+              iosCategory: 'playback',
+              iosCategoryMode: 'default',
+              iosCategoryOptions: ['defaultToSpeaker'],
+            }),
           })
-          console.log('Audio mode set for playback')
+          console.log('Audio mode set for playback - using main speaker')
         } catch (error) {
           console.warn('Failed to set audio mode:', error)
         }
@@ -94,6 +100,26 @@ export function useAudioPlayerHook() {
         console.log('Loading audio from URI:', uri)
         console.log('Platform:', Platform.OS)
 
+        // Set audio mode for playback before loading
+        if (Platform.OS !== 'web' && setAudioModeAsync) {
+          try {
+            await setAudioModeAsync({
+              playsInSilentMode: true,
+              allowsRecording: false,
+              shouldPlayInBackground: false,
+              // Force audio to use main speaker for playback
+              ...(Platform.OS === 'ios' && {
+                iosCategory: 'playback',
+                iosCategoryMode: 'default',
+                iosCategoryOptions: ['defaultToSpeaker'],
+              }),
+            })
+            console.log('Audio mode set for playback before loading')
+          } catch (audioModeError) {
+            console.warn('Failed to set audio mode for playback:', audioModeError)
+          }
+        }
+
         setError(null)
         setStatus('loading')
 
@@ -120,7 +146,7 @@ export function useAudioPlayerHook() {
             setCurrentTime(0)
           })
 
-          audio.addEventListener('error', e => {
+          audio.addEventListener('error', () => {
             setError('Failed to load audio file')
             setStatus('error')
           })

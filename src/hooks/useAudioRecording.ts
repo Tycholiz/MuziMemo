@@ -202,6 +202,26 @@ export function useAudioRecording() {
         console.log('AudioRecorder object:', audioRecorder)
         console.log('Initial recorder state - isRecording:', audioRecorder.isRecording)
 
+        // Set audio mode for recording before preparing
+        if (Platform.OS !== 'web' && setAudioModeAsync) {
+          try {
+            await setAudioModeAsync({
+              playsInSilentMode: true,
+              allowsRecording: true,
+              shouldPlayInBackground: false,
+              // Add iOS-specific audio session category for recording
+              ...(Platform.OS === 'ios' && {
+                iosCategory: 'playAndRecord',
+                iosCategoryMode: 'default',
+                iosCategoryOptions: ['defaultToSpeaker', 'allowBluetooth'],
+              }),
+            })
+            console.log('Audio mode set for recording before prepare')
+          } catch (audioModeError) {
+            console.warn('Failed to set audio mode for recording:', audioModeError)
+          }
+        }
+
         // Try to prepare the recorder
         try {
           await audioRecorder.prepareToRecordAsync()
