@@ -1,7 +1,23 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { Platform } from 'react-native'
 
-import { audioService } from '@services/AudioService'
 import { RecordingStatus } from 'src/customTypes/Recording'
+
+// Import expo-audio conditionally
+let useAudioRecorder: any = null
+let AudioModule: any = null
+let RecordingPresets: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    const expoAudio = require('expo-audio')
+    useAudioRecorder = expoAudio.useAudioRecorder
+    AudioModule = expoAudio.AudioModule
+    RecordingPresets = expoAudio.RecordingPresets
+  } catch (error) {
+    console.warn('expo-audio not available:', error)
+  }
+}
 
 /**
  * Custom hook for managing audio recording state and operations
@@ -19,16 +35,25 @@ export function useAudioRecording() {
   const durationInterval = useRef<number | null>(null)
   const audioLevelInterval = useRef<number | null>(null)
 
+  // Create audio recorder instance using expo-audio hook
+  const audioRecorder =
+    Platform.OS !== 'web' && useAudioRecorder && RecordingPresets
+      ? useAudioRecorder(RecordingPresets.HIGH_QUALITY)
+      : null
+
   // Initialize audio service on mount
   useEffect(() => {
     const initializeAudio = async () => {
       try {
-        await audioService.initialize()
         setIsInitialized(true)
 
         // Check if we already have permissions
-        const permissionsGranted = await audioService.hasRecordingPermissions()
-        setHasPermissions(permissionsGranted)
+        if (Platform.OS !== 'web' && AudioModule) {
+          const { status: permissionStatus } = await AudioModule.getRecordingPermissionsAsync()
+          setHasPermissions(permissionStatus === 'granted')
+        } else {
+          setHasPermissions(true) // Web permissions handled differently
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to initialize audio')
       }
@@ -45,7 +70,6 @@ export function useAudioRecording() {
       if (audioLevelInterval.current) {
         clearInterval(audioLevelInterval.current)
       }
-      audioService.cleanup()
     }
   }, [])
 
@@ -96,9 +120,26 @@ export function useAudioRecording() {
   const requestPermissions = useCallback(async (): Promise<boolean> => {
     try {
       setError(null)
-      const granted = await audioService.requestRecordingPermissions()
-      setHasPermissions(granted)
-      return granted
+      if (Platform.OS === 'web') {
+        // Web permissions are handled by getUserMedia
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          stream.getTracks().forEach(track => track.stop())
+          setHasPermissions(true)
+          return true
+        } catch (error) {
+          setHasPermissions(false)
+          return false
+        }
+      } else if (AudioModule) {
+        const { status } = await AudioModule.requestRecordingPermissionsAsync()
+        const granted = status === 'granted'
+        setHasPermissions(granted)
+        return granted
+      } else {
+        setError('Audio module not available')
+        return false
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to request permissions')
       return false
@@ -125,14 +166,32 @@ export function useAudioRecording() {
 
     try {
       setError(null)
-      await audioService.startRecording()
-      setStatus('recording')
-      startDurationTracking()
-      startAudioLevelMonitoring()
+
+      if (Platform.OS === 'web') {
+        // Web implementation would go here
+        setError('Web recording not yet implemented')
+        return
+      } else if (audioRecorder) {
+        // Use expo-audio recorder
+        await audioRecorder.prepareToRecordAsync()
+        audioRecorder.record()
+        setStatus('recording')
+        startDurationTracking()
+        startAudioLevelMonitoring()
+      } else {
+        setError('Audio recorder not available')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start recording')
     }
-  }, [isInitialized, hasPermissions, requestPermissions, startDurationTracking, startAudioLevelMonitoring])
+  }, [
+    isInitialized,
+    hasPermissions,
+    requestPermissions,
+    startDurationTracking,
+    startAudioLevelMonitoring,
+    audioRecorder,
+  ])
 
   /**
    * Stop recording
@@ -142,14 +201,27 @@ export function useAudioRecording() {
       setError(null)
       stopDurationTracking()
       stopAudioLevelMonitoring()
-      const uri = await audioService.stopRecording()
-      setStatus('stopped')
-      return uri
+
+      if (Platform.OS === 'web') {
+        // Web implementation would go here
+        setStatus('stopped')
+        return null
+      } else if (audioRecorder) {
+        // Use expo-audio recorder
+        await audioRecorder.stop()
+        const uri = audioRecorder.uri
+        setStatus('stopped')
+        return uri
+      } else {
+        setError('Audio recorder not available')
+        setStatus('stopped')
+        return null
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to stop recording')
       return null
     }
-  }, [stopDurationTracking, stopAudioLevelMonitoring])
+  }, [stopDurationTracking, stopAudioLevelMonitoring, audioRecorder])
 
   /**
    * Pause recording (placeholder - not yet implemented)

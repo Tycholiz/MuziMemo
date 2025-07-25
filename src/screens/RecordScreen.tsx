@@ -140,26 +140,34 @@ export default function RecordScreen() {
   const handleStopRecording = async () => {
     try {
       const uri = await stopRecording()
+      console.log('Recording stopped, URI received:', uri)
       if (uri) {
+        // Add a small delay to ensure the file is fully written
+        await new Promise(resolve => setTimeout(resolve, 100))
         await saveRecordingToFolder(uri)
         setRecordingUri(uri)
       }
     } catch (err) {
+      console.error('Stop recording error:', err)
       Alert.alert('Recording Error', 'Failed to stop recording')
     }
   }
 
   const saveRecordingToFolder = async (recordingUri: string) => {
     try {
-      console.log('Saving recording from URI:', recordingUri)
+      console.log('=== SAVE RECORDING DEBUG ===')
+      console.log('Recording URI received:', recordingUri)
+      console.log('Timestamp:', new Date().toISOString())
 
       // Check if source file exists
+      console.log('Checking if source file exists...')
       const sourceInfo = await FileSystem.getInfoAsync(recordingUri)
+      console.log('Source file exists:', sourceInfo.exists)
+      console.log('Source file info:', JSON.stringify(sourceInfo, null, 2))
+
       if (!sourceInfo.exists) {
         throw new Error(`Source recording file does not exist: ${recordingUri}`)
       }
-
-      console.log('Source file info:', sourceInfo)
 
       // Generate a unique filename with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')

@@ -1,19 +1,15 @@
 import { Platform } from 'react-native'
 
 // Conditional import for expo-audio (only on native platforms)
-let AudioRecorder: any = null
-let AudioPlayer: any = null
-let getRecordingPermissionsAsync: any = null
-let requestRecordingPermissionsAsync: any = null
+let AudioModule: any = null
+let RecordingPresets: any = null
 
 if (Platform.OS !== 'web') {
   try {
     const expoAudio = require('expo-audio')
-    console.log('expoAudio AudioModule: ', expoAudio.AudioModule)
-    AudioRecorder = expoAudio.AudioModule.AudioRecorder
-    AudioPlayer = expoAudio.AudioModule.AudioPlayer
-    getRecordingPermissionsAsync = expoAudio.getRecordingPermissionsAsync
-    requestRecordingPermissionsAsync = expoAudio.requestRecordingPermissionsAsync
+    console.log('expoAudio imported successfully')
+    AudioModule = expoAudio.AudioModule
+    RecordingPresets = expoAudio.RecordingPresets
   } catch (error) {
     console.warn('expo-audio not available:', error)
   }
@@ -60,12 +56,12 @@ export class AudioService {
         // Web permissions are handled by getUserMedia
         return true
       } else {
-        if (!getRecordingPermissionsAsync) {
-          console.warn('getRecordingPermissionsAsync not available')
+        if (!AudioModule) {
+          console.warn('AudioModule not available')
           return false
         }
 
-        const { status } = await getRecordingPermissionsAsync()
+        const { status } = await AudioModule.getRecordingPermissionsAsync()
         return status === 'granted'
       }
     } catch (error) {
@@ -91,12 +87,12 @@ export class AudioService {
           return false
         }
       } else {
-        if (!requestRecordingPermissionsAsync) {
-          console.warn('requestRecordingPermissionsAsync not available')
+        if (!AudioModule) {
+          console.warn('AudioModule not available')
           return false
         }
 
-        const { status } = await requestRecordingPermissionsAsync()
+        const { status } = await AudioModule.requestRecordingPermissionsAsync()
         return status === 'granted'
       }
     } catch (error) {
@@ -107,93 +103,18 @@ export class AudioService {
 
   /**
    * Start recording audio
+   * Note: This method is deprecated in favor of using useAudioRecorder hook directly
    */
   async startRecording(): Promise<any> {
-    try {
-      if (Platform.OS === 'web') {
-        // Web implementation using MediaRecorder
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        this.mediaRecorder = new MediaRecorder(stream)
-
-        const chunks: BlobPart[] = []
-        this.mediaRecorder.ondataavailable = event => {
-          chunks.push(event.data)
-        }
-
-        this.mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'audio/webm' })
-          this.recording = { uri: URL.createObjectURL(blob), blob }
-        }
-
-        this.mediaRecorder.start()
-        return this.mediaRecorder
-      } else {
-        // Native implementation using expo-audio
-        if (!AudioRecorder) {
-          throw new Error('AudioRecorder not available on this platform')
-        }
-
-        const recording = new AudioRecorder({
-          android: {
-            extension: '.m4a',
-            outputFormat: 'mpeg4',
-            audioEncoder: 'aac',
-            sampleRate: 44100,
-          },
-          ios: {
-            extension: '.m4a',
-            outputFormat: 'mpeg4aac',
-            audioQuality: 1.0,
-            sampleRate: 44100,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
-        })
-
-        await recording.record()
-        this.recording = recording
-        return recording
-      }
-    } catch (error) {
-      console.error('Failed to start recording:', error)
-      throw error
-    }
+    throw new Error('AudioService.startRecording is deprecated. Use useAudioRecorder hook instead.')
   }
 
   /**
    * Stop recording audio
+   * Note: This method is deprecated in favor of using useAudioRecorder hook directly
    */
   async stopRecording(): Promise<string | null> {
-    try {
-      if (Platform.OS === 'web') {
-        if (!this.mediaRecorder) {
-          return null
-        }
-
-        return new Promise(resolve => {
-          this.mediaRecorder!.onstop = () => {
-            const uri = this.recording?.uri || null
-            this.mediaRecorder = null
-            resolve(uri)
-          }
-          this.mediaRecorder!.stop()
-        })
-      } else {
-        if (!this.recording) {
-          return null
-        }
-
-        await this.recording.stop()
-        const uri = this.recording.uri
-        this.recording = null
-
-        return uri
-      }
-    } catch (error) {
-      console.error('Failed to stop recording:', error)
-      throw error
-    }
+    throw new Error('AudioService.stopRecording is deprecated. Use useAudioRecorder hook instead.')
   }
 
   /**
