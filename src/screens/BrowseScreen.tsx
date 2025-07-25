@@ -318,8 +318,8 @@ export default function BrowseScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Folders Grid - only show when at root */}
-          {currentPath.length === 0 && (
+          {/* Folders Grid - show folders at any level */}
+          {folders.length > 0 && (
             <View style={styles.foldersContainer}>
               <View style={styles.foldersGrid}>{folders.map(renderFolderCard)}</View>
             </View>
@@ -333,10 +333,12 @@ export default function BrowseScreen() {
             </View>
           )}
 
-          {/* Empty state when in folder with no clips */}
-          {currentPath.length > 0 && clips.length === 0 && (
+          {/* Empty state when folder has no content */}
+          {folders.length === 0 && clips.length === 0 && (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No clips in this folder yet</Text>
+              <Text style={styles.emptyStateText}>
+                {currentPath.length === 0 ? 'No folders or clips yet' : 'This folder is empty'}
+              </Text>
             </View>
           )}
         </ScrollView>
