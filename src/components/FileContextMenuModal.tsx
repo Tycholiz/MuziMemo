@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 
-export type FileContextMenuProps = {
+export type FileContextMenuModalProps = {
   onRename: () => void
   onMove: () => void
   onDelete: () => void
@@ -19,10 +19,10 @@ type MenuOption = {
 }
 
 /**
- * FileContextMenu Component
+ * FileContextMenuModal Component
  * Provides an ellipsis menu with file management options (rename, move, delete)
  */
-export function FileContextMenu({ onRename, onMove, onDelete }: FileContextMenuProps) {
+export function FileContextMenuModal({ onRename, onMove, onDelete }: FileContextMenuModalProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   const menuOptions: MenuOption[] = [
@@ -65,26 +65,14 @@ export function FileContextMenu({ onRename, onMove, onDelete }: FileContextMenuP
   }
 
   const renderMenuItem = (option: MenuOption) => (
-    <TouchableOpacity
-      key={option.id}
-      style={styles.menuItem}
-      onPress={option.onPress}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity key={option.id} style={styles.menuItem} onPress={option.onPress} activeOpacity={0.7}>
       <Ionicons
         name={option.icon}
         size={20}
         color={option.variant === 'danger' ? theme.colors.error : theme.colors.text.secondary}
         style={styles.menuIcon}
       />
-      <Text
-        style={[
-          styles.menuLabel,
-          option.variant === 'danger' && styles.menuLabelDanger,
-        ]}
-      >
-        {option.label}
-      </Text>
+      <Text style={[styles.menuLabel, option.variant === 'danger' && styles.menuLabelDanger]}>{option.label}</Text>
     </TouchableOpacity>
   )
 
@@ -96,27 +84,12 @@ export function FileContextMenu({ onRename, onMove, onDelete }: FileContextMenuP
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons
-          name="ellipsis-vertical"
-          size={20}
-          color={theme.colors.text.tertiary}
-        />
+        <Ionicons name="ellipsis-vertical" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
-      <Modal
-        visible={isVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={handleClose}
-      >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={handleClose}
-        >
-          <View style={styles.menu}>
-            {menuOptions.map(renderMenuItem)}
-          </View>
+      <Modal visible={isVisible} transparent animationType="fade" onRequestClose={handleClose}>
+        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={handleClose}>
+          <View style={styles.menu}>{menuOptions.map(renderMenuItem)}</View>
         </TouchableOpacity>
       </Modal>
     </>

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 import { Button } from './Button'
+import { Breadcrumbs } from './Breadcrumbs'
 import { fileSystemService } from '@services/FileSystemService'
 import { generateBreadcrumbs, getRecordingsDirectory } from '@utils/pathUtils'
 
@@ -14,7 +15,7 @@ export type FileNavigatorFolder = {
   isBeingMoved?: boolean
 }
 
-export type FileNavigatorProps = {
+export type FileNavigatorModalProps = {
   visible: boolean
   onClose: () => void
   onSelectFolder: (folder: FileNavigatorFolder) => void
@@ -28,10 +29,10 @@ export type FileNavigatorProps = {
 }
 
 /**
- * File Navigator modal for browsing and creating folders
+ * FileNavigatorModal for browsing and creating folders
  * Matches the design from the mockup screenshots
  */
-export function FileNavigator({
+export function FileNavigatorModal({
   visible,
   onClose,
   onSelectFolder,
@@ -42,7 +43,7 @@ export function FileNavigator({
   onPrimaryAction,
   disablePrimaryButton = false,
   excludePath,
-}: FileNavigatorProps) {
+}: FileNavigatorModalProps) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
   const [loading, setLoading] = useState(false)
@@ -125,7 +126,7 @@ export function FileNavigator({
     )
   }
 
-  const handleBreadcrumbPress = (path: string) => {
+  const handleBreadcrumbPress = (path: string, _index: number) => {
     setCurrentFolderPath(path)
     setSelectedFolder(null)
   }
@@ -178,33 +179,7 @@ export function FileNavigator({
           </View>
 
           <View style={styles.pathContainer}>
-            <View style={styles.breadcrumbs}>
-              {breadcrumbs.map((crumb, index) => (
-                <View key={crumb.path} style={styles.breadcrumbContainer}>
-                  <TouchableOpacity onPress={() => handleBreadcrumbPress(crumb.path)} style={styles.breadcrumbButton}>
-                    {index === 0 ? (
-                      <Ionicons
-                        name="home"
-                        size={16}
-                        color={crumb.isLast ? theme.colors.text.primary : theme.colors.text.secondary}
-                      />
-                    ) : (
-                      <Text style={[styles.breadcrumbText, crumb.isLast && styles.breadcrumbTextLast]}>
-                        {crumb.name}
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                  {!crumb.isLast && (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={16}
-                      color={theme.colors.text.tertiary}
-                      style={styles.breadcrumbSeparator}
-                    />
-                  )}
-                </View>
-              ))}
-            </View>
+            <Breadcrumbs breadcrumbs={breadcrumbs} onBreadcrumbPress={handleBreadcrumbPress} variant="compact" />
           </View>
 
           {loading ? (
@@ -355,36 +330,6 @@ const styles = StyleSheet.create({
 
   selectButton: {
     flex: 1,
-  },
-
-  breadcrumbs: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-
-  breadcrumbContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  breadcrumbButton: {
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.sm,
-  },
-
-  breadcrumbText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-  },
-
-  breadcrumbTextLast: {
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.fontWeight.medium,
-  },
-
-  breadcrumbSeparator: {
-    marginHorizontal: theme.spacing.xs,
   },
 
   loadingContainer: {

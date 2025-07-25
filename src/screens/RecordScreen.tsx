@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native'
 
 import { Screen, Container, Spacer } from '@components/Layout'
 import { RecordButton, Icon } from '@components/Icon'
-import { FolderSelector, Dropdown, FileNavigator } from '@components/index'
+import { FolderSelector, Dropdown, FileNavigatorModal } from '@components/index'
 import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/index'
 import { useAudioRecording } from '@hooks/useAudioRecording'
 import { theme } from '@utils/theme'
@@ -217,7 +217,7 @@ export default function RecordScreen() {
       </Container>
 
       {/* File Navigator Modal */}
-      <FileNavigator
+      <FileNavigatorModal
         visible={showFileNavigator}
         onClose={() => setShowFileNavigator(false)}
         onSelectFolder={handleFileNavigatorSelect}
