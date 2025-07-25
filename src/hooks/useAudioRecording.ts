@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Platform } from 'react-native'
 
 import { RecordingStatus } from 'src/customTypes/Recording'
@@ -21,10 +21,12 @@ if (Platform.OS !== 'web') {
   }
 }
 
+export type AudioQuality = 'high' | 'medium' | 'low'
+
 /**
  * Custom hook for managing audio recording state and operations
  */
-export function useAudioRecording() {
+export function useAudioRecording(audioQuality: AudioQuality = 'high') {
   const [status, setStatus] = useState<RecordingStatus>('idle')
   const [duration, setDuration] = useState(0)
   const [isInitialized, setIsInitialized] = useState(false)
@@ -37,11 +39,24 @@ export function useAudioRecording() {
   const durationInterval = useRef<number | null>(null)
   const audioLevelInterval = useRef<number | null>(null)
 
+  // Map audio quality to recording presets (only HIGH_QUALITY and LOW_QUALITY are available)
+  const recordingPreset = useMemo(() => {
+    if (!RecordingPresets) return null
+
+    switch (audioQuality) {
+      case 'high':
+      case 'medium': // Map medium to high since MEDIUM_QUALITY doesn't exist
+        return RecordingPresets.HIGH_QUALITY
+      case 'low':
+        return RecordingPresets.LOW_QUALITY
+      default:
+        return RecordingPresets.HIGH_QUALITY
+    }
+  }, [audioQuality])
+
   // Create audio recorder instance using expo-audio hook
   const audioRecorder =
-    Platform.OS !== 'web' && useAudioRecorder && RecordingPresets
-      ? useAudioRecorder(RecordingPresets.LOW_QUALITY)
-      : null
+    Platform.OS !== 'web' && useAudioRecorder && recordingPreset ? useAudioRecorder(recordingPreset) : null
 
   // Initialize audio service on mount
   useEffect(() => {
@@ -337,6 +352,18 @@ export function useAudioRecording() {
     }
   }, [audioRecorder, startAudioLevelMonitoring])
 
+  /**
+   * Reset recording state to initial values
+   */
+  const resetRecording = useCallback(() => {
+    setStatus('idle')
+    setDuration(0)
+    setError(null)
+    setAudioLevel(0)
+    stopDurationTracking()
+    stopAudioLevelMonitoring()
+  }, [stopDurationTracking, stopAudioLevelMonitoring])
+
   return {
     status,
     duration,
@@ -348,6 +375,7 @@ export function useAudioRecording() {
     stopRecording,
     pauseRecording,
     resumeRecording,
+    resetRecording,
     requestPermissions,
   }
 }

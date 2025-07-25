@@ -5,9 +5,9 @@ import { Screen, Container, Spacer } from '@components/Layout'
 import { RecordButton, Icon } from '@components/Icon'
 import { FolderSelector, Dropdown, FileNavigatorModal, Button, SoundWave } from '@components/index'
 import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/index'
-import { useAudioRecording } from '@hooks/useAudioRecording'
+import { useAudioRecording, type AudioQuality } from '@hooks/useAudioRecording'
 import { theme } from '@utils/theme'
-import { formatDuration } from '@utils/formatUtils'
+import { formatDurationFromSeconds } from '@utils/formatUtils'
 import { fileSystemService } from '@services/FileSystemService'
 import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
 import * as FileSystem from 'expo-file-system'
@@ -17,6 +17,9 @@ import * as FileSystem from 'expo-file-system'
  * Main screen for audio recording functionality
  */
 export default function RecordScreen() {
+  // State for audio quality
+  const [audioQuality, setAudioQuality] = useState<AudioQuality>('high')
+
   const {
     status,
     duration,
@@ -28,18 +31,17 @@ export default function RecordScreen() {
     stopRecording,
     pauseRecording,
     resumeRecording,
+    resetRecording,
     requestPermissions,
-  } = useAudioRecording()
+  } = useAudioRecording(audioQuality)
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
+  console.log('duration: ', duration)
   // State for folder selection
   const [selectedFolder, setSelectedFolder] = useState('song-ideas')
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
-
-  // State for audio quality
-  const [audioQuality, setAudioQuality] = useState('high')
 
   // Load folders on component mount
   useEffect(() => {
@@ -90,11 +92,11 @@ export default function RecordScreen() {
     }
   }
 
-  // Audio quality options
+  // Audio quality options (expo-audio only supports HIGH_QUALITY and LOW_QUALITY presets)
   const audioQualityOptions: DropdownOption[] = [
-    { label: 'High (320kbps)', value: 'high' },
-    { label: 'Medium (192kbps)', value: 'medium' },
-    { label: 'Low (128kbps)', value: 'low' },
+    { label: 'High Quality', value: 'high' },
+    { label: 'Medium Quality', value: 'medium' }, // Maps to HIGH_QUALITY preset
+    { label: 'Low Quality', value: 'low' },
   ]
 
   const handleStartRecording = async () => {
@@ -228,6 +230,8 @@ export default function RecordScreen() {
 
   const handleDonePress = async () => {
     await handleStopRecording()
+    // Reset the recording state to prepare for a new recording
+    resetRecording()
   }
 
   const handleFolderSelect = (folderId: string) => {
@@ -243,7 +247,7 @@ export default function RecordScreen() {
   }
 
   const handleAudioQualitySelect = (option: DropdownOption) => {
-    setAudioQuality(option.value)
+    setAudioQuality(option.value as AudioQuality)
   }
 
   return (
@@ -276,14 +280,9 @@ export default function RecordScreen() {
 
         <Spacer size="2xl" />
 
-        {/* Orange dotted line */}
-        <View style={styles.dottedLine} />
-
-        <Spacer size="2xl" />
-
         {/* Duration Display */}
         <View style={styles.durationContainer}>
-          <Text style={styles.durationText}>{formatDuration(duration)}</Text>
+          <Text style={styles.durationText}>{formatDurationFromSeconds(duration)}</Text>
         </View>
 
         <Spacer size="lg" />
