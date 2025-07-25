@@ -29,5 +29,26 @@ export type { DropdownProps, DropdownOption } from './Dropdown'
 export { FolderSelector } from './FolderSelector'
 export type { FolderSelectorProps, Folder } from './FolderSelector'
 
-export { FileNavigator } from './FileNavigator'
-export type { FileNavigatorProps, FileNavigatorFolder } from './FileNavigator'
+export { FileNavigatorModal } from './FileNavigatorModal'
+export type { FileNavigatorModalProps, FileNavigatorFolder } from './FileNavigatorModal'
+
+export { TextInputDialogModal, ConfirmationDialogModal } from './DialogModal'
+export type { TextInputDialogModalProps, ConfirmationDialogModalProps } from './DialogModal'
+
+export { FolderContextMenuModal } from './FolderContextMenuModal'
+export type { FolderContextMenuModalProps } from './FolderContextMenuModal'
+
+export { FileContextMenuModal } from './FileContextMenuModal'
+export type { FileContextMenuModalProps } from './FileContextMenuModal'
+
+export { Breadcrumbs } from './Breadcrumbs'
+export type { BreadcrumbsProps } from './Breadcrumbs'
+
+export { FileSystemManager, useFileSystemManager } from './FileSystemManager'
+export type {
+  FileSystemManagerProps,
+  FileSystemManagerRef,
+  FileSystemHandlers,
+  FolderCardData,
+  ClipData,
+} from './FileSystemManager'

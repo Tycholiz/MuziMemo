@@ -1,11 +1,21 @@
-import 'react-native-gesture-handler/jestSetup'
+// Import gesture handler setup if available
+try {
+  require('react-native-gesture-handler/jestSetup')
+} catch (e) {
+  // react-native-gesture-handler not installed, skip setup
+}
 
-// Mock react-native-reanimated
-jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock')
-  Reanimated.default.call = () => {}
-  return Reanimated
-})
+// Mock react-native-reanimated (only if installed)
+try {
+  require.resolve('react-native-reanimated')
+  jest.mock('react-native-reanimated', () => {
+    const Reanimated = require('react-native-reanimated/mock')
+    Reanimated.default.call = () => {}
+    return Reanimated
+  })
+} catch (e) {
+  // react-native-reanimated is not installed, skip mocking
+}
 
 // Mock expo modules
 jest.mock('expo-audio', () => ({
@@ -38,7 +48,11 @@ jest.mock('@expo/vector-icons', () => ({
 }))
 
 // Silence the warning: Animated: `useNativeDriver` is not supported
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper')
+try {
+  jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper')
+} catch (e) {
+  // Module not found, skip mocking
+}
 
 // Mock console methods to reduce noise in tests
 global.console = {
