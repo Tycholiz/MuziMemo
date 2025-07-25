@@ -20,6 +20,9 @@ export type { IconProps, IconSize, IconColor } from './Icon'
 export { SoundWave } from './SoundWave'
 export type { SoundWaveProps } from './SoundWave'
 
+export { BottomMediaPlayer } from './BottomMediaPlayer'
+export type { BottomMediaPlayerProps } from './BottomMediaPlayer'
+
 export { Screen, Container, Row, Column, Spacer } from './Layout'
 export type { ScreenProps, ContainerProps } from './Layout'
 
