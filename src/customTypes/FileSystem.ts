@@ -80,6 +80,27 @@ export const DEFAULT_FOLDERS = ['Song Ideas', 'Demos', 'Voice Memos', 'Lyrics', 
 
 export type DefaultFolder = (typeof DEFAULT_FOLDERS)[number]
 
+export type CreateFileOptions = {
+  name: string
+  content?: string
+  parentPath?: string
+  extension?: string
+  mimeType?: string
+}
+
+export const DEFAULT_AUDIO_FILES = [
+  { name: 'Guitar Riff Idea', folder: 'Song Ideas', duration: 45, format: 'mp3' },
+  { name: 'Verse Melody', folder: 'Song Ideas', duration: 32, format: 'mp3' },
+  { name: 'Demo Track 1', folder: 'Demos', duration: 180, format: 'mp3' },
+  { name: 'Vocal Demo', folder: 'Demos', duration: 95, format: 'mp3' },
+  { name: 'Quick Voice Note', folder: 'Voice Memos', duration: 15, format: 'mp3' },
+  { name: 'Song Structure Ideas', folder: 'Voice Memos', duration: 67, format: 'mp3' },
+  { name: 'Chorus Lyrics Draft', folder: 'Lyrics', duration: 28, format: 'mp3' },
+  { name: 'Bridge Section', folder: 'Drafts', duration: 41, format: 'mp3' },
+] as const
+
+export type DefaultAudioFile = (typeof DEFAULT_AUDIO_FILES)[number]
+
 export const FILE_SYSTEM_ERRORS = {
   FOLDER_EXISTS: 'FOLDER_EXISTS',
   FOLDER_NOT_FOUND: 'FOLDER_NOT_FOUND',
