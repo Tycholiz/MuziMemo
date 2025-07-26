@@ -13,7 +13,7 @@ const mockRecordingPresets = {
 describe('useAudioRecording types and constants', () => {
   it('should define correct AudioQuality type values', () => {
     const validQualities: AudioQuality[] = ['high', 'medium', 'low']
-    
+
     validQualities.forEach(quality => {
       expect(['high', 'medium', 'low']).toContain(quality)
     })
@@ -46,13 +46,13 @@ describe('useAudioRecording types and constants', () => {
 
     const startTime = Date.now()
     const currentTime = startTime + 5500 // 5.5 seconds later
-    
+
     expect(calculateDuration(startTime, currentTime)).toBe(5)
   })
 
   it('should validate recording status transitions', () => {
     type RecordingStatus = 'idle' | 'recording' | 'paused' | 'stopped'
-    
+
     const validTransitions: Record<RecordingStatus, RecordingStatus[]> = {
       idle: ['recording'],
       recording: ['paused', 'stopped'],
