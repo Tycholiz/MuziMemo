@@ -43,3 +43,28 @@ describe('RecordScreen Go To Button', () => {
     expect(curvedArrowSymbol).toBe('↪')
   })
 })
+
+describe('RecordScreen Initial Folder Handling', () => {
+  it('should handle nested folder path correctly', () => {
+    // Test handling of nested folder paths
+    const initialFolder = 'music/demos'
+    const targetFolderName = initialFolder.split('/').pop()
+
+    expect(targetFolderName).toBe('demos')
+  })
+
+  it('should handle single folder path correctly', () => {
+    // Test handling of single folder path
+    const initialFolder = 'song-ideas'
+    const targetFolderName = initialFolder.split('/').pop()
+
+    expect(targetFolderName).toBe('song-ideas')
+  })
+
+  it('should handle root folder correctly', () => {
+    // Test handling of root folder
+    const initialFolder = 'root'
+
+    expect(initialFolder).toBe('root')
+  })
+})

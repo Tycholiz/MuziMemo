@@ -11,7 +11,7 @@ import {
   TextStyle,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 
 import { Screen } from '@components/Layout'
 import {
@@ -41,6 +41,7 @@ const formatTime = (seconds: number): string => {
  */
 export default function BrowseScreen() {
   const { initialFolder } = useLocalSearchParams<{ initialFolder?: string }>()
+  const router = useRouter()
 
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -136,6 +137,15 @@ export default function BrowseScreen() {
     }
   }
 
+  const handleRecordPress = () => {
+    // Navigate to RecordScreen with current folder context
+    const folderName = currentPath.length > 0 ? currentPath.join('/') : 'root'
+    router.push({
+      pathname: '/(tabs)/record',
+      params: { initialFolder: folderName },
+    })
+  }
+
   const handleMore = () => {
     Alert.alert('More Options', 'Additional playback options coming soon!')
   }
@@ -229,8 +239,8 @@ export default function BrowseScreen() {
         />
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* New Folder Button */}
-          <View style={styles.newFolderContainer}>
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
               style={styles.newFolderButton}
               onPress={() => handlers?.folderHandlers.onNew()}
@@ -238,6 +248,11 @@ export default function BrowseScreen() {
             >
               <Ionicons name="add" size={20} color={theme.colors.surface.primary} />
               <Text style={styles.newFolderText}>New Folder</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.recordButton} onPress={handleRecordPress} activeOpacity={0.7}>
+              <Ionicons name="mic" size={20} color={theme.colors.surface.primary} />
+              <Text style={styles.recordButtonText}>Record</Text>
             </TouchableOpacity>
           </View>
 
@@ -333,10 +348,13 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
   } as TextStyle,
-  newFolderContainer: {
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   } as ViewStyle,
   newFolderButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -347,6 +365,22 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   } as ViewStyle,
   newFolderText: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.surface.primary,
+  } as TextStyle,
+  recordButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  } as ViewStyle,
+  recordButtonText: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.surface.primary,

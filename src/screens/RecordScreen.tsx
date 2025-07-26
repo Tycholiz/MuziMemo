@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 
 import { Screen, Container, Spacer } from '@components/Layout'
 import { RecordButton, Icon } from '@components/Icon'
@@ -19,6 +19,7 @@ import * as FileSystem from 'expo-file-system'
  */
 export default function RecordScreen() {
   const router = useRouter()
+  const { initialFolder } = useLocalSearchParams<{ initialFolder?: string }>()
 
   // State for audio quality
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('high')
@@ -45,10 +46,10 @@ export default function RecordScreen() {
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Load folders on component mount
+  // Load folders on component mount and when initialFolder changes
   useEffect(() => {
     loadFolders()
-  }, [])
+  }, [initialFolder])
 
   const loadFolders = async () => {
     setLoading(true)
@@ -82,8 +83,19 @@ export default function RecordScreen() {
 
       setFolders(folderData)
 
-      // Set default selection to first folder if none selected
-      if (folderData.length > 0 && !selectedFolder) {
+      // Set initial folder selection based on navigation parameter
+      if (initialFolder && initialFolder !== 'root') {
+        // Handle nested folder paths (e.g., "folder1/folder2")
+        const targetFolderName = initialFolder.split('/').pop() // Get the last folder name
+        const targetFolder = folderData.find(folder => folder.name === targetFolderName)
+        if (targetFolder) {
+          setSelectedFolder(targetFolder.id)
+        } else if (folderData.length > 0) {
+          // Fallback to first folder if target not found
+          setSelectedFolder(folderData[0].id)
+        }
+      } else if (folderData.length > 0 && !selectedFolder) {
+        // Set default selection to first folder if none selected
         setSelectedFolder(folderData[0].id)
       }
     } catch (error) {
