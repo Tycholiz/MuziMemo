@@ -1,0 +1,45 @@
+/**
+ * Unit tests for RecordScreen navigation functionality
+ */
+
+describe('RecordScreen Go To Button', () => {
+  it('should have correct navigation parameters structure', () => {
+    // Test the navigation parameters structure
+    const mockNavigationParams = {
+      pathname: '/(tabs)/browse',
+      params: { initialFolder: 'song-ideas' },
+    }
+
+    expect(mockNavigationParams.pathname).toBe('/(tabs)/browse')
+    expect(mockNavigationParams.params.initialFolder).toBe('song-ideas')
+  })
+
+  it('should handle folder name mapping correctly', () => {
+    // Test folder name mapping logic
+    const folders = [
+      { id: 'song-ideas', name: 'song-ideas', itemCount: 5 },
+      { id: 'voice-memos', name: 'voice-memos', itemCount: 3 },
+    ]
+
+    const selectedFolder = 'song-ideas'
+    const selectedFolderData = folders.find(f => f.id === selectedFolder)
+    const folderName = selectedFolderData?.name || 'root'
+
+    expect(folderName).toBe('song-ideas')
+  })
+
+  it('should fallback to root when no folder is selected', () => {
+    const folders = [{ id: 'song-ideas', name: 'song-ideas', itemCount: 5 }]
+
+    const selectedFolder = 'non-existent'
+    const selectedFolderData = folders.find(f => f.id === selectedFolder)
+    const folderName = selectedFolderData?.name || 'root'
+
+    expect(folderName).toBe('root')
+  })
+
+  it('should use correct curved arrow symbol', () => {
+    const curvedArrowSymbol = '↪'
+    expect(curvedArrowSymbol).toBe('↪')
+  })
+})

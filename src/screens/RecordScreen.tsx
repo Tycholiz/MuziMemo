@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native'
+import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity } from 'react-native'
+import { useRouter } from 'expo-router'
 
 import { Screen, Container, Spacer } from '@components/Layout'
 import { RecordButton, Icon } from '@components/Icon'
@@ -17,6 +18,8 @@ import * as FileSystem from 'expo-file-system'
  * Main screen for audio recording functionality
  */
 export default function RecordScreen() {
+  const router = useRouter()
+
   // State for audio quality
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('high')
 
@@ -249,6 +252,17 @@ export default function RecordScreen() {
     setAudioQuality(option.value as AudioQuality)
   }
 
+  const handleGoToFolder = () => {
+    const selectedFolderData = folders.find(f => f.id === selectedFolder)
+    const folderName = selectedFolderData?.name || 'root'
+
+    // Navigate to browse screen with the selected folder
+    router.push({
+      pathname: '/(tabs)/browse',
+      params: { initialFolder: folderName },
+    })
+  }
+
   return (
     <Screen backgroundColor={theme.colors.background.primary}>
       <Container flex>
@@ -324,20 +338,28 @@ export default function RecordScreen() {
 
         <Spacer size="2xl" />
 
-        {/* Folder Selector */}
+        {/* Folder Selector with Go To Button */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color={theme.colors.primary} />
             <Text style={styles.loadingText}>Loading folders...</Text>
           </View>
         ) : (
-          <FolderSelector
-            label="Saving to:"
-            selectedFolder={selectedFolder}
-            folders={folders}
-            onSelectFolder={handleFolderSelect}
-            onOpenFileNavigator={() => setShowFileNavigator(true)}
-          />
+          <View style={styles.folderSelectorContainer}>
+            <View style={styles.folderSelectorWrapper}>
+              <FolderSelector
+                label="Saving to:"
+                selectedFolder={selectedFolder}
+                folders={folders}
+                onSelectFolder={handleFolderSelect}
+                onOpenFileNavigator={() => setShowFileNavigator(true)}
+              />
+            </View>
+            <TouchableOpacity style={styles.goToButton} onPress={handleGoToFolder} activeOpacity={0.7}>
+              <Text style={styles.goToButtonIcon}>↪</Text>
+              <Text style={styles.goToButtonText}>Go to</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <Spacer size="lg" />
@@ -509,5 +531,34 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.sm,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.secondary,
+  },
+  folderSelectorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  folderSelectorWrapper: {
+    flex: 1,
+  },
+  goToButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.surface.primary,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+    minHeight: 48, // Match the FolderSelector height
+  },
+  goToButtonIcon: {
+    fontSize: 16,
+    color: theme.colors.text.secondary,
+    marginRight: theme.spacing.xs,
+  },
+  goToButtonText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.secondary,
+    fontWeight: theme.typography.fontWeight.medium,
   },
 })

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   StyleSheet,
   Text,
@@ -11,6 +11,7 @@ import {
   TextStyle,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { useLocalSearchParams } from 'expo-router'
 
 import { Screen } from '@components/Layout'
 import {
@@ -39,6 +40,8 @@ const formatTime = (seconds: number): string => {
  * Uses FileSystemManager for all file operations
  */
 export default function BrowseScreen() {
+  const { initialFolder } = useLocalSearchParams<{ initialFolder?: string }>()
+
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Empty array means root
@@ -49,6 +52,14 @@ export default function BrowseScreen() {
 
   // Use Audio Player hook
   const audioPlayer = useAudioPlayerHook()
+
+  // Handle initial folder parameter
+  useEffect(() => {
+    if (initialFolder && initialFolder !== 'root') {
+      // Set the current path to the initial folder
+      setCurrentPath([initialFolder])
+    }
+  }, [initialFolder])
 
   const getCurrentFolderPath = (): string => {
     if (currentPath.length === 0) {

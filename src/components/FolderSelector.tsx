@@ -69,7 +69,7 @@ export function FolderSelector({
       >
         <View style={styles.selectorContent}>
           <Ionicons name="folder-outline" size={20} color={theme.colors.text.secondary} style={styles.selectorIcon} />
-          <Text style={styles.selectorText}>{selectedFolderData?.name || 'Select folder'}</Text>
+          <Text style={styles.selectorText}>{selectedFolderData?.name || 'Home'}</Text>
         </View>
         <Ionicons name="chevron-down" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
