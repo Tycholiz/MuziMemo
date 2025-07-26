@@ -207,7 +207,7 @@ export function useAudioRecording(audioQuality: AudioQuality = 'high') {
         // Use expo-audio recorder
 
         // Set audio mode for recording before preparing
-        if (Platform.OS !== 'web' && setAudioModeAsync) {
+        if (setAudioModeAsync) {
           try {
             await setAudioModeAsync({
               playsInSilentMode: true,

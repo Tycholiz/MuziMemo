@@ -28,7 +28,7 @@ export class AudioMetadataService {
       if (filePath.toLowerCase().endsWith('.m4a')) {
         return await this.parseM4AMetadata(filePath)
       }
-      
+
       // For MP3 files
       if (filePath.toLowerCase().endsWith('.mp3')) {
         return await this.parseMP3Metadata(filePath)
@@ -54,14 +54,14 @@ export class AudioMetadataService {
         length: 8192,
         position: 0,
       })
-      
+
       const buffer = this.base64ToArrayBuffer(base64Data)
       const view = new DataView(buffer)
-      
+
       let duration = 0
       let sampleRate = 0
       let channels = 0
-      
+
       // Look for 'mvhd' atom which contains duration info
       const mvhdOffset = this.findAtom(buffer, 'mvhd')
       if (mvhdOffset !== -1) {
@@ -74,15 +74,15 @@ export class AudioMetadataService {
         // 4 bytes: modification time
         // 4 bytes: time scale
         // 4 bytes: duration
-        
+
         const timeScale = view.getUint32(mvhdOffset + 20, false) // big-endian
         const durationTicks = view.getUint32(mvhdOffset + 24, false) // big-endian
-        
+
         if (timeScale > 0) {
           duration = durationTicks / timeScale
         }
       }
-      
+
       // Look for 'stsd' atom for audio format info
       const stsdOffset = this.findAtom(buffer, 'stsd')
       if (stsdOffset !== -1) {
@@ -91,7 +91,7 @@ export class AudioMetadataService {
         sampleRate = 44100 // Default assumption
         channels = 2 // Default assumption
       }
-      
+
       return {
         duration,
         sampleRate,
@@ -115,25 +115,25 @@ export class AudioMetadataService {
         length: 4096,
         position: 0,
       })
-      
+
       const buffer = this.base64ToArrayBuffer(base64Data)
       const view = new DataView(buffer)
-      
+
       // Look for MP3 frame sync (0xFF followed by 0xE0-0xFF)
       for (let i = 0; i < buffer.byteLength - 4; i++) {
-        if (view.getUint8(i) === 0xFF && (view.getUint8(i + 1) & 0xE0) === 0xE0) {
+        if (view.getUint8(i) === 0xff && (view.getUint8(i + 1) & 0xe0) === 0xe0) {
           // Found potential MP3 frame header
           const header = view.getUint32(i, false)
           const frameInfo = this.parseMP3FrameHeader(header)
-          
+
           if (frameInfo) {
             // Get file size to calculate duration
             const fileInfo = await FileSystem.getInfoAsync(filePath)
-            const fileSize = fileInfo.size || 0
-            
+            const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0
+
             // Estimate duration based on bitrate
             const duration = frameInfo.bitrate > 0 ? (fileSize * 8) / (frameInfo.bitrate * 1000) : 0
-            
+
             return {
               duration,
               bitrate: frameInfo.bitrate,
@@ -143,7 +143,7 @@ export class AudioMetadataService {
           }
         }
       }
-      
+
       return this.estimateMetadata(0)
     } catch (error) {
       console.warn('Failed to parse MP3 metadata:', error)
@@ -158,20 +158,20 @@ export class AudioMetadataService {
     // MP3 frame header parsing (simplified)
     const version = (header >> 19) & 0x3
     const layer = (header >> 17) & 0x3
-    const bitrateIndex = (header >> 12) & 0xF
+    const bitrateIndex = (header >> 12) & 0xf
     const sampleRateIndex = (header >> 10) & 0x3
-    
+
     // Bitrate table for MPEG-1 Layer 3
     const bitrateTable = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0]
     const sampleRateTable = [44100, 48000, 32000, 0]
-    
+
     if (version === 3 && layer === 1 && bitrateIndex > 0 && bitrateIndex < 15) {
       return {
         bitrate: bitrateTable[bitrateIndex],
         sampleRate: sampleRateTable[sampleRateIndex],
       }
     }
-    
+
     return null
   }
 
@@ -181,7 +181,7 @@ export class AudioMetadataService {
   private static findAtom(buffer: ArrayBuffer, atomType: string): number {
     const view = new DataView(buffer)
     const targetBytes = new TextEncoder().encode(atomType)
-    
+
     for (let i = 0; i < buffer.byteLength - 8; i++) {
       let match = true
       for (let j = 0; j < 4; j++) {
@@ -194,7 +194,7 @@ export class AudioMetadataService {
         return i
       }
     }
-    
+
     return -1
   }
 
@@ -216,7 +216,7 @@ export class AudioMetadataService {
   private static estimateMetadata(fileSize: number): AudioMetadata {
     // Assume 128kbps bitrate for estimation
     const estimatedDuration = Math.max(1, Math.floor(fileSize / 16000))
-    
+
     return {
       duration: estimatedDuration,
       bitrate: 128,

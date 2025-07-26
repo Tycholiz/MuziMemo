@@ -23,18 +23,16 @@ export function SoundWave({
   barColor = theme.colors.primary,
 }: SoundWaveProps) {
   // Create animated values for each bar
-  const animatedValues = useRef(
-    Array.from({ length: barCount }, () => new Animated.Value(0.2))
-  ).current
+  const animatedValues = useRef(Array.from({ length: barCount }, () => new Animated.Value(0.2))).current
 
   useEffect(() => {
     if (isActive) {
       // Animate bars based on audio level
-      const animations = animatedValues.map((animatedValue, index) => {
+      const animations = animatedValues.map(animatedValue => {
         // Create variation in bar heights for more realistic effect
         const variation = Math.random() * 0.3 + 0.7 // Random between 0.7 and 1.0
         const targetHeight = Math.max(0.2, audioLevel * variation)
-        
+
         return Animated.timing(animatedValue, {
           toValue: targetHeight,
           duration: 100,

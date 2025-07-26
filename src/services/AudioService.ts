@@ -2,14 +2,14 @@ import { Platform } from 'react-native'
 
 // Conditional import for expo-audio (only on native platforms)
 let AudioModule: any = null
-let RecordingPresets: any = null
+let AudioPlayer: any = null
 
 if (Platform.OS !== 'web') {
   try {
     const expoAudio = require('expo-audio')
     console.log('expoAudio imported successfully')
     AudioModule = expoAudio.AudioModule
-    RecordingPresets = expoAudio.RecordingPresets
+    AudioPlayer = expoAudio.AudioPlayer
   } catch (error) {
     console.warn('expo-audio not available:', error)
   }
