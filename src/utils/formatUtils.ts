@@ -14,6 +14,16 @@ export function formatDuration(milliseconds: number): string {
 }
 
 /**
+ * Format duration in seconds to MM:SS format
+ */
+export function formatDurationFromSeconds(seconds: number): string {
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
+/**
  * Format file size in bytes to human readable format
  */
 export function formatFileSize(bytes: number): string {

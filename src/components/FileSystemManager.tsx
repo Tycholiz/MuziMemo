@@ -3,6 +3,7 @@ import { Alert } from 'react-native'
 
 import { TextInputDialogModal, ConfirmationDialogModal, FileNavigatorModal } from '@components/index'
 import { fileSystemService } from '@services/FileSystemService'
+import { AudioMetadataService } from '@services/AudioMetadataService'
 import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
 
 export type FolderCardData = {
@@ -112,13 +113,25 @@ export const FileSystemManager = forwardRef<FileSystemManagerRef, FileSystemMana
               })
             }
           } else if (item.type === 'file') {
-            // Convert file to clip data (simplified for now)
+            // Convert file to clip data with actual metadata
+            let duration = '0:00'
+
+            try {
+              // Read actual audio metadata
+              const metadata = await AudioMetadataService.getMetadata(item.path)
+              duration = AudioMetadataService.formatDuration(metadata.duration)
+            } catch (error) {
+              console.warn('Failed to read metadata for', item.name, error)
+              // Fallback to estimation
+              duration = AudioMetadataService.formatDuration(Math.max(1, Math.floor((item.size || 0) / 16000)))
+            }
+
             fileItems.push({
               id: item.id,
               name: item.name,
               path: item.path,
               folder: currentPath[currentPath.length - 1] || 'Root',
-              duration: '0:00', // TODO: Get actual duration
+              duration,
               date: item.modifiedAt.toLocaleDateString(),
             })
           }

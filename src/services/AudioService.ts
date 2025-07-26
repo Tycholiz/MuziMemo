@@ -1,13 +1,14 @@
 import { Platform } from 'react-native'
 
 // Conditional import for expo-audio (only on native platforms)
-let AudioRecorder: any = null
+let AudioModule: any = null
 let AudioPlayer: any = null
 
 if (Platform.OS !== 'web') {
   try {
     const expoAudio = require('expo-audio')
-    AudioRecorder = expoAudio.AudioRecorder
+    console.log('expoAudio imported successfully')
+    AudioModule = expoAudio.AudioModule
     AudioPlayer = expoAudio.AudioPlayer
   } catch (error) {
     console.warn('expo-audio not available:', error)
@@ -47,94 +48,73 @@ export class AudioService {
   }
 
   /**
-   * Start recording audio
+   * Check if recording permissions are granted
    */
-  async startRecording(): Promise<any> {
+  async hasRecordingPermissions(): Promise<boolean> {
     try {
       if (Platform.OS === 'web') {
-        // Web implementation using MediaRecorder
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-        this.mediaRecorder = new MediaRecorder(stream)
-
-        const chunks: BlobPart[] = []
-        this.mediaRecorder.ondataavailable = event => {
-          chunks.push(event.data)
-        }
-
-        this.mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'audio/webm' })
-          this.recording = { uri: URL.createObjectURL(blob), blob }
-        }
-
-        this.mediaRecorder.start()
-        return this.mediaRecorder
+        // Web permissions are handled by getUserMedia
+        return true
       } else {
-        // Native implementation using expo-audio
-        if (!AudioRecorder) {
-          throw new Error('AudioRecorder not available on this platform')
+        if (!AudioModule) {
+          console.warn('AudioModule not available')
+          return false
         }
 
-        const recording = new AudioRecorder({
-          android: {
-            extension: '.m4a',
-            outputFormat: 'mpeg4',
-            audioEncoder: 'aac',
-            sampleRate: 44100,
-          },
-          ios: {
-            extension: '.m4a',
-            outputFormat: 'mpeg4aac',
-            audioQuality: 1.0,
-            sampleRate: 44100,
-            linearPCMBitDepth: 16,
-            linearPCMIsBigEndian: false,
-            linearPCMIsFloat: false,
-          },
-        })
-
-        await recording.record()
-        this.recording = recording
-        return recording
+        const { status } = await AudioModule.getRecordingPermissionsAsync()
+        return status === 'granted'
       }
     } catch (error) {
-      console.error('Failed to start recording:', error)
-      throw error
+      console.error('Failed to check recording permissions:', error)
+      return false
     }
   }
 
   /**
-   * Stop recording audio
+   * Request recording permissions
    */
-  async stopRecording(): Promise<string | null> {
+  async requestRecordingPermissions(): Promise<boolean> {
     try {
       if (Platform.OS === 'web') {
-        if (!this.mediaRecorder) {
-          return null
+        // Web permissions are handled by getUserMedia
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          // Stop the stream immediately as we just wanted to check permissions
+          stream.getTracks().forEach(track => track.stop())
+          return true
+        } catch (error) {
+          console.error('Web audio permission denied:', error)
+          return false
         }
-
-        return new Promise(resolve => {
-          this.mediaRecorder!.onstop = () => {
-            const uri = this.recording?.uri || null
-            this.mediaRecorder = null
-            resolve(uri)
-          }
-          this.mediaRecorder!.stop()
-        })
       } else {
-        if (!this.recording) {
-          return null
+        if (!AudioModule) {
+          console.warn('AudioModule not available')
+          return false
         }
 
-        await this.recording.stop()
-        const uri = this.recording.uri
-        this.recording = null
-
-        return uri
+        const { status } = await AudioModule.requestRecordingPermissionsAsync()
+        return status === 'granted'
       }
     } catch (error) {
-      console.error('Failed to stop recording:', error)
-      throw error
+      console.error('Failed to request recording permissions:', error)
+      return false
     }
+  }
+
+  /**
+   * Start recording audio
+   * Note: This method is deprecated in favor of using useAudioRecorder hook directly
+   */
+  async startRecording(): Promise<any> {
+    throw new Error('AudioService.startRecording is deprecated. Use useAudioRecorder hook instead.')
+  }
+
+  /**
+   * Stop recording audio
+   * Note: This method is deprecated in favor of using useAudioRecorder hook directly
+   */
+  async stopRecording(): Promise<string | null> {
+    throw new Error('AudioService.stopRecording is deprecated. Use useAudioRecorder hook instead.')
   }
 
   /**

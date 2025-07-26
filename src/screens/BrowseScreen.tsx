@@ -13,17 +13,25 @@ import {
 import { Ionicons } from '@expo/vector-icons'
 
 import { Screen } from '@components/Layout'
-import { MediaCard } from '@components/Card'
 import {
   FolderContextMenuModal,
   FileContextMenuModal,
   Breadcrumbs,
+  BottomMediaPlayer,
   useFileSystemManager,
   type FolderCardData,
   type ClipData,
 } from '@components/index'
+import { useAudioPlayerHook } from '@hooks/useAudioPlayer'
 import { theme } from '@utils/theme'
 import { getRecordingsDirectory, joinPath, generateBreadcrumbs } from '@utils/pathUtils'
+
+// Utility function to format time in MM:SS format
+const formatTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
 
 /**
  * BrowseScreen Component (Refactored)
@@ -34,9 +42,13 @@ export default function BrowseScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Empty array means root
+  const [selectedClip, setSelectedClip] = useState<ClipData | null>(null)
 
   // Use FileSystemManager hook
   const { folders, clips, loading, handlers, FileSystemManagerComponent } = useFileSystemManager(currentPath)
+
+  // Use Audio Player hook
+  const audioPlayer = useAudioPlayerHook()
 
   const getCurrentFolderPath = (): string => {
     if (currentPath.length === 0) {
@@ -46,26 +58,75 @@ export default function BrowseScreen() {
   }
 
   const handleFolderPress = (folder: FolderCardData) => {
+    // Stop current playback when navigating to a different folder
+    audioPlayer.cleanup()
+    setSelectedClip(null)
+
     // Navigate into the folder
     setCurrentPath([...currentPath, folder.name])
   }
 
-  const handleClipPress = (clip: ClipData) => {
-    Alert.alert('Play Clip', `Playing: ${clip.name}`)
+  const handleClipPress = async (clip: ClipData) => {
+    try {
+      // If the same clip is already selected, toggle play/pause
+      if (selectedClip?.id === clip.id) {
+        await audioPlayer.togglePlayPause()
+        return
+      }
+
+      // Set the new selected clip
+      setSelectedClip(clip)
+
+      // Load and play the new audio file
+      await audioPlayer.loadAudio(clip.path)
+      await audioPlayer.play()
+    } catch (error) {
+      console.error('Failed to play clip:', error)
+      Alert.alert('Playback Error', 'Failed to play the selected audio file')
+    }
   }
 
   const handleHomePress = () => {
+    // Stop current playback when navigating to root
+    audioPlayer.cleanup()
+    setSelectedClip(null)
+
     // Navigate to root
     setCurrentPath([])
   }
 
   const handleBreadcrumbPress = (_path: string, index: number) => {
+    // Stop current playback when navigating via breadcrumbs
+    audioPlayer.cleanup()
+    setSelectedClip(null)
+
     // Navigate to specific level in breadcrumb
     if (index === 0) {
       setCurrentPath([])
     } else {
       setCurrentPath(currentPath.slice(0, index))
     }
+  }
+
+  // Media player control handlers
+  const handleNext = () => {
+    const currentIndex = clips.findIndex(clip => clip.id === selectedClip?.id)
+    if (currentIndex >= 0 && currentIndex < clips.length - 1) {
+      const nextClip = clips[currentIndex + 1]
+      handleClipPress(nextClip)
+    }
+  }
+
+  const handlePrevious = () => {
+    const currentIndex = clips.findIndex(clip => clip.id === selectedClip?.id)
+    if (currentIndex > 0) {
+      const previousClip = clips[currentIndex - 1]
+      handleClipPress(previousClip)
+    }
+  }
+
+  const handleMore = () => {
+    Alert.alert('More Options', 'Additional playback options coming soon!')
   }
 
   const renderFolderCard = (folder: FolderCardData) => (
@@ -88,21 +149,36 @@ export default function BrowseScreen() {
     </View>
   )
 
-  const renderClipItem = (clip: ClipData) => (
-    <TouchableOpacity key={clip.id} style={styles.clipItem} onPress={() => handleClipPress(clip)} activeOpacity={0.7}>
-      <View style={styles.clipInfo}>
-        <Text style={styles.clipName}>{clip.name}</Text>
-        <Text style={styles.clipDetails}>
-          {clip.date} • {clip.duration}
-        </Text>
-      </View>
-      <FileContextMenuModal
-        onRename={() => handlers?.fileHandlers.onRename(clip)}
-        onMove={() => handlers?.fileHandlers.onMove(clip)}
-        onDelete={() => handlers?.fileHandlers.onDelete(clip)}
-      />
-    </TouchableOpacity>
-  )
+  const renderClipItem = (clip: ClipData) => {
+    const isSelected = selectedClip?.id === clip.id
+    const isPlaying = isSelected && audioPlayer.status === 'playing'
+
+    return (
+      <TouchableOpacity
+        key={clip.id}
+        style={[styles.clipItem, isSelected && styles.clipItemSelected]}
+        onPress={() => handleClipPress(clip)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.clipInfo}>
+          <View style={styles.clipNameContainer}>
+            <Text style={[styles.clipName, isSelected && styles.clipNameSelected]}>{clip.name}</Text>
+            {isPlaying && (
+              <Ionicons name="volume-high" size={16} color={theme.colors.primary} style={styles.playingIcon} />
+            )}
+          </View>
+          <Text style={styles.clipDetails}>
+            {clip.date} • {clip.duration}
+          </Text>
+        </View>
+        <FileContextMenuModal
+          onRename={() => handlers?.fileHandlers.onRename(clip)}
+          onMove={() => handlers?.fileHandlers.onMove(clip)}
+          onDelete={() => handlers?.fileHandlers.onDelete(clip)}
+        />
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <Screen style={styles.container}>
@@ -181,16 +257,19 @@ export default function BrowseScreen() {
       </View>
 
       {/* Bottom Media Player - Fixed at bottom, full width */}
-      <View style={styles.mediaPlayerContainer}>
-        <MediaCard
-          title="Guitar Riff Idea"
-          artist="Song Ideas • 0:45"
-          duration="0:45"
-          onPlayPause={() => Alert.alert('Play/Pause')}
-          onNext={() => Alert.alert('Next')}
-          onPrevious={() => Alert.alert('Previous')}
-        />
-      </View>
+      <BottomMediaPlayer
+        title={selectedClip?.name || ''}
+        artist={selectedClip?.folder || ''}
+        duration={selectedClip?.duration || ''}
+        currentTime={formatTime(audioPlayer.currentTime)}
+        isPlaying={audioPlayer.status === 'playing'}
+        isVisible={!!selectedClip}
+        onPlayPause={audioPlayer.togglePlayPause}
+        onNext={handleNext}
+        onPrevious={handlePrevious}
+        onMore={handleMore}
+        style={styles.mediaPlayerContainer}
+      />
 
       {/* FileSystemManager handles all dialogs and operations */}
       {FileSystemManagerComponent}
@@ -325,16 +404,32 @@ const styles = StyleSheet.create({
   clipInfo: {
     flex: 1,
   } as ViewStyle,
+  clipNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  } as ViewStyle,
   clipName: {
     fontSize: theme.typography.fontSize.base,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
+    flex: 1,
+  } as TextStyle,
+  clipNameSelected: {
+    color: theme.colors.primary,
+  } as TextStyle,
+  playingIcon: {
+    marginLeft: theme.spacing.xs,
   } as TextStyle,
   clipDetails: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
   } as TextStyle,
+  clipItemSelected: {
+    backgroundColor: theme.colors.surface.primary,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  } as ViewStyle,
   emptyState: {
     flex: 1,
     justifyContent: 'center',
