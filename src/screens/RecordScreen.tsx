@@ -254,7 +254,7 @@ export default function RecordScreen() {
       <Container flex>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>MuziMemo</Text>
+          <Text style={styles.title}>New Recording</Text>
           <Icon name="settings-outline" size="lg" color="secondary" />
         </View>
 
@@ -381,8 +381,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
   },
   title: {
     fontSize: theme.typography.fontSize['2xl'],
