@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import {
   StyleSheet,
   Text,
@@ -48,18 +48,26 @@ export default function BrowseScreen() {
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Empty array means root
   const [selectedClip, setSelectedClip] = useState<ClipData | null>(null)
 
+  // Track whether we've processed the initial folder parameter
+  const hasProcessedInitialFolder = useRef(false)
+
   // Use FileSystemManager hook
   const { folders, clips, loading, handlers, FileSystemManagerComponent } = useFileSystemManager(currentPath)
 
   // Use Audio Player hook
   const audioPlayer = useAudioPlayerHook()
 
-  // Handle initial folder parameter - runs every time screen is focused
+  // Handle initial folder parameter - only on first mount, not on every focus
   useFocusEffect(
     useCallback(() => {
-      if (initialFolder && initialFolder !== 'root') {
+      // Only process initialFolder if we haven't done so already
+      if (!hasProcessedInitialFolder.current && initialFolder && initialFolder !== 'root') {
         // Set the current path to the initial folder
         setCurrentPath([initialFolder])
+        hasProcessedInitialFolder.current = true
+      } else if (!hasProcessedInitialFolder.current) {
+        // Mark as processed even if no initialFolder was provided
+        hasProcessedInitialFolder.current = true
       }
     }, [initialFolder])
   )
