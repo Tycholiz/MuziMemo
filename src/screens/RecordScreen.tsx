@@ -43,6 +43,7 @@ export default function RecordScreen() {
   // State for folder selection - store both ID and name for stability
   const [selectedFolder, setSelectedFolder] = useState('song-ideas')
   const [selectedFolderName, setSelectedFolderName] = useState('Song Ideas') // Store the actual folder name
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string>('Song Ideas') // Store the full path for nested folders
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
@@ -86,17 +87,33 @@ export default function RecordScreen() {
 
       // Set initial folder selection based on navigation parameter
       if (initialFolder && initialFolder !== 'root') {
+        console.log('🔍 RecordScreen processing initialFolder:', initialFolder)
+
+        // Store the full path for later use in "Go To" navigation
+        setSelectedFolderPath(initialFolder)
+
         // Handle nested folder paths (e.g., "folder1/folder2")
         const targetFolderName = initialFolder.split('/').pop() // Get the last folder name
+        console.log('🔍 RecordScreen targetFolderName:', targetFolderName)
+
         const targetFolder = folderData.find(folder => folder.name === targetFolderName)
         if (targetFolder) {
+          console.log('🔍 RecordScreen found target folder:', targetFolder)
           setSelectedFolder(targetFolder.id)
           setSelectedFolderName(targetFolder.name)
         } else if (folderData.length > 0) {
+          console.log('🔍 RecordScreen target folder not found, using fallback:', folderData[0])
           // Fallback to first folder if target not found
           setSelectedFolder(folderData[0].id)
           setSelectedFolderName(folderData[0].name)
+          // Update the path to match the fallback folder
+          setSelectedFolderPath(folderData[0].name)
         }
+
+        console.log('🔍 RecordScreen final state:', {
+          selectedFolderPath: initialFolder,
+          selectedFolderName: targetFolder?.name || folderData[0]?.name,
+        })
       } else if (folderData.length > 0) {
         // Try to maintain the same folder selection by name (more stable than ID)
         const currentFolderByName = folderData.find(folder => folder.name === selectedFolderName)
@@ -261,10 +278,11 @@ export default function RecordScreen() {
 
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolder(folderId)
-    // Also update the folder name for consistency
+    // Also update the folder name and path for consistency
     const selectedFolderData = folders.find(f => f.id === folderId)
     if (selectedFolderData) {
       setSelectedFolderName(selectedFolderData.name)
+      setSelectedFolderPath(selectedFolderData.name) // Reset to single folder when manually selected
     }
   }
 
@@ -272,6 +290,7 @@ export default function RecordScreen() {
     // Update the selected folder and refresh the folder list
     setSelectedFolder(folder.id)
     setSelectedFolderName(folder.name) // Also update the folder name
+    setSelectedFolderPath(folder.name) // Reset to single folder when manually selected
     setShowFileNavigator(false)
     loadFolders() // Refresh the folder list to include any new folders
     // Folder selected successfully - no dialog popup needed
@@ -282,13 +301,20 @@ export default function RecordScreen() {
   }
 
   const handleGoToFolder = () => {
-    // Use the stored folder name directly instead of looking up by ID
-    // This is more reliable since folder IDs can change between loads
-    const folderName = selectedFolderName
+    // Use the stored folder path to preserve nested folder navigation
+    // This maintains the full path context from the original navigation
+    const folderPath = selectedFolderPath
 
-    if (!folderName) {
-      console.warn('No folder name available for navigation')
-      // Fallback to root if no folder name is available
+    console.log('🔍 RecordScreen handleGoToFolder:', {
+      selectedFolderPath,
+      selectedFolderName,
+      initialFolder,
+      folderPath,
+    })
+
+    if (!folderPath) {
+      console.warn('No folder path available for navigation')
+      // Fallback to root if no folder path is available
       router.push({
         pathname: '/(tabs)/browse',
         params: { initialFolder: 'root', intentional: 'true' },
@@ -296,10 +322,11 @@ export default function RecordScreen() {
       return
     }
 
-    // Navigate to browse screen with the selected folder
+    // Navigate to browse screen with the selected folder path
+    console.log('🔍 RecordScreen navigating to Browse with folderPath:', folderPath)
     router.push({
       pathname: '/(tabs)/browse',
-      params: { initialFolder: folderName, intentional: 'true' },
+      params: { initialFolder: folderPath, intentional: 'true' },
     })
   }
 

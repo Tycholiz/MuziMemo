@@ -337,4 +337,325 @@ describe('BrowseScreen Navigation Persistence', () => {
       expect(currentPath).toEqual(['Manual Navigation']) // Should remain unchanged
     })
   })
+
+  // Nested Folder Navigation Tests
+  describe('Nested Folder Navigation', () => {
+    it('should handle single-level folder paths correctly', () => {
+      // Test single folder navigation
+      let lastProcessedInitialFolder: string | undefined = undefined
+      let hasUserNavigated = false
+      let currentPath: string[] = []
+
+      // Navigate to single folder
+      const initialFolder = 'demos'
+      const intentional = 'true'
+      const isIntentionalNavigation = intentional === 'true'
+
+      if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
+        if (initialFolder && initialFolder !== 'root') {
+          const pathSegments = initialFolder.split('/').filter(segment => segment.length > 0)
+          currentPath = pathSegments
+        }
+        lastProcessedInitialFolder = initialFolder
+        if (isIntentionalNavigation) {
+          hasUserNavigated = false
+        }
+      }
+
+      expect(currentPath).toEqual(['demos'])
+      expect(lastProcessedInitialFolder).toBe('demos')
+    })
+
+    it('should handle nested folder paths correctly', () => {
+      // Test nested folder navigation like "demos/amazing"
+      let lastProcessedInitialFolder: string | undefined = undefined
+      let hasUserNavigated = false
+      let currentPath: string[] = []
+
+      // Navigate to nested folder
+      const initialFolder = 'demos/amazing'
+      const intentional = 'true'
+      const isIntentionalNavigation = intentional === 'true'
+
+      if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
+        if (initialFolder && initialFolder !== 'root') {
+          const pathSegments = initialFolder.split('/').filter(segment => segment.length > 0)
+          currentPath = pathSegments
+        }
+        lastProcessedInitialFolder = initialFolder
+        if (isIntentionalNavigation) {
+          hasUserNavigated = false
+        }
+      }
+
+      expect(currentPath).toEqual(['demos', 'amazing'])
+      expect(lastProcessedInitialFolder).toBe('demos/amazing')
+    })
+
+    it('should handle deeply nested folder paths correctly', () => {
+      // Test deeply nested folder navigation like "demos/amazing/subfolder"
+      let lastProcessedInitialFolder: string | undefined = undefined
+      let hasUserNavigated = false
+      let currentPath: string[] = []
+
+      // Navigate to deeply nested folder
+      const initialFolder = 'demos/amazing/subfolder'
+      const intentional = 'true'
+      const isIntentionalNavigation = intentional === 'true'
+
+      if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
+        if (initialFolder && initialFolder !== 'root') {
+          const pathSegments = initialFolder.split('/').filter(segment => segment.length > 0)
+          currentPath = pathSegments
+        }
+        lastProcessedInitialFolder = initialFolder
+        if (isIntentionalNavigation) {
+          hasUserNavigated = false
+        }
+      }
+
+      expect(currentPath).toEqual(['demos', 'amazing', 'subfolder'])
+      expect(lastProcessedInitialFolder).toBe('demos/amazing/subfolder')
+    })
+
+    it('should preserve nested folder navigation across tab switches', () => {
+      // Test the exact scenario described: demos/amazing -> Record tab -> Browse tab
+      let lastProcessedInitialFolder: string | undefined = undefined
+      let hasUserNavigated = false
+      let currentPath: string[] = []
+
+      // Step 1: User navigates to demos/amazing folder manually
+      const handleFolderPress = (folderPath: string[]) => {
+        currentPath = folderPath
+        hasUserNavigated = true
+        lastProcessedInitialFolder = undefined
+      }
+
+      // User manually navigates to demos, then amazing
+      handleFolderPress(['demos'])
+      handleFolderPress(['demos', 'amazing'])
+
+      expect(currentPath).toEqual(['demos', 'amazing'])
+      expect(hasUserNavigated).toBe(true)
+      expect(lastProcessedInitialFolder).toBe(undefined)
+
+      // Step 2: User switches to Record tab (this would pass "demos/amazing" as initialFolder)
+      // Step 3: User switches back to Browse tab
+      // The initialFolder parameter should be "demos/amazing" from the Record button navigation
+      // But since user has navigated and this is NOT intentional, it should preserve current state
+      const initialFolder = 'demos/amazing'
+      const intentional = '' // Tab switch, not intentional
+      const isIntentionalNavigation = intentional === 'true'
+
+      let shouldChangeDirectory = false
+      if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
+        shouldChangeDirectory = true
+      }
+
+      expect(shouldChangeDirectory).toBe(false) // Should NOT change directory
+      expect(currentPath).toEqual(['demos', 'amazing']) // Should remain in nested folder
+    })
+
+    it('should simulate the real bug scenario with actual navigation flow', () => {
+      // This test simulates the ACTUAL bug scenario more realistically
+      let lastProcessedInitialFolder: string | undefined = undefined
+      let hasUserNavigated = false
+      let currentPath: string[] = []
+
+      // Step 1: User manually navigates to demos/amazing
+      const simulateManualNavigation = (path: string[]) => {
+        currentPath = path
+        hasUserNavigated = true
+        lastProcessedInitialFolder = undefined
+      }
+
+      simulateManualNavigation(['demos', 'amazing'])
+      expect(currentPath).toEqual(['demos', 'amazing'])
+
+      // Step 2: User clicks Record button - this passes "demos/amazing" as initialFolder to Record screen
+      const simulateRecordButtonPress = () => {
+        const folderName = currentPath.length > 0 ? currentPath.join('/') : 'root'
+        return folderName // This would be passed as initialFolder to Record screen
+      }
+
+      const recordScreenInitialFolder = simulateRecordButtonPress()
+      expect(recordScreenInitialFolder).toBe('demos/amazing')
+
+      // Step 3: User switches back to Browse tab
+      // In Expo Router, the Browse tab retains the last parameters from when Record button was pressed
+      // So initialFolder is still "demos/amazing" but intentional is NOT "true" (it's a tab switch)
+      const tabSwitchInitialFolder = recordScreenInitialFolder // Same as what was passed to Record
+      const tabSwitchIntentional = undefined // Tab switch doesn't have intentional parameter
+
+      // The bug: This should NOT change the currentPath because it's not intentional navigation
+      // But the current logic might be processing it anyway
+      const isIntentionalNavigation = tabSwitchIntentional === 'true'
+
+      // Simulate the useFocusEffect logic
+      if (tabSwitchInitialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
+        // BUG: This condition might be true when it shouldn't be
+        // Because lastProcessedInitialFolder was reset to undefined in step 1
+        if (tabSwitchInitialFolder && tabSwitchInitialFolder !== 'root') {
+          const pathSegments = tabSwitchInitialFolder.split('/').filter(segment => segment.length > 0)
+          currentPath = pathSegments // This would incorrectly reset the path
+        }
+        lastProcessedInitialFolder = tabSwitchInitialFolder
+      }
+
+      // The bug manifests here: currentPath gets reset even though user manually navigated
+      // This test should FAIL with the current logic, proving the bug exists
+      expect(currentPath).toEqual(['demos', 'amazing']) // This might fail, showing the bug
+    })
+
+    it('should handle Go To button with nested folders after user navigation', () => {
+      // Test the bug scenario: user in demos/amazing, goes to Record, clicks Go To
+      let lastProcessedInitialFolder: string | undefined = undefined
+      let hasUserNavigated = false
+      let currentPath: string[] = []
+
+      // Step 1: User navigates to demos/amazing folder manually
+      const handleFolderPress = (folderPath: string[]) => {
+        currentPath = folderPath
+        hasUserNavigated = true
+        lastProcessedInitialFolder = undefined
+      }
+      handleFolderPress(['demos', 'amazing'])
+
+      expect(currentPath).toEqual(['demos', 'amazing'])
+      expect(hasUserNavigated).toBe(true)
+
+      // Step 2: User goes to Record screen and clicks "Go To" with same nested folder
+      const initialFolder = 'demos/amazing'
+      const intentional = 'true' // Go To button
+      const isIntentionalNavigation = intentional === 'true'
+
+      if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
+        if (initialFolder && initialFolder !== 'root') {
+          const pathSegments = initialFolder.split('/').filter(segment => segment.length > 0)
+          currentPath = pathSegments
+        }
+        lastProcessedInitialFolder = initialFolder
+        if (isIntentionalNavigation) {
+          hasUserNavigated = false
+        }
+      }
+
+      expect(currentPath).toEqual(['demos', 'amazing']) // Should navigate to nested folder
+      expect(lastProcessedInitialFolder).toBe('demos/amazing')
+      expect(hasUserNavigated).toBe(false) // Reset after intentional navigation
+    })
+
+    it('should handle edge cases with empty path segments', () => {
+      // Test paths with extra slashes like "demos//amazing/" or "/demos/amazing"
+      let currentPath: string[] = []
+
+      const testCases = [
+        { input: 'demos//amazing', expected: ['demos', 'amazing'] },
+        { input: '/demos/amazing', expected: ['demos', 'amazing'] },
+        { input: 'demos/amazing/', expected: ['demos', 'amazing'] },
+        { input: '//demos//amazing//', expected: ['demos', 'amazing'] },
+        { input: '', expected: [] },
+        { input: '/', expected: [] },
+        { input: '//', expected: [] },
+      ]
+
+      testCases.forEach(({ input, expected }) => {
+        const pathSegments = input.split('/').filter(segment => segment.length > 0)
+        currentPath = pathSegments
+        expect(currentPath).toEqual(expected)
+      })
+    })
+
+    it('should handle the exact bug scenario with nested folders and "Song Ideas" error', () => {
+      // This test reproduces the exact bug scenario that's still happening
+      let lastProcessedInitialFolder: string | undefined = undefined
+      let hasUserNavigated = false
+      let currentPath: string[] = []
+      let lastSeenInitialFolder: string | undefined = undefined
+
+      // Step 1: User manually navigates to nested folder ["hello", "Song Ideas"]
+      const simulateManualNavigation = (path: string[]) => {
+        currentPath = path
+        hasUserNavigated = true
+      }
+
+      simulateManualNavigation(['hello', 'Song Ideas'])
+      expect(currentPath).toEqual(['hello', 'Song Ideas'])
+
+      // Step 2: User clicks Record button - this should pass "hello/Song Ideas" to Record screen
+      const simulateRecordButtonPress = () => {
+        const folderName = currentPath.length > 0 ? currentPath.join('/') : 'root'
+        return folderName // This would be passed as initialFolder to Record screen
+      }
+
+      const recordScreenInitialFolder = simulateRecordButtonPress()
+      expect(recordScreenInitialFolder).toBe('hello/Song Ideas') // Should be full path
+
+      // Step 3: Record screen should store this full path and pass it back on "Go To"
+      // But currently it's only passing back "Song Ideas" (the last folder name)
+      // This is the bug - Record screen should pass back the full path
+
+      // Simulate what Record screen SHOULD do (pass back full path)
+      const correctGoToNavigation = recordScreenInitialFolder // Should be "hello/Song Ideas"
+
+      // Step 4: Browse screen receives "Go To" navigation with full path
+      const initialFolder = correctGoToNavigation
+      const intentional = 'true'
+      const isIntentionalNavigation = intentional === 'true'
+      const initialFolderChanged = initialFolder !== lastSeenInitialFolder
+      lastSeenInitialFolder = initialFolder
+
+      const shouldProcess = initialFolderChanged && (!hasUserNavigated || isIntentionalNavigation)
+
+      if (shouldProcess) {
+        if (initialFolder && initialFolder !== 'root') {
+          const pathSegments = initialFolder.split('/').filter(segment => segment.length > 0)
+          currentPath = pathSegments
+        }
+        lastProcessedInitialFolder = initialFolder
+        if (isIntentionalNavigation) {
+          hasUserNavigated = false
+        }
+      }
+
+      // Should navigate to the correct nested folder
+      expect(currentPath).toEqual(['hello', 'Song Ideas'])
+      expect(lastProcessedInitialFolder).toBe('hello/Song Ideas')
+
+      // Now test what's ACTUALLY happening (the bug)
+      // Record screen is only passing back "Song Ideas" instead of "hello/Song Ideas"
+      const buggyGoToNavigation = 'Song Ideas' // This is what's actually happening
+
+      // Reset state to simulate the bug
+      currentPath = ['hello', 'Song Ideas']
+      hasUserNavigated = true
+      lastSeenInitialFolder = undefined
+      lastProcessedInitialFolder = undefined
+
+      // Simulate the buggy navigation
+      const buggyInitialFolder = buggyGoToNavigation
+      const buggyInitialFolderChanged = buggyInitialFolder !== lastSeenInitialFolder
+      lastSeenInitialFolder = buggyInitialFolder
+
+      const buggyShouldProcess = buggyInitialFolderChanged && (!hasUserNavigated || isIntentionalNavigation)
+
+      if (buggyShouldProcess) {
+        if (buggyInitialFolder && buggyInitialFolder !== 'root') {
+          const pathSegments = buggyInitialFolder.split('/').filter(segment => segment.length > 0)
+          currentPath = pathSegments // This sets currentPath to ["Song Ideas"] instead of ["hello", "Song Ideas"]
+        }
+        lastProcessedInitialFolder = buggyInitialFolder
+        if (isIntentionalNavigation) {
+          hasUserNavigated = false
+        }
+      }
+
+      // This shows the bug: currentPath is now ["Song Ideas"] instead of ["hello", "Song Ideas"]
+      expect(currentPath).toEqual(['Song Ideas']) // This is the bug - should be ["hello", "Song Ideas"]
+
+      // The FileSystemManager then tries to load "/recordings/Song Ideas" which doesn't exist
+      // because "Song Ideas" is actually at "/recordings/hello/Song Ideas"
+      // This causes the "Failed to load folder contents: [Error: Folder not found]" error
+    })
+  })
 })

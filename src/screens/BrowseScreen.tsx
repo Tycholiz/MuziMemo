@@ -52,6 +52,8 @@ export default function BrowseScreen() {
   const lastProcessedInitialFolder = useRef<string | undefined>(undefined)
   // Track whether user has explicitly navigated within this session
   const hasUserNavigated = useRef(false)
+  // Track the last seen initialFolder to detect actual parameter changes
+  const lastSeenInitialFolder = useRef<string | undefined>(undefined)
 
   // Use FileSystemManager hook
   const { folders, clips, loading, handlers, FileSystemManagerComponent } = useFileSystemManager(currentPath)
@@ -62,25 +64,32 @@ export default function BrowseScreen() {
   // Handle initial folder parameter - process when it changes, not on every focus
   useFocusEffect(
     useCallback(() => {
+      // Check if the initialFolder parameter has actually changed
+      const initialFolderChanged = initialFolder !== lastSeenInitialFolder.current
+      lastSeenInitialFolder.current = initialFolder
+
       // Only process initialFolder if:
-      // 1. It has changed from the last processed value, AND
+      // 1. The initialFolder parameter has actually changed (new navigation), AND
       // 2. Either user hasn't explicitly navigated OR this is an intentional navigation (Go To button)
       const isIntentionalNavigation = intentional === 'true'
-      if (
-        initialFolder !== lastProcessedInitialFolder.current &&
-        (!hasUserNavigated.current || isIntentionalNavigation)
-      ) {
-        if (initialFolder && initialFolder !== 'root') {
-          // Set the current path to the initial folder
-          setCurrentPath([initialFolder])
-        }
-        // Update the last processed value (including undefined/root cases)
-        lastProcessedInitialFolder.current = initialFolder
+      const shouldProcess = initialFolderChanged && (!hasUserNavigated.current || isIntentionalNavigation)
 
+      if (shouldProcess) {
+        if (initialFolder && initialFolder !== 'root') {
+          // Parse the initial folder path - it might be a nested path like "demos/amazing"
+          const pathSegments = initialFolder.split('/').filter(segment => segment.length > 0)
+          setCurrentPath(pathSegments)
+        } else {
+          // Navigate to root
+          setCurrentPath([])
+        }
         // If this was an intentional navigation, reset the user navigation flag
         if (isIntentionalNavigation) {
           hasUserNavigated.current = false
         }
+
+        // Update the last processed value (including undefined/root cases)
+        lastProcessedInitialFolder.current = initialFolder
       }
     }, [initialFolder, intentional])
   )
@@ -98,11 +107,11 @@ export default function BrowseScreen() {
     setSelectedClip(null)
 
     // Navigate into the folder
-    setCurrentPath([...currentPath, folder.name])
+    const newPath = [...currentPath, folder.name]
+    setCurrentPath(newPath)
 
-    // Mark that user has explicitly navigated and reset tracking
+    // Mark that user has explicitly navigated
     hasUserNavigated.current = true
-    lastProcessedInitialFolder.current = undefined
   }
 
   const handleClipPress = async (clip: ClipData) => {
@@ -133,9 +142,8 @@ export default function BrowseScreen() {
     // Navigate to root
     setCurrentPath([])
 
-    // Mark that user has explicitly navigated and reset tracking
+    // Mark that user has explicitly navigated
     hasUserNavigated.current = true
-    lastProcessedInitialFolder.current = undefined
   }
 
   const handleBreadcrumbPress = (_path: string, index: number) => {
@@ -150,9 +158,8 @@ export default function BrowseScreen() {
       setCurrentPath(currentPath.slice(0, index))
     }
 
-    // Mark that user has explicitly navigated and reset tracking
+    // Mark that user has explicitly navigated
     hasUserNavigated.current = true
-    lastProcessedInitialFolder.current = undefined
   }
 
   // Media player control handlers
@@ -175,6 +182,10 @@ export default function BrowseScreen() {
   const handleRecordPress = () => {
     // Navigate to RecordScreen with current folder context
     const folderName = currentPath.length > 0 ? currentPath.join('/') : 'root'
+    console.log('🔍 BrowseScreen handleRecordPress:', {
+      currentPath,
+      folderName,
+    })
     router.push({
       pathname: '/(tabs)/record',
       params: { initialFolder: folderName },
