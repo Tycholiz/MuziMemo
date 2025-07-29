@@ -186,9 +186,19 @@ export const FileSystemManager = forwardRef<FileSystemManagerRef, FileSystemMana
       }
     }
 
-    const handleDeleteFolder = (folder: FolderCardData) => {
-      setSelectedFolder(folder)
-      setDeleteFolderVisible(true)
+    const handleDeleteFolder = async (folder: FolderCardData) => {
+      // Skip confirmation dialog for empty folders
+      if (folder.itemCount === 0) {
+        try {
+          await fileSystemService.deleteFolder(folder.path)
+          loadCurrentFolderData() // Refresh the list
+        } catch (error: any) {
+          Alert.alert('Error', error.message || 'Failed to delete folder')
+        }
+      } else {
+        setSelectedFolder(folder)
+        setDeleteFolderVisible(true)
+      }
     }
 
     const handleConfirmDelete = async () => {

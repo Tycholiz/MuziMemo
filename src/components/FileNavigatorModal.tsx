@@ -113,7 +113,7 @@ export function FileNavigatorModal({
                   name: folderName.trim(),
                   parentPath: currentFolderPath,
                 })
-                Alert.alert('Success', `Folder "${folderName}" created successfully`)
+                // Folder created successfully - no dialog popup needed
                 loadFolderContents() // Refresh the list
               } catch (error: any) {
                 Alert.alert('Error', error.message || 'Failed to create folder')

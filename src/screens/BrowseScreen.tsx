@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   StyleSheet,
   Text,
@@ -11,7 +11,7 @@ import {
   TextStyle,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 
 import { Screen } from '@components/Layout'
 import {
@@ -54,13 +54,15 @@ export default function BrowseScreen() {
   // Use Audio Player hook
   const audioPlayer = useAudioPlayerHook()
 
-  // Handle initial folder parameter
-  useEffect(() => {
-    if (initialFolder && initialFolder !== 'root') {
-      // Set the current path to the initial folder
-      setCurrentPath([initialFolder])
-    }
-  }, [initialFolder])
+  // Handle initial folder parameter - runs every time screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (initialFolder && initialFolder !== 'root') {
+        // Set the current path to the initial folder
+        setCurrentPath([initialFolder])
+      }
+    }, [initialFolder])
+  )
 
   const getCurrentFolderPath = (): string => {
     if (currentPath.length === 0) {

@@ -40,8 +40,9 @@ export default function RecordScreen() {
   } = useAudioRecording(audioQuality)
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
-  // State for folder selection
+  // State for folder selection - store both ID and name for stability
   const [selectedFolder, setSelectedFolder] = useState('song-ideas')
+  const [selectedFolderName, setSelectedFolderName] = useState('Song Ideas') // Store the actual folder name
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
@@ -90,13 +91,23 @@ export default function RecordScreen() {
         const targetFolder = folderData.find(folder => folder.name === targetFolderName)
         if (targetFolder) {
           setSelectedFolder(targetFolder.id)
+          setSelectedFolderName(targetFolder.name)
         } else if (folderData.length > 0) {
           // Fallback to first folder if target not found
           setSelectedFolder(folderData[0].id)
+          setSelectedFolderName(folderData[0].name)
         }
-      } else if (folderData.length > 0 && !selectedFolder) {
-        // Set default selection to first folder if none selected
-        setSelectedFolder(folderData[0].id)
+      } else if (folderData.length > 0) {
+        // Try to maintain the same folder selection by name (more stable than ID)
+        const currentFolderByName = folderData.find(folder => folder.name === selectedFolderName)
+        if (currentFolderByName) {
+          // Update the ID to match the current folder data, keep the same name
+          setSelectedFolder(currentFolderByName.id)
+        } else {
+          // If the previously selected folder name doesn't exist, fallback to first folder
+          setSelectedFolder(folderData[0].id)
+          setSelectedFolderName(folderData[0].name)
+        }
       }
     } catch (error) {
       console.error('Failed to load folders:', error)
@@ -201,14 +212,14 @@ export default function RecordScreen() {
           from: recordingUri,
           to: targetFilePath,
         })
-        Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
+        // Recording saved successfully - no dialog popup needed
       } catch (copyError) {
         // If copy fails, try moving the file instead
         await FileSystem.moveAsync({
           from: recordingUri,
           to: targetFilePath,
         })
-        Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
+        // Recording saved successfully - no dialog popup needed
       }
     } catch (error) {
       console.error('Failed to save recording:', error)
@@ -250,14 +261,20 @@ export default function RecordScreen() {
 
   const handleFolderSelect = (folderId: string) => {
     setSelectedFolder(folderId)
+    // Also update the folder name for consistency
+    const selectedFolderData = folders.find(f => f.id === folderId)
+    if (selectedFolderData) {
+      setSelectedFolderName(selectedFolderData.name)
+    }
   }
 
   const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
     // Update the selected folder and refresh the folder list
     setSelectedFolder(folder.id)
+    setSelectedFolderName(folder.name) // Also update the folder name
     setShowFileNavigator(false)
     loadFolders() // Refresh the folder list to include any new folders
-    Alert.alert('Folder Selected', `Selected: ${folder.name}`)
+    // Folder selected successfully - no dialog popup needed
   }
 
   const handleAudioQualitySelect = (option: DropdownOption) => {
@@ -265,8 +282,19 @@ export default function RecordScreen() {
   }
 
   const handleGoToFolder = () => {
-    const selectedFolderData = folders.find(f => f.id === selectedFolder)
-    const folderName = selectedFolderData?.name || 'root'
+    // Use the stored folder name directly instead of looking up by ID
+    // This is more reliable since folder IDs can change between loads
+    const folderName = selectedFolderName
+
+    if (!folderName) {
+      console.warn('No folder name available for navigation')
+      // Fallback to root if no folder name is available
+      router.push({
+        pathname: '/(tabs)/browse',
+        params: { initialFolder: 'root' },
+      })
+      return
+    }
 
     // Navigate to browse screen with the selected folder
     router.push({
