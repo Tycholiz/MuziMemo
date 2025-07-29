@@ -48,6 +48,12 @@ export class AudioMetadataService {
    */
   private static async parseM4AMetadata(filePath: string): Promise<AudioMetadata> {
     try {
+      // Get file info first
+      const fileInfo = await FileSystem.getInfoAsync(filePath)
+      const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0
+
+      console.log('Parsing M4A metadata for:', filePath, 'File size:', fileSize)
+
       // Read first 8KB of file to find metadata atoms
       const base64Data = await FileSystem.readAsStringAsync(filePath, {
         encoding: FileSystem.EncodingType.Base64,
@@ -64,6 +70,7 @@ export class AudioMetadataService {
 
       // Look for 'mvhd' atom which contains duration info
       const mvhdOffset = this.findAtom(buffer, 'mvhd')
+      console.log('mvhd atom offset:', mvhdOffset)
       if (mvhdOffset !== -1) {
         // mvhd atom structure:
         // 4 bytes: atom size
@@ -100,7 +107,10 @@ export class AudioMetadataService {
       }
     } catch (error) {
       console.warn('Failed to parse M4A metadata:', error)
-      return this.estimateMetadata(0)
+      // Get file size for estimation
+      const fileInfo = await FileSystem.getInfoAsync(filePath)
+      const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0
+      return this.estimateMetadata(fileSize)
     }
   }
 
@@ -214,15 +224,28 @@ export class AudioMetadataService {
    * Estimate metadata based on file size (fallback)
    */
   private static estimateMetadata(fileSize: number): AudioMetadata {
-    // Assume 128kbps bitrate for estimation
-    const estimatedDuration = Math.max(1, Math.floor(fileSize / 16000))
+    if (fileSize <= 0) {
+      return {
+        duration: 0,
+        bitrate: 128,
+        sampleRate: 44100,
+        channels: 2,
+        format: 'unknown',
+      }
+    }
+
+    // For M4A files, use a more accurate bitrate estimation
+    // expo-audio typically creates files at around 64-128 kbps
+    // Use 96 kbps as a reasonable middle ground
+    const estimatedBitrate = 96 // kbps
+    const estimatedDuration = (fileSize * 8) / (estimatedBitrate * 1000)
 
     return {
-      duration: estimatedDuration,
-      bitrate: 128,
+      duration: Math.max(1, estimatedDuration),
+      bitrate: estimatedBitrate,
       sampleRate: 44100,
       channels: 2,
-      format: 'unknown',
+      format: 'estimated',
     }
   }
 
