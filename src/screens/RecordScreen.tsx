@@ -303,7 +303,7 @@ export default function RecordScreen() {
           </View>
         </View>
 
-        <Spacer size="2xl" />
+        <Spacer size="lg" />
 
         {/* Duration Display */}
         <View style={styles.durationContainer}>
