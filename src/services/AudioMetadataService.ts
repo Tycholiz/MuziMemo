@@ -48,12 +48,6 @@ export class AudioMetadataService {
    */
   private static async parseM4AMetadata(filePath: string): Promise<AudioMetadata> {
     try {
-      // Get file info first
-      const fileInfo = await FileSystem.getInfoAsync(filePath)
-      const fileSize = fileInfo.exists && 'size' in fileInfo ? fileInfo.size : 0
-
-      console.log('Parsing M4A metadata for:', filePath, 'File size:', fileSize)
-
       // Read first 8KB of file to find metadata atoms
       const base64Data = await FileSystem.readAsStringAsync(filePath, {
         encoding: FileSystem.EncodingType.Base64,
@@ -70,7 +64,6 @@ export class AudioMetadataService {
 
       // Look for 'mvhd' atom which contains duration info
       const mvhdOffset = this.findAtom(buffer, 'mvhd')
-      console.log('mvhd atom offset:', mvhdOffset)
       if (mvhdOffset !== -1) {
         // mvhd atom structure:
         // 4 bytes: atom size
