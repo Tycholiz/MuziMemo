@@ -9,11 +9,16 @@ export type SoundWaveProps = {
   style?: ViewStyle
   barCount?: number
   barColor?: string
+  testID?: string
 }
 
 /**
  * SoundWave component that displays animated sound waves
- * Responds to audio input levels during recording
+ * Responds to real-time audio input levels during recording
+ *
+ * When audioLevel is 0 (no sound), bars remain at minimum height (20%)
+ * When audioLevel increases (louder sound), bars animate to higher heights
+ * Each bar has slight random variation for a more realistic visual effect
  */
 export function SoundWave({
   audioLevel,
@@ -21,6 +26,7 @@ export function SoundWave({
   style,
   barCount = 5,
   barColor = theme.colors.primary,
+  testID,
 }: SoundWaveProps) {
   // Create animated values for each bar
   const animatedValues = useRef(Array.from({ length: barCount }, () => new Animated.Value(0.2))).current
@@ -57,7 +63,7 @@ export function SoundWave({
   }, [audioLevel, isActive, animatedValues])
 
   return (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, style]} testID={testID}>
       {animatedValues.map((animatedValue, index) => (
         <Animated.View
           key={index}

@@ -130,12 +130,34 @@ export function useAudioRecording(audioQuality: AudioQuality = 'high') {
   // Helper function to start audio level monitoring
   const startAudioLevelMonitoring = useCallback(() => {
     audioLevelInterval.current = setInterval(() => {
-      // Generate random audio level for visualization (0-1)
-      // In a real implementation, this would read from the actual audio input
-      const level = Math.random() * 0.8 + 0.1 // Random between 0.1 and 0.9
-      setAudioLevel(level)
+      if (audioRecorder && Platform.OS !== 'web') {
+        try {
+          // Get the current recorder state which includes metering data
+          const recorderState = audioRecorder.getStatus()
+          if (recorderState && typeof recorderState.metering === 'number') {
+            // Convert metering value (typically in dB, negative values) to 0-1 range
+            // Metering values are usually between -160 dB (silence) and 0 dB (max)
+            // We'll map -50 dB to 0 and -10 dB to 1 for better sensitivity to normal speech levels
+            // This provides better visual feedback for typical recording scenarios
+            const dbValue = recorderState.metering
+            const minDb = -50 // Threshold for "silence"
+            const maxDb = -10 // Threshold for "loud" (but not clipping)
+            const normalizedLevel = Math.max(0, Math.min(1, (dbValue - minDb) / (maxDb - minDb)))
+            setAudioLevel(normalizedLevel)
+          } else {
+            // Fallback to 0 if no metering data available
+            setAudioLevel(0)
+          }
+        } catch (error) {
+          // If there's an error getting the status, set level to 0
+          setAudioLevel(0)
+        }
+      } else {
+        // Web implementation or no recorder - set to 0
+        setAudioLevel(0)
+      }
     }, 100) // Update every 100ms for smooth animation
-  }, [])
+  }, [audioRecorder])
 
   // Helper function to stop audio level monitoring
   const stopAudioLevelMonitoring = useCallback(() => {
@@ -225,8 +247,10 @@ export function useAudioRecording(audioQuality: AudioQuality = 'high') {
           }
         }
 
-        // Prepare and start recording
-        await audioRecorder.prepareToRecordAsync()
+        // Prepare and start recording with metering enabled
+        await audioRecorder.prepareToRecordAsync({
+          isMeteringEnabled: true, // Enable real-time audio level monitoring
+        })
         await audioRecorder.record()
         setStatus('recording')
         startDurationTracking()
