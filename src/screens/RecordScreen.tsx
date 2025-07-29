@@ -291,7 +291,7 @@ export default function RecordScreen() {
       // Fallback to root if no folder name is available
       router.push({
         pathname: '/(tabs)/browse',
-        params: { initialFolder: 'root' },
+        params: { initialFolder: 'root', intentional: 'true' },
       })
       return
     }
@@ -299,7 +299,7 @@ export default function RecordScreen() {
     // Navigate to browse screen with the selected folder
     router.push({
       pathname: '/(tabs)/browse',
-      params: { initialFolder: folderName },
+      params: { initialFolder: folderName, intentional: 'true' },
     })
   }
 

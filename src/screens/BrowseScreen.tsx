@@ -40,7 +40,7 @@ const formatTime = (seconds: number): string => {
  * Uses FileSystemManager for all file operations
  */
 export default function BrowseScreen() {
-  const { initialFolder } = useLocalSearchParams<{ initialFolder?: string }>()
+  const { initialFolder, intentional } = useLocalSearchParams<{ initialFolder?: string; intentional?: string }>()
   const router = useRouter()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -48,8 +48,10 @@ export default function BrowseScreen() {
   const [currentPath, setCurrentPath] = useState<string[]>([]) // Empty array means root
   const [selectedClip, setSelectedClip] = useState<ClipData | null>(null)
 
-  // Track whether we've processed the initial folder parameter
-  const hasProcessedInitialFolder = useRef(false)
+  // Track the last processed initialFolder to detect changes
+  const lastProcessedInitialFolder = useRef<string | undefined>(undefined)
+  // Track whether user has explicitly navigated within this session
+  const hasUserNavigated = useRef(false)
 
   // Use FileSystemManager hook
   const { folders, clips, loading, handlers, FileSystemManagerComponent } = useFileSystemManager(currentPath)
@@ -57,19 +59,30 @@ export default function BrowseScreen() {
   // Use Audio Player hook
   const audioPlayer = useAudioPlayerHook()
 
-  // Handle initial folder parameter - only on first mount, not on every focus
+  // Handle initial folder parameter - process when it changes, not on every focus
   useFocusEffect(
     useCallback(() => {
-      // Only process initialFolder if we haven't done so already
-      if (!hasProcessedInitialFolder.current && initialFolder && initialFolder !== 'root') {
-        // Set the current path to the initial folder
-        setCurrentPath([initialFolder])
-        hasProcessedInitialFolder.current = true
-      } else if (!hasProcessedInitialFolder.current) {
-        // Mark as processed even if no initialFolder was provided
-        hasProcessedInitialFolder.current = true
+      // Only process initialFolder if:
+      // 1. It has changed from the last processed value, AND
+      // 2. Either user hasn't explicitly navigated OR this is an intentional navigation (Go To button)
+      const isIntentionalNavigation = intentional === 'true'
+      if (
+        initialFolder !== lastProcessedInitialFolder.current &&
+        (!hasUserNavigated.current || isIntentionalNavigation)
+      ) {
+        if (initialFolder && initialFolder !== 'root') {
+          // Set the current path to the initial folder
+          setCurrentPath([initialFolder])
+        }
+        // Update the last processed value (including undefined/root cases)
+        lastProcessedInitialFolder.current = initialFolder
+
+        // If this was an intentional navigation, reset the user navigation flag
+        if (isIntentionalNavigation) {
+          hasUserNavigated.current = false
+        }
       }
-    }, [initialFolder])
+    }, [initialFolder, intentional])
   )
 
   const getCurrentFolderPath = (): string => {
@@ -86,6 +99,10 @@ export default function BrowseScreen() {
 
     // Navigate into the folder
     setCurrentPath([...currentPath, folder.name])
+
+    // Mark that user has explicitly navigated and reset tracking
+    hasUserNavigated.current = true
+    lastProcessedInitialFolder.current = undefined
   }
 
   const handleClipPress = async (clip: ClipData) => {
@@ -115,6 +132,10 @@ export default function BrowseScreen() {
 
     // Navigate to root
     setCurrentPath([])
+
+    // Mark that user has explicitly navigated and reset tracking
+    hasUserNavigated.current = true
+    lastProcessedInitialFolder.current = undefined
   }
 
   const handleBreadcrumbPress = (_path: string, index: number) => {
@@ -128,6 +149,10 @@ export default function BrowseScreen() {
     } else {
       setCurrentPath(currentPath.slice(0, index))
     }
+
+    // Mark that user has explicitly navigated and reset tracking
+    hasUserNavigated.current = true
+    lastProcessedInitialFolder.current = undefined
   }
 
   // Media player control handlers
