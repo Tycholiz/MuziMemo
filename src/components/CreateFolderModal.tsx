@@ -68,7 +68,7 @@ export function CreateFolderModal({ visible, onClose, onCreateFolder, currentPat
 
           <View style={styles.content}>
             <Text style={styles.pathLabel}>Creating in:</Text>
-            <Text style={styles.pathText}>{currentPath ? `Recordings/${currentPath}` : 'Recordings'}</Text>
+            <Text style={styles.pathText}>{currentPath ? `Home/${currentPath}` : 'Home'}</Text>
 
             <Text style={styles.inputLabel}>Folder Name</Text>
             <TextInput

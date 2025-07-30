@@ -30,7 +30,7 @@ export function Breadcrumbs({ variant = 'default', showHomeIcon = true }: Breadc
 
   // Build breadcrumb items from current path
   const breadcrumbItems = [
-    { name: 'Recordings', path: '', isLast: fileManager.currentPath.length === 0 },
+    { name: 'Home', path: '', isLast: fileManager.currentPath.length === 0 },
     ...fileManager.currentPath.map((segment, index) => ({
       name: segment,
       path: fileManager.currentPath.slice(0, index + 1).join('/'),

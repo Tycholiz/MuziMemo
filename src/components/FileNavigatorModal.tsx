@@ -58,14 +58,14 @@ export function FileNavigatorModal({
   const generateBreadcrumbs = (path: string) => {
     const recordingsDir = getRecordingsDirectory()
     if (path === recordingsDir) {
-      return [{ name: 'Recordings', path: recordingsDir, isLast: true }]
+      return [{ name: 'Home', path: recordingsDir, isLast: true }]
     }
 
     const relativePath = path.replace(recordingsDir + '/', '')
     const segments = relativePath.split('/').filter(Boolean)
 
     const breadcrumbs = [
-      { name: 'Recordings', path: recordingsDir, isLast: false },
+      { name: 'Home', path: recordingsDir, isLast: false },
       ...segments.map((segment, index) => ({
         name: segment,
         path: `${recordingsDir}/${segments.slice(0, index + 1).join('/')}`,

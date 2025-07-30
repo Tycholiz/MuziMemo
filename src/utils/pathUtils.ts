@@ -118,7 +118,7 @@ export function generateBreadcrumbs(path: string): BreadcrumbItem[] {
 
   // Add root
   breadcrumbs.push({
-    name: 'Recordings',
+    name: 'Home',
     path: getRecordingsDirectory(),
     isLast: false,
   })
