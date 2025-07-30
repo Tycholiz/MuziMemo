@@ -20,7 +20,7 @@ export default function BrowseScreen() {
   }
 
   return (
-    <Screen>
+    <Screen padding={false}>
       <View style={styles.container}>
         <FileSystemComponent onRecordPress={handleRecordPress} />
 

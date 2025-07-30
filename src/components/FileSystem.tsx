@@ -314,7 +314,11 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Folders Grid */}
         {folders.length > 0 && (
           <View style={styles.foldersGrid}>
@@ -450,6 +454,8 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: 16,
   },
   foldersGrid: {
