@@ -65,12 +65,57 @@ id: string
   - `npx tsc`
   - Linting
 
+## Testing
+
+### Mandatory Test Coverage
+
+- Include comprehensive unit tests for all modified, added, or refactored functions
+- Every public function, method, and exported utility should have corresponding test coverage where it makes sense to do so
+
+### File Naming Convention
+
+Tests must be co-located with source files using the pattern `[filename].test.[ext]`
+
+**Examples:**
+
+- `utils.ts` → `utils.test.ts`
+- `UserService.js` → `UserService.test.js`
+- `components/Button.tsx` → `components/Button.test.tsx`
+
+### Purposeful Test Design
+
+Each test must serve a clear purpose and validate specific functionality. Tests should:
+
+- Cover happy path scenarios and expected inputs
+- Test edge cases, boundary conditions, and error handling
+- Validate return values, side effects, and state changes
+- Include both positive and negative test cases
+- Test async functions with proper await/promise handling
+
+### Test Quality Standards
+
+- **Descriptive Names**: Use test names that explain what is being tested and expected outcome
+- **AAA Pattern**: Follow Arrange, Act, Assert structure for clarity
+- **Proper Mocking**: Mock external dependencies appropriately
+- **Behavior Focus**: Avoid testing implementation details; focus on behavior and contracts
+- **Isolation**: Ensure tests are deterministic and can run independently
+
+### Coverage Requirements
+
+Aim for meaningful coverage rather than percentage targets. Priority areas include:
+
+- Business logic and critical functions
+- Complex conditional logic and branching
+- Error handling and validation logic
+- Public APIs and interfaces
+
+### Test Maintenance
+
+- Update existing tests when function signatures, behavior, or contracts change
+- Remove obsolete tests that no longer serve a valid purpose or test deprecated functionality
+
 ## Agent Instructions
 
-- Add or update unit tests for modified functions. Tests should exist in a file
-  that is named after the source code. For instance, if a function we are
-  testing is in the file `utils.ts`, then the test file should be named
-  `utils.test.ts`
 - Place tests in a `__tests__` folder alongside code
 - Run `npm run test` and `npx tsc` after changes
 
