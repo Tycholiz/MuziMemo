@@ -15,45 +15,14 @@ import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
 
 /**
- * Helper function to calculate path similarity score
- * Returns a score from 0 to 1, where 1 is an exact match
- * Prioritizes matching segments from the end (most specific parts)
- */
-function getPathSimilarity(path1: string, path2: string): number {
-  if (path1 === path2) return 1
-
-  const segments1 = path1.split('/').filter(s => s.length > 0)
-  const segments2 = path2.split('/').filter(s => s.length > 0)
-
-  // Count matching segments from the end (most specific parts)
-  let matchingSegments = 0
-  const minLength = Math.min(segments1.length, segments2.length)
-
-  for (let i = 1; i <= minLength; i++) {
-    if (segments1[segments1.length - i] === segments2[segments2.length - i]) {
-      matchingSegments++
-    } else {
-      break
-    }
-  }
-
-  // Calculate base similarity score
-  const maxLength = Math.max(segments1.length, segments2.length)
-  const baseSimilarity = matchingSegments / maxLength
-
-  // Bonus for having more matching segments (prioritize deeper matches)
-  const depthBonus = matchingSegments / 10 // Small bonus for each matching segment
-
-  return Math.min(1, baseSimilarity + depthBonus)
-}
-
-/**
  * RecordScreen Component
  * Main screen for audio recording functionality
  */
 export default function RecordScreen() {
   const router = useRouter()
-  const { initialFolder } = useLocalSearchParams<{ initialFolder?: string }>()
+  const params = useLocalSearchParams<{ initialFolder?: string }>()
+  const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
+
   const fileManager = useFileManager()
 
   // State for audio quality
@@ -76,7 +45,7 @@ export default function RecordScreen() {
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
   // Simplified state - only store the folder path
-  const [selectedFolderPath, setSelectedFolderPath] = useState<string>('Song Ideas') // Store the full path for nested folders
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string>('') // Store the full path for nested folders
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
@@ -156,59 +125,11 @@ export default function RecordScreen() {
 
       // Set initial folder selection based on navigation parameter
       if (initialFolder && initialFolder !== 'root') {
-        // Store the full path for later use in "Go To" navigation
+        // Use the initialFolder path directly - this is what the user requested
         setSelectedFolderPath(initialFolder)
-
-        // Find folder by exact path match
-        const targetFolder = folderData.find(folder => folder.path === initialFolder)
-
-        if (targetFolder) {
-          // Simply set the path - no need for separate ID and name state
-          setSelectedFolderPath(targetFolder.path || targetFolder.name)
-        } else {
-          // Enhanced fallback logic: try to find the most specific path match
-          const targetFolderName = initialFolder.split('/').pop()
-
-          // First, try to find folders with matching name and prioritize by path specificity
-          const candidateFolders = folderData.filter(folder => folder.name === targetFolderName)
-
-          if (candidateFolders.length > 0) {
-            // If multiple candidates, prefer the one with the most similar path
-            let bestMatch = candidateFolders[0]
-
-            if (candidateFolders.length > 1) {
-              // Find the folder whose path most closely matches the initialFolder
-              bestMatch = candidateFolders.reduce((best, current) => {
-                const bestPathSimilarity = getPathSimilarity(best.path || '', initialFolder)
-                const currentPathSimilarity = getPathSimilarity(current.path || '', initialFolder)
-                return currentPathSimilarity > bestPathSimilarity ? current : best
-              })
-            }
-
-            // Use the actual path of the found folder, not the initialFolder
-            setSelectedFolderPath(bestMatch.path || bestMatch.name)
-          } else if (folderData.length > 0) {
-            // Final fallback to first folder if target not found
-            setSelectedFolderPath(folderData[0].path || folderData[0].name)
-          }
-        }
-      } else if (folderData.length > 0) {
-        // Try to maintain the same folder selection by path first
-        const currentFolderByPath = folderData.find(folder => folder.path === selectedFolderPath)
-        if (currentFolderByPath) {
-          // Path still exists, keep it
-          setSelectedFolderPath(currentFolderByPath.path || currentFolderByPath.name)
-        } else {
-          // Fallback: try to find by folder name (last segment of path)
-          const currentFolderName = selectedFolderPath.split('/').pop() || selectedFolderPath
-          const currentFolderByName = folderData.find(folder => folder.name === currentFolderName)
-          if (currentFolderByName) {
-            setSelectedFolderPath(currentFolderByName.path || currentFolderByName.name)
-          } else {
-            // If neither path nor name match, fallback to first folder
-            setSelectedFolderPath(folderData[0].path || folderData[0].name)
-          }
-        }
+      } else {
+        // Handle case when initialFolder is 'root', undefined, or empty
+        setSelectedFolderPath('') // Empty string represents Home directory
       }
     } catch (error) {
       console.error('Failed to load folders:', error)
