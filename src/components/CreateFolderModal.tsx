@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import {
+  Modal,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
@@ -57,7 +67,11 @@ export function CreateFolderModal({ visible, onClose, onCreateFolder, currentPat
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleCancel}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
         <View style={styles.modal}>
           <View style={styles.header}>
             <Text style={styles.title}>New Folder</Text>
@@ -100,7 +114,7 @@ export function CreateFolderModal({ visible, onClose, onCreateFolder, currentPat
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
