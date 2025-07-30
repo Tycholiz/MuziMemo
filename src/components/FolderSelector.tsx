@@ -39,6 +39,42 @@ export function FolderSelector({
 
   const selectedFolderData = folders.find(folder => folder.id === selectedFolder)
   const displayName = selectedFolderName || selectedFolderData?.name || 'Home'
+  const displayPath = selectedFolderData?.path || displayName
+
+  // Format selector display with house icon and "/" separators
+  const formatSelectorDisplay = (path: string) => {
+    if (!path || path === 'Home') {
+      return (
+        <View style={styles.selectorPathDisplay}>
+          <Ionicons name="home" size={20} color={theme.colors.text.secondary} testID="home-icon" />
+        </View>
+      )
+    }
+
+    const segments = path.split('/').filter(Boolean)
+    const pathElements = []
+
+    // Always start with house icon
+    pathElements.push(
+      <Ionicons key="home" name="home" size={20} color={theme.colors.text.secondary} testID="home-icon" />
+    )
+
+    // Add separator and segments
+    segments.forEach((segment, index) => {
+      pathElements.push(
+        <Text key={`sep-${index}`} style={styles.selectorPathSeparator}>
+          {'>'}
+        </Text>
+      )
+      pathElements.push(
+        <Text key={`segment-${index}`} style={styles.selectorPathSegment}>
+          {segment}
+        </Text>
+      )
+    })
+
+    return <View style={styles.selectorPathDisplay}>{pathElements}</View>
+  }
 
   const handleSelectFolder = (folderId: string) => {
     onSelectFolder(folderId)
@@ -54,13 +90,44 @@ export function FolderSelector({
     // Show full path for nested folders to help distinguish between folders with same names
     const displayPath = item.path && item.path !== item.name ? item.path : item.name
 
-    // TODO: replace Ionicons with custom Icon component
+    // Format path with house icon and "/" separators like Breadcrumbs
+    const formatPathDisplay = (path: string) => {
+      if (!path || path === 'Home') {
+        return (
+          <View style={styles.pathDisplay}>
+            <Ionicons name="home" size={16} color={theme.colors.primary} testID="home-icon" />
+          </View>
+        )
+      }
+
+      const segments = path.split('/').filter(Boolean)
+      const pathElements = []
+
+      // Always start with house icon
+      pathElements.push(<Ionicons key="home" name="home" size={16} color={theme.colors.primary} testID="home-icon" />)
+
+      // Add separator and segments
+      segments.forEach((segment, index) => {
+        pathElements.push(
+          <Text key={`sep-${index}`} style={styles.pathSeparator}>
+            /
+          </Text>
+        )
+        pathElements.push(
+          <Text key={`segment-${index}`} style={styles.pathSegment}>
+            {segment}
+          </Text>
+        )
+      })
+
+      return <View style={styles.pathDisplay}>{pathElements}</View>
+    }
+
     return (
       <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
         <View style={styles.folderContent}>
-          <Ionicons name="folder-outline" size={20} color={theme.colors.primary} style={styles.folderIcon} />
           <View style={styles.folderText}>
-            <Text style={styles.folderName}>{displayPath}</Text>
+            {formatPathDisplay(displayPath)}
             <Text style={styles.folderCount}>{item.itemCount} items</Text>
           </View>
         </View>
@@ -76,11 +143,11 @@ export function FolderSelector({
         style={[styles.selector, disabled && styles.disabled]}
         onPress={() => !disabled && setIsOpen(true)}
         activeOpacity={0.7}
+        testID="folder-selector"
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
       >
-        <View style={styles.selectorContent}>
-          <Ionicons name="folder-outline" size={20} color={theme.colors.text.secondary} style={styles.selectorIcon} />
-          <Text style={styles.selectorText}>{displayName}</Text>
-        </View>
+        <View style={styles.selectorContent}>{formatSelectorDisplay(displayPath)}</View>
         <Ionicons name="chevron-down" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
@@ -152,16 +219,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  selectorIcon: {
-    marginRight: theme.spacing.sm,
-  },
-
-  selectorText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.primary,
-    flex: 1,
-  },
-
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -212,10 +269,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  folderIcon: {
-    marginRight: theme.spacing.md,
-  },
-
   folderText: {
     flex: 1,
   },
@@ -235,5 +288,41 @@ const styles = StyleSheet.create({
   modalFooter: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
+  },
+
+  pathDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  pathSeparator: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginHorizontal: 4,
+  },
+
+  pathSegment: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+
+  selectorPathDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+
+  selectorPathSeparator: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginHorizontal: 4,
+  },
+
+  selectorPathSegment: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
   },
 })
