@@ -6,7 +6,7 @@ describe('BrowseScreen Navigation Persistence', () => {
   it('should track initial folder changes correctly', () => {
     // Test the logic for tracking initialFolder changes
     let lastProcessedInitialFolder: string | undefined = undefined
-    const initialFolder = 'lyrics'
+    const initialFolder: string | undefined = 'lyrics'
 
     // Simulate first focus effect call
     if (initialFolder !== lastProcessedInitialFolder) {
@@ -30,7 +30,7 @@ describe('BrowseScreen Navigation Persistence', () => {
 
   it('should not process "root" as initialFolder', () => {
     let lastProcessedInitialFolder: string | undefined = undefined
-    const initialFolder = 'root'
+    const initialFolder: string | undefined = 'root'
 
     // Simulate focus effect call with root folder
     if (initialFolder !== lastProcessedInitialFolder) {
@@ -45,7 +45,7 @@ describe('BrowseScreen Navigation Persistence', () => {
 
   it('should handle undefined initialFolder gracefully', () => {
     let lastProcessedInitialFolder: string | undefined = undefined
-    const initialFolder = undefined
+    const initialFolder: string | undefined = undefined
 
     // Simulate focus effect call with undefined folder
     if (initialFolder !== lastProcessedInitialFolder) {
@@ -99,8 +99,8 @@ describe('BrowseScreen Navigation Persistence', () => {
     let hasUserNavigated = false
 
     // First navigation to 'lyrics' (intentional from Go To button)
-    let initialFolder = 'lyrics'
-    let intentional = 'true'
+    let initialFolder: string | undefined = 'lyrics'
+    let intentional: string | undefined = 'true'
     const isIntentionalNavigation = intentional === 'true'
 
     if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -149,8 +149,8 @@ describe('BrowseScreen Navigation Persistence', () => {
     let hasUserNavigated = false
 
     // User navigates to song-ideas folder initially
-    let initialFolder = 'song-ideas'
-    let intentional = 'true'
+    let initialFolder: string | undefined = 'song-ideas'
+    let intentional: string | undefined = 'true'
     const isIntentionalNavigation = intentional === 'true'
 
     if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -231,8 +231,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       let currentPath: string[] = []
 
       // Simulate: User clicks "Go To" with "Song Ideas" folder
-      const initialFolder = 'Song Ideas'
-      const intentional = 'true'
+      const initialFolder: string | undefined = 'Song Ideas'
+      const intentional: string | undefined = 'true'
       const isIntentionalNavigation = intentional === 'true'
 
       if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -256,8 +256,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       let currentPath: string[] = []
 
       // Step 1: User clicks "Go To" with "Song Ideas" - should navigate to Song Ideas
-      let initialFolder = 'Song Ideas'
-      let intentional = 'true'
+      let initialFolder: string | undefined = 'Song Ideas'
+      let intentional: string | undefined = 'true'
       let isIntentionalNavigation = intentional === 'true'
 
       if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -323,8 +323,8 @@ describe('BrowseScreen Navigation Persistence', () => {
 
       // User switches to Record tab and back to Browse tab
       // The initialFolder parameter might be present from previous Record button navigation
-      const initialFolder = 'Old Folder'
-      const intentional = '' // Not intentional (tab switch)
+      const initialFolder: string | undefined = 'Old Folder'
+      const intentional: string | undefined = '' // Not intentional (tab switch)
       const isIntentionalNavigation = intentional === 'true'
 
       // Should NOT change currentPath because user has navigated and it's not intentional
@@ -347,8 +347,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       let currentPath: string[] = []
 
       // Navigate to single folder
-      const initialFolder = 'demos'
-      const intentional = 'true'
+      const initialFolder: string | undefined = 'demos'
+      const intentional: string | undefined = 'true'
       const isIntentionalNavigation = intentional === 'true'
 
       if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -373,8 +373,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       let currentPath: string[] = []
 
       // Navigate to nested folder
-      const initialFolder = 'demos/amazing'
-      const intentional = 'true'
+      const initialFolder: string | undefined = 'demos/amazing'
+      const intentional: string | undefined = 'true'
       const isIntentionalNavigation = intentional === 'true'
 
       if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -399,8 +399,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       let currentPath: string[] = []
 
       // Navigate to deeply nested folder
-      const initialFolder = 'demos/amazing/subfolder'
-      const intentional = 'true'
+      const initialFolder: string | undefined = 'demos/amazing/subfolder'
+      const intentional: string | undefined = 'true'
       const isIntentionalNavigation = intentional === 'true'
 
       if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -443,8 +443,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       // Step 3: User switches back to Browse tab
       // The initialFolder parameter should be "demos/amazing" from the Record button navigation
       // But since user has navigated and this is NOT intentional, it should preserve current state
-      const initialFolder = 'demos/amazing'
-      const intentional = '' // Tab switch, not intentional
+      const initialFolder: string | undefined = 'demos/amazing'
+      const intentional: string | undefined = '' // Tab switch, not intentional
       const isIntentionalNavigation = intentional === 'true'
 
       let shouldChangeDirectory = false
@@ -525,8 +525,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       expect(hasUserNavigated).toBe(true)
 
       // Step 2: User goes to Record screen and clicks "Go To" with same nested folder
-      const initialFolder = 'demos/amazing'
-      const intentional = 'true' // Go To button
+      const initialFolder: string | undefined = 'demos/amazing'
+      const intentional: string | undefined = 'true' // Go To button
       const isIntentionalNavigation = intentional === 'true'
 
       if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {
@@ -599,8 +599,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       const correctGoToNavigation = recordScreenInitialFolder // Should be "hello/Song Ideas"
 
       // Step 4: Browse screen receives "Go To" navigation with full path
-      const initialFolder = correctGoToNavigation
-      const intentional = 'true'
+      const initialFolder: string | undefined = correctGoToNavigation
+      const intentional: string | undefined = 'true'
       const isIntentionalNavigation = intentional === 'true'
       const initialFolderChanged = initialFolder !== lastSeenInitialFolder
       lastSeenInitialFolder = initialFolder
@@ -633,7 +633,7 @@ describe('BrowseScreen Navigation Persistence', () => {
       lastProcessedInitialFolder = undefined
 
       // Simulate the buggy navigation
-      const buggyInitialFolder = buggyGoToNavigation
+      const buggyInitialFolder: string | undefined = buggyGoToNavigation
       const buggyInitialFolderChanged = buggyInitialFolder !== lastSeenInitialFolder
       lastSeenInitialFolder = buggyInitialFolder
 

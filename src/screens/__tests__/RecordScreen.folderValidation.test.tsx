@@ -5,8 +5,7 @@
  * the RecordScreen correctly detects the invalid path and resets to root
  */
 
-import React from 'react'
-import { render } from '@testing-library/react-native'
+// Note: React and render imports removed as they are not used in this test file
 
 // Mock expo-router
 const mockRouterPush = jest.fn()
@@ -79,8 +78,7 @@ jest.mock('../../contexts/FileManagerContext', () => ({
   useFileManager: () => mockFileManager,
 }))
 
-// Import the utility functions to test them directly
-import { doesFolderPathExist, getRecordingsDirectory, joinPath } from '../../utils/pathUtils'
+// Note: Utility function imports removed as they are not used in this test file
 
 describe('RecordScreen Folder Path Validation', () => {
   beforeEach(() => {
@@ -185,7 +183,7 @@ describe('RecordScreen Folder Path Validation', () => {
     it('should not reset valid paths', () => {
       let selectedFolderPath = 'hello/Song Ideas/ValidFolder'
 
-      const simulateValidation = async (path: string): Promise<boolean> => {
+      const simulateValidation = async (_path: string): Promise<boolean> => {
         // Simulate that this folder still exists
         return true
       }
