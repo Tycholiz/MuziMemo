@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native'
+import { Icon } from '../components/Icon'
 
 import { FolderSelector } from './FolderSelector'
 import type { Folder } from './FolderSelector'
@@ -54,7 +55,7 @@ export function FolderSelectorWithGoTo({
         />
       </View>
       <TouchableOpacity style={styles.goToButton} onPress={onGoToFolder} activeOpacity={0.7}>
-        <Text style={styles.goToButtonIcon}>↪</Text>
+        <Icon name="arrow-forward-circle-outline" size="lg" color="secondary" />
         <Text style={styles.goToButtonText}>Go to</Text>
       </TouchableOpacity>
     </View>

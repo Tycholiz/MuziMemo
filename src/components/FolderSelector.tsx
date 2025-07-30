@@ -23,8 +23,8 @@ export type FolderSelectorProps = {
 }
 
 /**
- * Folder selector component that shows commonly used folders
- * and provides access to file navigator
+ * Save Destination Folder selector component that shows commonly used folders
+ * and provides access to file navigator to determine where the recording should be saved
  */
 export function FolderSelector({
   label,
@@ -54,6 +54,7 @@ export function FolderSelector({
     // Show full path for nested folders to help distinguish between folders with same names
     const displayPath = item.path && item.path !== item.name ? item.path : item.name
 
+    // TODO: replace Ionicons with custom Icon component
     return (
       <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
         <View style={styles.folderContent}>
