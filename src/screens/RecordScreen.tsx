@@ -21,6 +21,7 @@ import * as FileSystem from 'expo-file-system'
 export default function RecordScreen() {
   const router = useRouter()
   const params = useLocalSearchParams<{ initialFolder?: string }>()
+  console.log('params: ', params)
   const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
 
   const fileManager = useFileManager()
@@ -69,6 +70,17 @@ export default function RecordScreen() {
   // Load folders on component mount and when initialFolder changes
   useEffect(() => {
     loadFolders()
+  }, [initialFolder])
+
+  // Update selectedFolderPath when initialFolder changes
+  useEffect(() => {
+    if (initialFolder && initialFolder !== 'root') {
+      console.log('🔧 Setting selectedFolderPath to:', initialFolder)
+      setSelectedFolderPath(initialFolder)
+    } else {
+      console.log('🔧 Setting selectedFolderPath to empty (Home)')
+      setSelectedFolderPath('')
+    }
   }, [initialFolder])
 
   const loadFolders = async () => {
@@ -123,14 +135,7 @@ export default function RecordScreen() {
       await loadFoldersRecursively(getRecordingsDirectory())
       setFolders(folderData)
 
-      // Set initial folder selection based on navigation parameter
-      if (initialFolder && initialFolder !== 'root') {
-        // Use the initialFolder path directly - this is what the user requested
-        setSelectedFolderPath(initialFolder)
-      } else {
-        // Handle case when initialFolder is 'root', undefined, or empty
-        setSelectedFolderPath('') // Empty string represents Home directory
-      }
+      // Initial folder selection is now handled in useEffect above
     } catch (error) {
       console.error('Failed to load folders:', error)
       Alert.alert('Error', 'Failed to load folders')

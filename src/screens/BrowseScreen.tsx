@@ -1,6 +1,5 @@
 import React from 'react'
 import { StyleSheet, View } from 'react-native'
-import { router } from 'expo-router'
 
 import { Screen } from '../components/Layout'
 import { FileSystemComponent } from '../components/FileSystem'
@@ -15,14 +14,10 @@ import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
 export default function BrowseScreen() {
   const audioPlayer = useAudioPlayerContext()
 
-  const handleRecordPress = () => {
-    router.push('/record')
-  }
-
   return (
     <Screen padding={false}>
       <View style={styles.container}>
-        <FileSystemComponent onRecordPress={handleRecordPress} />
+        <FileSystemComponent />
 
         {/* Show media player if audio is playing */}
         {audioPlayer.currentClip && (

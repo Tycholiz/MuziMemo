@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { router } from 'expo-router'
+import { useRouter } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
 
 import { useFileManager } from '../contexts/FileManagerContext'
@@ -27,11 +27,8 @@ export type AudioFileData = {
   duration?: number
 }
 
-type FileSystemProps = {
-  onRecordPress?: () => void
-}
-
-export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
+export function FileSystemComponent() {
+  const router = useRouter()
   const fileManager = useFileManager()
   const audioPlayer = useAudioPlayerContext()
 
@@ -120,18 +117,14 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
     const folderName = currentPathString || 'root'
     console.log('folderName: ', folderName)
 
-    if (onRecordPress) {
-      onRecordPress()
-    } else {
-      // Default navigation to record screen
-      router.push({
-        pathname: '/record',
-        params: {
-          initialFolder: folderName,
-          intentional: 'true',
-        },
-      })
-    }
+    // Default navigation to record screen
+    router.push({
+      pathname: '/(tabs)/record',
+      params: {
+        initialFolder: folderName,
+        intentional: 'true',
+      },
+    })
   }
 
   const handleCreateFolder = async (folderName: string) => {
