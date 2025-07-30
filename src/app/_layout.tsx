@@ -1,7 +1,7 @@
 import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 
-import { ErrorBoundary } from '@components/ErrorBoundary'
+import { AppProviders } from '../contexts/AppProviders'
 
 /**
  * Root layout component for the entire app
@@ -9,9 +9,9 @@ import { ErrorBoundary } from '@components/ErrorBoundary'
  */
 export default function RootLayout() {
   return (
-    <ErrorBoundary>
+    <AppProviders>
       <StatusBar style="auto" />
       <Slot />
-    </ErrorBoundary>
+    </AppProviders>
   )
 }

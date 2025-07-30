@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import * as FileSystem from 'expo-file-system'
 
-import { theme } from '@utils/theme'
+import { theme } from '../utils/theme'
 import { Button } from './Button'
 import { Breadcrumbs } from './Breadcrumbs'
-import { fileSystemService } from '@services/FileSystemService'
-import { generateBreadcrumbs, getRecordingsDirectory } from '@utils/pathUtils'
+import { useFileManager } from '../contexts/FileManagerContext'
 
 export type FileNavigatorFolder = {
   id: string
@@ -44,10 +44,42 @@ export function FileNavigatorModal({
   disablePrimaryButton = false,
   excludePath,
 }: FileNavigatorModalProps) {
+  const fileManager = useFileManager()
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
   const [loading, setLoading] = useState(false)
+
+  // Use FileManager's getFullPath or fallback to provided currentPath
+  const getRecordingsDirectory = () => {
+    const documentsDirectory = FileSystem.documentDirectory
+    if (!documentsDirectory) return ''
+    return `${documentsDirectory}recordings`
+  }
+
   const [currentFolderPath, setCurrentFolderPath] = useState(currentPath || getRecordingsDirectory())
+
+  // Generate breadcrumbs from current path
+  const generateBreadcrumbs = (path: string) => {
+    const recordingsDir = getRecordingsDirectory()
+    if (path === recordingsDir) {
+      return [{ name: 'Recordings', path: recordingsDir, isLast: true }]
+    }
+
+    const relativePath = path.replace(recordingsDir + '/', '')
+    const segments = relativePath.split('/').filter(Boolean)
+
+    const breadcrumbs = [
+      { name: 'Recordings', path: recordingsDir, isLast: false },
+      ...segments.map((segment, index) => ({
+        name: segment,
+        path: `${recordingsDir}/${segments.slice(0, index + 1).join('/')}`,
+        isLast: index === segments.length - 1,
+      })),
+    ]
+
+    return breadcrumbs
+  }
+
   const [breadcrumbs, setBreadcrumbs] = useState(generateBreadcrumbs(currentFolderPath))
 
   // Load folder contents when component mounts or path changes
@@ -60,19 +92,33 @@ export function FileNavigatorModal({
   const loadFolderContents = async () => {
     setLoading(true)
     try {
-      await fileSystemService.initialize()
-      const contents = await fileSystemService.getFolderContents(currentFolderPath)
+      // Ensure the directory exists
+      const dirInfo = await FileSystem.getInfoAsync(currentFolderPath)
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(currentFolderPath, { intermediates: true })
+      }
 
-      // Filter to only show folders, but include the excluded folder for display purposes
-      const folderItems = contents
-        .filter(item => item.type === 'folder')
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          path: item.path,
-          isBeingMoved: excludePath === item.path,
-        }))
+      // Read directory contents
+      const items = await FileSystem.readDirectoryAsync(currentFolderPath)
 
+      const folderItems: FileNavigatorFolder[] = []
+
+      for (const item of items) {
+        const itemPath = `${currentFolderPath}/${item}`
+        const itemInfo = await FileSystem.getInfoAsync(itemPath)
+
+        if (itemInfo.isDirectory) {
+          folderItems.push({
+            id: `folder-${item}`,
+            name: item,
+            path: itemPath,
+            isBeingMoved: excludePath === itemPath,
+          })
+        }
+      }
+
+      // Sort folders alphabetically
+      folderItems.sort((a, b) => a.name.localeCompare(b.name))
       setFolders(folderItems)
       setBreadcrumbs(generateBreadcrumbs(currentFolderPath))
     } catch (error) {
@@ -109,10 +155,8 @@ export function FileNavigatorModal({
           onPress: async folderName => {
             if (folderName?.trim()) {
               try {
-                await fileSystemService.createFolder({
-                  name: folderName.trim(),
-                  parentPath: currentFolderPath,
-                })
+                const newFolderPath = `${currentFolderPath}/${folderName.trim()}`
+                await FileSystem.makeDirectoryAsync(newFolderPath)
                 // Folder created successfully - no dialog popup needed
                 loadFolderContents() // Refresh the list
               } catch (error: any) {
@@ -179,7 +223,28 @@ export function FileNavigatorModal({
           </View>
 
           <View style={styles.pathContainer}>
-            <Breadcrumbs breadcrumbs={breadcrumbs} onBreadcrumbPress={handleBreadcrumbPress} variant="compact" />
+            <View style={styles.breadcrumbContainer}>
+              {breadcrumbs.map((breadcrumb, index) => (
+                <View key={breadcrumb.path} style={styles.breadcrumbItem}>
+                  <TouchableOpacity
+                    onPress={() => handleBreadcrumbPress(breadcrumb.path, index)}
+                    style={styles.breadcrumbButton}
+                  >
+                    <Text style={[styles.breadcrumbText, breadcrumb.isLast && styles.breadcrumbTextLast]}>
+                      {breadcrumb.name}
+                    </Text>
+                  </TouchableOpacity>
+                  {!breadcrumb.isLast && (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={14}
+                      color={theme.colors.text.tertiary}
+                      style={styles.breadcrumbSeparator}
+                    />
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
 
           {loading ? (
@@ -343,5 +408,36 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.secondary,
+  },
+
+  breadcrumbContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  breadcrumbItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  breadcrumbButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+
+  breadcrumbText: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fontFamily.regular,
+  },
+
+  breadcrumbTextLast: {
+    color: theme.colors.text.primary,
+    fontFamily: theme.typography.fontFamily.medium,
+  },
+
+  breadcrumbSeparator: {
+    marginHorizontal: 4,
   },
 })

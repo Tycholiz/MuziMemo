@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react'
 import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 
-import { Screen, Container, Spacer } from '@components/Layout'
-import { RecordButton, Icon } from '@components/Icon'
-import { FolderSelector, Dropdown, FileNavigatorModal, Button, SoundWave } from '@components/index'
-import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/index'
-import { useAudioRecording, type AudioQuality } from '@hooks/useAudioRecording'
-import { theme } from '@utils/theme'
-import { formatDurationFromSeconds } from '@utils/formatUtils'
-import { fileSystemService } from '@services/FileSystemService'
-import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
+import { Screen, Container, Spacer } from '../components/Layout'
+import { RecordButton, Icon } from '../components/Icon'
+import { FolderSelector, Dropdown, FileNavigatorModal, Button, SoundWave } from '../components/index'
+import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/index'
+import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
+import { useFileManager } from '../contexts/FileManagerContext'
+import { theme } from '../utils/theme'
+import { formatDurationFromSeconds } from '../utils/formatUtils'
+import { joinPath, getRecordingsDirectory } from '../utils/pathUtils'
+import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
 
 /**
@@ -20,6 +21,7 @@ import * as FileSystem from 'expo-file-system'
 export default function RecordScreen() {
   const router = useRouter()
   const { initialFolder } = useLocalSearchParams<{ initialFolder?: string }>()
+  const fileManager = useFileManager()
 
   // State for audio quality
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('high')
@@ -302,7 +304,6 @@ export default function RecordScreen() {
 
   const handleGoToFolder = () => {
     // Use the stored folder path to preserve nested folder navigation
-    // This maintains the full path context from the original navigation
     const folderPath = selectedFolderPath
 
     console.log('🔍 RecordScreen handleGoToFolder:', {
@@ -314,20 +315,19 @@ export default function RecordScreen() {
 
     if (!folderPath) {
       console.warn('No folder path available for navigation')
-      // Fallback to root if no folder path is available
-      router.push({
-        pathname: '/(tabs)/browse',
-        params: { initialFolder: 'root', intentional: 'true' },
-      })
+      // Navigate to root using FileManagerContext
+      fileManager.navigateToRoot()
+      router.push('/(tabs)/browse')
       return
     }
 
-    // Navigate to browse screen with the selected folder path
+    // Parse the folder path and navigate using FileManagerContext
+    const pathSegments = folderPath.split('/').filter(segment => segment.length > 0)
+    fileManager.navigateToPath(pathSegments)
+
+    // Navigate to browse screen
     console.log('🔍 RecordScreen navigating to Browse with folderPath:', folderPath)
-    router.push({
-      pathname: '/(tabs)/browse',
-      params: { initialFolder: folderPath, intentional: 'true' },
-    })
+    router.push('/(tabs)/browse')
   }
 
   return (
