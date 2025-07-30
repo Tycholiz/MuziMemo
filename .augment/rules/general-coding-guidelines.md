@@ -2,8 +2,6 @@
 type: 'always_apply'
 ---
 
-# General Coding Guidelines
-
 ## Code Quality Standards
 
 - Self-documenting code with clear variable names
@@ -69,7 +67,10 @@ id: string
 
 ## Agent Instructions
 
-- Add or update unit tests for modified functions
+- Add or update unit tests for modified functions. Tests should exist in a file
+  that is named after the source code. For instance, if a function we are
+  testing is in the file `utils.ts`, then the test file should be named
+  `utils.test.ts`
 - Place tests in a `__tests__` folder alongside code
 - Run `npm run test` and `npx tsc` after changes
 
