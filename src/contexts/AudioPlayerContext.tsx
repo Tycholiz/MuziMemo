@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
-import { useAudioPlayer } from 'expo-audio'
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
 export type AudioClip = {
   id: string
@@ -37,21 +37,54 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const [currentClip, setCurrentClip] = useState<AudioClip | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Configure audio session for playback
+  useEffect(() => {
+    const configureAudio = async () => {
+      try {
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+        })
+        console.log('🎵 Audio session configured successfully')
+      } catch (error) {
+        console.error('❌ Failed to configure audio session:', error)
+      }
+    }
+
+    configureAudio()
+  }, [])
+
   const playClip = useCallback(
     async (clip: AudioClip) => {
       try {
+        console.log('🎵 AudioPlayerContext: Starting playClip for:', clip.name)
+        console.log('🎵 AudioPlayerContext: Audio URI:', clip.uri)
+        console.log('🎵 AudioPlayerContext: Current audioPlayer state:', {
+          playing: audioPlayer.playing,
+          currentTime: audioPlayer.currentTime,
+          duration: audioPlayer.duration,
+        })
+
         setIsLoading(true)
         setCurrentClip(clip)
 
         // Replace the source with the new clip
+        console.log('🎵 AudioPlayerContext: Calling audioPlayer.replace...')
         audioPlayer.replace(clip.uri)
 
         // Wait a moment for the audio to load
-        await new Promise(resolve => setTimeout(resolve, 100))
+        console.log('🎵 AudioPlayerContext: Waiting for audio to load...')
+        await new Promise(resolve => setTimeout(resolve, 500))
 
+        console.log('🎵 AudioPlayerContext: Calling audioPlayer.play...')
         audioPlayer.play()
+
+        console.log('🎵 AudioPlayerContext: After play() call:', {
+          playing: audioPlayer.playing,
+          currentTime: audioPlayer.currentTime,
+          duration: audioPlayer.duration,
+        })
       } catch (error) {
-        console.error('Failed to play audio clip:', error)
+        console.error('❌ Failed to play audio clip:', error)
         // Reset state on error
         setCurrentClip(null)
         setIsLoading(false)

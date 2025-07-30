@@ -26,9 +26,13 @@ export type AudioClipCardProps = {
 
 export function AudioClipCard({ clip, isPlaying, onPlay, onPause, onRename, onMove, onDelete }: AudioClipCardProps) {
   const handlePress = () => {
+    console.log('🎵 AudioClipCard: handlePress called for:', clip.name)
+    console.log('🎵 AudioClipCard: isPlaying:', isPlaying)
     if (isPlaying) {
+      console.log('🎵 AudioClipCard: Calling onPause')
       onPause()
     } else {
+      console.log('🎵 AudioClipCard: Calling onPlay')
       onPlay()
     }
   }
