@@ -6,7 +6,6 @@
  */
 
 import React from 'react'
-import { getRecordingsDirectory } from '../../utils/pathUtils'
 
 // Mock expo-router
 const mockRouterPush = jest.fn()
@@ -186,7 +185,7 @@ describe('RecordScreen Folder Navigation Bug', () => {
       if (!selectedFolderPath || selectedFolderPath === '') {
         mockNavigateToRoot()
       } else {
-        const pathSegments = selectedFolderPath.split('/').filter(segment => segment.length > 0)
+        const pathSegments = selectedFolderPath.split('/').filter((segment: string) => segment.length > 0)
         console.log('📁 Navigating to nested folder:', pathSegments)
         mockNavigateToPath(pathSegments)
       }
@@ -197,46 +196,6 @@ describe('RecordScreen Folder Navigation Bug', () => {
   })
 
   describe('Integration Test - RecordScreen Component', () => {
-    // Create a test component that simulates the FileNavigatorModal selection
-    const TestRecordScreen = () => {
-      const [recordScreenRef, setRecordScreenRef] = React.useState<any>(null)
-
-      // Simulate selecting root directory from FileNavigatorModal
-      const simulateRootDirectorySelection = () => {
-        if (recordScreenRef?.handleFileNavigatorSelect) {
-          const rootFolder: FileNavigatorFolder = {
-            id: 'folder-Recordings',
-            name: 'Recordings',
-            path: mockRecordingsDir,
-            isBeingMoved: false,
-          }
-          recordScreenRef.handleFileNavigatorSelect(rootFolder)
-        }
-      }
-
-      // Simulate pressing "Go to" button
-      const simulateGoToPress = () => {
-        if (recordScreenRef?.handleGoToFolder) {
-          recordScreenRef.handleGoToFolder()
-        }
-      }
-
-      return (
-        <AudioPlayerProvider>
-          <FileManagerProvider>
-            <RecordScreen ref={setRecordScreenRef} />
-            {/* Test controls */}
-            <button onClick={simulateRootDirectorySelection} data-testid="simulate-root-selection">
-              Simulate Root Selection
-            </button>
-            <button onClick={simulateGoToPress} data-testid="simulate-go-to">
-              Simulate Go To
-            </button>
-          </FileManagerProvider>
-        </AudioPlayerProvider>
-      )
-    }
-
     it('should handle the complete bug scenario correctly', () => {
       // This test verifies that the fix works end-to-end
       // Since we can't easily render React Native components in Jest without additional setup,

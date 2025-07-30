@@ -210,14 +210,24 @@ export default function RecordScreen() {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
       const fileName = `Recording_${timestamp}.m4a`
 
-      // Get the target folder path
-      const selectedFolderData = folders.find(f => f.id === selectedFolder)
-      const folderName = selectedFolderData?.name || 'song-ideas'
-      const targetFolderPath = joinPath(getRecordingsDirectory(), folderName)
+      // Get the target folder path using selectedFolderPath for nested folders
+      let targetFolderPath: string
+      if (!selectedFolderPath || selectedFolderPath === '') {
+        // Root directory case
+        targetFolderPath = getRecordingsDirectory()
+      } else {
+        // Nested folder case - use the full selectedFolderPath to handle duplicate folder names correctly
+        targetFolderPath = joinPath(getRecordingsDirectory(), selectedFolderPath)
+      }
+
       const targetFilePath = joinPath(targetFolderPath, fileName)
 
-      console.log('Target folder path:', targetFolderPath)
-      console.log('Target file path:', targetFilePath)
+      console.log('🎵 saveRecordingToFolder:', {
+        selectedFolderPath,
+        selectedFolderName,
+        targetFolderPath,
+        targetFilePath,
+      })
 
       // Ensure the target folder exists
       const folderInfo = await FileSystem.getInfoAsync(targetFolderPath)
