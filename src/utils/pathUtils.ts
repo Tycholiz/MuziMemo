@@ -198,6 +198,27 @@ export function isValidRecordingPath(path: string): boolean {
 }
 
 /**
+ * Check if a folder path exists in the recordings directory
+ */
+export async function doesFolderPathExist(relativePath: string): Promise<boolean> {
+  try {
+    if (!relativePath || relativePath === '') {
+      // Empty path represents root directory, which always exists
+      return true
+    }
+
+    const recordingsDir = getRecordingsDirectory()
+    const fullPath = joinPath(recordingsDir, relativePath)
+
+    const pathInfo = await FileSystem.getInfoAsync(fullPath)
+    return pathInfo.exists && pathInfo.isDirectory
+  } catch (error) {
+    console.error('Error checking folder path existence:', error)
+    return false
+  }
+}
+
+/**
  * Generate unique file name if file already exists
  */
 export function generateUniqueFileName(baseName: string, extension: string, existingNames: string[]): string {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity } from 'react-native'
-import { useRouter, useLocalSearchParams } from 'expo-router'
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 
 import { Screen, Container, Spacer } from '../components/Layout'
 import { RecordButton, Icon } from '../components/Icon'
@@ -10,7 +10,7 @@ import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording
 import { useFileManager } from '../contexts/FileManagerContext'
 import { theme } from '../utils/theme'
 import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
-import { joinPath, getRecordingsDirectory } from '../utils/pathUtils'
+import { joinPath, getRecordingsDirectory, doesFolderPathExist } from '../utils/pathUtils'
 import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
 
@@ -81,6 +81,30 @@ export default function RecordScreen() {
       setSelectedFolderPath('')
     }
   }, [initialFolder])
+
+  // Validate selectedFolderPath when screen comes into focus
+  // This handles the case where a folder was renamed in BrowseScreen
+  useFocusEffect(
+    React.useCallback(() => {
+      const validateSelectedFolderPath = async () => {
+        // Only validate if we have a non-empty selectedFolderPath
+        if (selectedFolderPath && selectedFolderPath !== '') {
+          console.log('🔍 Validating selectedFolderPath:', selectedFolderPath)
+
+          const pathExists = await doesFolderPathExist(selectedFolderPath)
+
+          if (!pathExists) {
+            console.log('⚠️ Selected folder path no longer exists, resetting to root:', selectedFolderPath)
+            setSelectedFolderPath('')
+          } else {
+            console.log('✅ Selected folder path is valid:', selectedFolderPath)
+          }
+        }
+      }
+
+      validateSelectedFolderPath()
+    }, [selectedFolderPath])
+  )
 
   const loadFolders = async () => {
     setLoading(true)
