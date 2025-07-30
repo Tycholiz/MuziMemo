@@ -291,13 +291,45 @@ export default function RecordScreen() {
   const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
     // For nested folders, we need to handle the path properly
     const recordingsDir = getRecordingsDirectory()
-    const relativePath = folder.path.replace(recordingsDir, '').replace(/^\/+|\/+$/g, '') // Remove leading/trailing slashes
+
+    // Normalize both paths by removing trailing slashes for comparison
+    const normalizedRecordingsDir = recordingsDir.replace(/\/+$/, '')
+    const normalizedFolderPath = folder.path.replace(/\/+$/, '')
+
+    console.log('🔍 handleFileNavigatorSelect:', {
+      folderName: folder.name,
+      folderPath: folder.path,
+      recordingsDir,
+      normalizedRecordingsDir,
+      normalizedFolderPath,
+    })
+
+    // Check if we're at the root directory
+    const isRootDirectory = normalizedFolderPath === normalizedRecordingsDir
+
+    let relativePath = ''
+    if (!isRootDirectory) {
+      // For nested folders, calculate relative path
+      relativePath = folder.path.replace(recordingsDir, '').replace(/^\/+|\/+$/g, '')
+    }
+
+    console.log('🔍 Path calculation:', {
+      isRootDirectory,
+      relativePath,
+    })
 
     // Update the selected folder state - use a consistent ID format
     const consistentId = `folder-${folder.name}`
     setSelectedFolder(consistentId)
     setSelectedFolderName(folder.name)
-    setSelectedFolderPath(relativePath || folder.name) // Use relative path for nested folders
+
+    // Handle root directory case - when at root, use empty string
+    if (isRootDirectory) {
+      setSelectedFolderPath('') // Empty string represents root for FileManagerContext
+    } else {
+      setSelectedFolderPath(relativePath) // Use relative path for nested folders
+    }
+
     setShowFileNavigator(false)
 
     // Don't call loadFolders() here - it resets selectedFolderName for nested folders
@@ -319,8 +351,9 @@ export default function RecordScreen() {
       folderPath,
     })
 
-    if (!folderPath) {
-      console.warn('No folder path available for navigation')
+    // Handle root directory case - empty string means root
+    if (!folderPath || folderPath === '') {
+      console.log('🔍 RecordScreen navigating to root directory')
       // Navigate to root using FileManagerContext
       fileManager.navigateToRoot()
       router.push('/(tabs)/browse')
