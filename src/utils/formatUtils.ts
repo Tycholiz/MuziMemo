@@ -56,3 +56,34 @@ export function generateRecordingFilename(prefix = 'recording'): string {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
   return `${prefix}_${timestamp}.m4a`
 }
+
+/**
+ * Generate a default recording name with gap-filling logic
+ * Scans existing files to find the lowest available number in the "Recording X" sequence
+ *
+ * @param existingFileNames Array of existing file names in the target directory
+ * @returns A filename like "Recording 1.m4a", "Recording 2.m4a", etc.
+ */
+export function generateIntelligentRecordingName(existingFileNames: string[]): string {
+  // Extract numbers from existing "Recording X" files
+  const recordingNumbers = new Set<number>()
+
+  existingFileNames.forEach(fileName => {
+    // Match pattern: "Recording X" where X is a number (with or without .m4a extension)
+    const match = fileName.match(/^Recording (\d+)(?:\.m4a)?$/i)
+    if (match) {
+      const number = parseInt(match[1], 10)
+      if (!isNaN(number) && number > 0) {
+        recordingNumbers.add(number)
+      }
+    }
+  })
+
+  // Find the lowest available number starting from 1
+  let nextNumber = 1
+  while (recordingNumbers.has(nextNumber)) {
+    nextNumber++
+  }
+
+  return `Recording ${nextNumber}.m4a`
+}

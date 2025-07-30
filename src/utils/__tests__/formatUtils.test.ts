@@ -8,6 +8,7 @@ import {
   formatFileSize,
   formatDate,
   generateRecordingFilename,
+  generateIntelligentRecordingName,
 } from '../formatUtils'
 
 describe('formatUtils', () => {
@@ -94,6 +95,88 @@ describe('formatUtils', () => {
 
       // Should end with .m4a
       expect(filename).toMatch(/\.m4a$/)
+    })
+  })
+
+  describe('generateIntelligentRecordingName', () => {
+    it('should generate "Recording 1.m4a" for empty directory', () => {
+      const result = generateIntelligentRecordingName([])
+      expect(result).toBe('Recording 1.m4a')
+    })
+
+    it('should generate "Recording 1.m4a" when no recording files exist', () => {
+      const existingFiles = ['some-other-file.txt', 'music.mp3', 'document.pdf']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 1.m4a')
+    })
+
+    it('should generate "Recording 2.m4a" when "Recording 1.m4a" exists', () => {
+      const existingFiles = ['Recording 1.m4a', 'other-file.txt']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 2.m4a')
+    })
+
+    it('should fill gaps in sequence - missing Recording 2', () => {
+      const existingFiles = ['Recording 1.m4a', 'Recording 3.m4a', 'Recording 4.m4a']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 2.m4a')
+    })
+
+    it('should fill gaps in sequence - missing Recording 1', () => {
+      const existingFiles = ['Recording 2.m4a', 'Recording 3.m4a']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 1.m4a')
+    })
+
+    it('should continue sequence when no gaps exist', () => {
+      const existingFiles = ['Recording 1.m4a', 'Recording 2.m4a', 'Recording 3.m4a']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 4.m4a')
+    })
+
+    it('should handle files without .m4a extension', () => {
+      const existingFiles = ['Recording 1', 'Recording 3.m4a']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 2.m4a')
+    })
+
+    it('should be case insensitive', () => {
+      const existingFiles = ['recording 1.m4a', 'RECORDING 3.M4A']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 2.m4a')
+    })
+
+    it('should ignore invalid recording names', () => {
+      const existingFiles = [
+        'Recording.m4a', // No number
+        'Recording 0.m4a', // Zero (invalid)
+        'Recording -1.m4a', // Negative (invalid)
+        'Recording abc.m4a', // Non-numeric
+        'Recording 1.m4a', // Valid
+        'Recording 3.m4a', // Valid
+        'My Recording 2.m4a', // Different pattern
+      ]
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 2.m4a')
+    })
+
+    it('should handle large numbers correctly', () => {
+      const existingFiles = ['Recording 1.m4a', 'Recording 100.m4a', 'Recording 1000.m4a']
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 2.m4a')
+    })
+
+    it('should handle mixed file types in directory', () => {
+      const existingFiles = [
+        'Recording 1.m4a',
+        'folder1',
+        'Recording 3.m4a',
+        'image.jpg',
+        'Recording 5.m4a',
+        'document.pdf',
+      ]
+      const result = generateIntelligentRecordingName(existingFiles)
+      expect(result).toBe('Recording 2.m4a')
     })
   })
 })

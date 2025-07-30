@@ -9,6 +9,7 @@ MuziMemo utilizes the device's native file system through Expo's FileSystem API 
 ## Storage Location
 
 ### Document Directory
+
 All recordings are stored in the device's **document directory**, which provides:
 
 - **Persistence**: Files survive app updates and device restarts
@@ -17,6 +18,7 @@ All recordings are stored in the device's **document directory**, which provides
 - **Proper Permissions**: Read/write access without additional permissions
 
 ### Path Structure
+
 ```
 [Document Directory]/
 └── Recordings/                    # Root recordings folder
@@ -32,31 +34,33 @@ All recordings are stored in the device's **document directory**, which provides
 ## File System Service
 
 ### Core Functionality
+
 The `FileSystemService` class provides a unified interface for all file operations:
 
 ```typescript
 class FileSystemService {
   // Initialize the service and create root directories
   async initialize(): Promise<void>
-  
+
   // Get contents of a folder
   async getFolderContents(folderPath: string): Promise<FileSystemItem[]>
-  
+
   // Create a new folder
   async createFolder(parentPath: string, folderName: string): Promise<void>
-  
+
   // Delete a folder and its contents
   async deleteFolder(folderPath: string): Promise<void>
-  
+
   // Move files between folders
   async moveFile(sourcePath: string, destinationPath: string): Promise<void>
-  
+
   // Rename files or folders
   async renameItem(itemPath: string, newName: string): Promise<void>
 }
 ```
 
 ### Error Handling
+
 The service includes comprehensive error handling for:
 
 - **Permission Errors**: When the app lacks file system access
@@ -67,6 +71,7 @@ The service includes comprehensive error handling for:
 ## Folder Management
 
 ### Folder Creation
+
 Users can create custom folders through the UI:
 
 1. **Validation**: Check folder name for invalid characters
@@ -75,6 +80,7 @@ Users can create custom folders through the UI:
 4. **UI Update**: Refresh folder listings
 
 ### Folder Operations
+
 Supported operations include:
 
 - **Create**: Add new folders for organization
@@ -83,6 +89,7 @@ Supported operations include:
 - **Move**: Relocate folders within the hierarchy
 
 ### Default Folders
+
 The app creates a default "song-ideas" folder on first launch to provide immediate usability.
 
 ## File Operations
@@ -90,14 +97,27 @@ The app creates a default "song-ideas" folder on first launch to provide immedia
 ### Recording Storage Process
 
 1. **Temporary Storage**: expo-audio creates temporary recording file
-2. **Filename Generation**: Create timestamped filename
-3. **Destination Selection**: Use folder selected in "Saving to:" dropdown
-4. **Directory Verification**: Ensure target folder exists
-5. **File Transfer**: Copy from temporary to permanent location
-6. **Cleanup**: Remove temporary file
-7. **Metadata Update**: Refresh file listings
+2. **Directory Scanning**: Read existing files in target directory
+3. **Filename Generation**: Generate intelligent name with gap-filling logic
+4. **Destination Selection**: Use folder selected in "Saving to:" dropdown
+5. **Directory Verification**: Ensure target folder exists
+6. **File Transfer**: Copy from temporary to permanent location
+7. **Cleanup**: Remove temporary file
+8. **Metadata Update**: Refresh file listings
 
 ### File Naming Convention
+
+#### Current: Intelligent Gap-Filling Naming
+
+```typescript
+// Intelligent naming with gap-filling logic
+const existingFiles = await FileSystem.readDirectoryAsync(targetPath)
+const fileName = generateIntelligentRecordingName(existingFiles)
+// Results in: "Recording 1.m4a", "Recording 2.m4a", etc.
+```
+
+#### Legacy: Timestamp-Based Naming
+
 ```typescript
 // Format: Recording_YYYY-MM-DDTHH-mm-ss-sssZ.m4a
 const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
@@ -105,24 +125,26 @@ const fileName = `Recording_${timestamp}.m4a`
 ```
 
 ### File Metadata
+
 Each file includes metadata:
 
 ```typescript
 type FileSystemItem = {
-  id: string           // Unique identifier
-  name: string         // Display name
-  path: string         // Full file path
+  id: string // Unique identifier
+  name: string // Display name
+  path: string // Full file path
   type: 'file' | 'folder'
-  size?: number        // File size in bytes
-  createdAt: Date      // Creation timestamp
-  modifiedAt: Date     // Last modification timestamp
-  parentPath?: string  // Parent directory path
+  size?: number // File size in bytes
+  createdAt: Date // Creation timestamp
+  modifiedAt: Date // Last modification timestamp
+  parentPath?: string // Parent directory path
 }
 ```
 
 ## Path Utilities
 
 ### Path Management
+
 The `pathUtils` module provides cross-platform path handling:
 
 ```typescript
@@ -143,6 +165,7 @@ export function getFileExtension(filePath: string): string
 ```
 
 ### Platform Considerations
+
 - **iOS**: Uses document directory with proper sandboxing
 - **Android**: Utilizes internal storage with appropriate permissions
 - **Web**: Falls back to browser storage APIs (limited functionality)
@@ -158,12 +181,15 @@ export function getFileExtension(filePath: string): string
 5. **Recording Storage**: Save new recordings to selected location
 
 ### Dynamic Updates
+
 The dropdown automatically updates when:
+
 - New folders are created
 - Folders are renamed or deleted
 - App returns from background (refresh)
 
 ### Default Behavior
+
 - **First Launch**: Defaults to "song-ideas" folder
 - **Subsequent Launches**: Remembers last selected folder
 - **Folder Deletion**: Falls back to first available folder
@@ -171,16 +197,19 @@ The dropdown automatically updates when:
 ## Performance Optimization
 
 ### Efficient File Listing
+
 - **Lazy Loading**: Load folder contents only when needed
 - **Caching**: Cache folder structures to reduce file system calls
 - **Pagination**: Handle large directories efficiently
 
 ### Memory Management
+
 - **Stream Processing**: Use streams for large file operations
 - **Cleanup**: Properly dispose of file handles and temporary files
 - **Background Processing**: Perform heavy operations off main thread
 
 ### Storage Monitoring
+
 - **Space Checking**: Monitor available storage before recording
 - **Cleanup Suggestions**: Notify users when storage is low
 - **Compression**: Use efficient audio codecs to minimize file size
@@ -188,11 +217,13 @@ The dropdown automatically updates when:
 ## Security and Privacy
 
 ### Data Protection
+
 - **Local Storage**: All data remains on device
 - **No Cloud Sync**: Files are not automatically uploaded
 - **Sandboxing**: App can only access its own directory
 
 ### Permission Management
+
 - **Minimal Permissions**: Only request necessary file system access
 - **User Control**: Users can manage files through standard OS interfaces
 - **Privacy Compliance**: No data collection or external transmission
@@ -200,12 +231,15 @@ The dropdown automatically updates when:
 ## Backup and Recovery
 
 ### User Backup Options
+
 Users can backup recordings through:
+
 - **iTunes/Finder**: iOS file sharing
 - **Android File Transfer**: Direct file access
 - **Cloud Services**: Manual upload to user's preferred service
 
 ### Data Recovery
+
 - **Persistent Storage**: Files survive app updates
 - **Standard Formats**: Use widely-supported audio formats
 - **Metadata Preservation**: Maintain file timestamps and organization
@@ -220,6 +254,7 @@ Users can backup recordings through:
 4. **File Access Denied**: Restart app to refresh permissions
 
 ### Debug Tools
+
 ```typescript
 // Log file system state
 console.log('Recordings directory:', getRecordingsDirectory())
@@ -228,6 +263,7 @@ console.log('Folder contents:', await fileSystemService.getFolderContents(path))
 ```
 
 ### Recovery Procedures
+
 - **Corrupted Metadata**: Rebuild from file system scan
 - **Missing Folders**: Recreate default folder structure
 - **Permission Issues**: Guide user through permission reset

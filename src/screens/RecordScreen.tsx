@@ -9,7 +9,7 @@ import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/
 import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
 import { useFileManager } from '../contexts/FileManagerContext'
 import { theme } from '../utils/theme'
-import { formatDurationFromSeconds } from '../utils/formatUtils'
+import { formatDurationFromSeconds, generateIntelligentRecordingName } from '../utils/formatUtils'
 import { joinPath, getRecordingsDirectory } from '../utils/pathUtils'
 import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
@@ -206,10 +206,6 @@ export default function RecordScreen() {
         throw new Error(`Source recording file does not exist: ${recordingUri}`)
       }
 
-      // Generate a unique filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const fileName = `Recording_${timestamp}.m4a`
-
       // Get the target folder path using selectedFolderPath for nested folders
       let targetFolderPath: string
       if (!selectedFolderPath || selectedFolderPath === '') {
@@ -220,6 +216,23 @@ export default function RecordScreen() {
         targetFolderPath = joinPath(getRecordingsDirectory(), selectedFolderPath)
       }
 
+      // Ensure the target folder exists before scanning for existing files
+      const folderInfo = await FileSystem.getInfoAsync(targetFolderPath)
+      if (!folderInfo.exists) {
+        await FileSystem.makeDirectoryAsync(targetFolderPath, { intermediates: true })
+      }
+
+      // Scan existing files in the target directory to generate intelligent name
+      let existingFileNames: string[] = []
+      try {
+        existingFileNames = await FileSystem.readDirectoryAsync(targetFolderPath)
+      } catch (readError) {
+        console.warn('Could not read directory for intelligent naming, using fallback:', readError)
+        existingFileNames = []
+      }
+
+      // Generate intelligent filename with gap-filling logic
+      const fileName = generateIntelligentRecordingName(existingFileNames)
       const targetFilePath = joinPath(targetFolderPath, fileName)
 
       console.log('🎵 saveRecordingToFolder:', {
@@ -227,13 +240,8 @@ export default function RecordScreen() {
         selectedFolderName,
         targetFolderPath,
         targetFilePath,
+        fileName,
       })
-
-      // Ensure the target folder exists
-      const folderInfo = await FileSystem.getInfoAsync(targetFolderPath)
-      if (!folderInfo.exists) {
-        await FileSystem.makeDirectoryAsync(targetFolderPath, { intermediates: true })
-      }
 
       // Try to copy the recording file to the selected folder
       try {

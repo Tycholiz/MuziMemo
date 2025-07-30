@@ -94,23 +94,38 @@ Files are organized using the folder structure selected in the "Saving to:" drop
 Document Directory/
 ├── Recordings/
 │   ├── song-ideas/
-│   │   ├── Recording_2024-01-15T10-30-00-123Z.m4a
-│   │   └── Recording_2024-01-15T11-45-30-456Z.m4a
+│   │   ├── Recording 1.m4a
+│   │   ├── Recording 2.m4a
+│   │   └── Recording 3.m4a
 │   ├── voice-memos/
-│   │   └── Recording_2024-01-15T12-00-15-789Z.m4a
+│   │   ├── Recording 1.m4a
+│   │   └── Recording 2.m4a
 │   └── practice-sessions/
-│       └── Recording_2024-01-15T14-20-45-012Z.m4a
+│       └── Recording 1.m4a
 ```
 
 ### File Naming Convention
 
-Recordings are automatically named with timestamps:
+Recordings are automatically named using intelligent default naming with gap-filling logic:
 
-```
-Recording_YYYY-MM-DDTHH-mm-ss-sssZ.m4a
-```
+#### Intelligent Naming System
 
-Example: `Recording_2024-01-15T10-30-00-123Z.m4a`
+The system uses a "Recording X" format where X is a number, with smart gap-filling:
+
+- **Default Pattern**: `Recording 1.m4a`, `Recording 2.m4a`, etc.
+- **Gap Filling**: Finds the lowest available number in the sequence
+- **Examples**:
+  - Empty folder → `Recording 1.m4a`
+  - Contains "Recording 1" and "Recording 3" → `Recording 2.m4a` (fills gap)
+  - Contains "Recording 1", "Recording 2", "Recording 3" → `Recording 4.m4a` (next in sequence)
+
+#### Implementation Details
+
+- Scans existing files in the target directory
+- Parses numbers from "Recording X" pattern (case-insensitive)
+- Ignores files that don't match the pattern
+- Handles files with or without `.m4a` extension
+- Efficiently finds the smallest missing number starting from 1
 
 ### File Format
 
