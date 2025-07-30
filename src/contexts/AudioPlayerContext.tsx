@@ -46,9 +46,15 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         // Replace the source with the new clip
         audioPlayer.replace(clip.uri)
 
+        // Wait a moment for the audio to load
+        await new Promise(resolve => setTimeout(resolve, 100))
+
         audioPlayer.play()
       } catch (error) {
         console.error('Failed to play audio clip:', error)
+        // Reset state on error
+        setCurrentClip(null)
+        setIsLoading(false)
       } finally {
         setIsLoading(false)
       }

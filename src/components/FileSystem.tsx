@@ -146,6 +146,68 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
     }
   }
 
+  const handleRenameFolder = async (folder: FolderData) => {
+    Alert.prompt(
+      'Rename Folder',
+      'Enter new folder name:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Rename',
+          onPress: async newName => {
+            if (newName?.trim() && newName.trim() !== folder.name) {
+              try {
+                const fullPath = fileManager.getFullPath()
+                const oldPath = `${fullPath}/${folder.name}`
+                const newPath = `${fullPath}/${newName.trim()}`
+
+                await FileSystem.moveAsync({ from: oldPath, to: newPath })
+                await loadFolderContents() // Refresh the list
+              } catch (error) {
+                console.error('Failed to rename folder:', error)
+                Alert.alert('Error', 'Failed to rename folder')
+              }
+            }
+          },
+        },
+      ],
+      'plain-text',
+      folder.name
+    )
+  }
+
+  const handleDeleteFolder = async (folder: FolderData) => {
+    const message =
+      folder.itemCount > 0
+        ? `Delete "${folder.name}" and all ${folder.itemCount} items inside?`
+        : `Delete "${folder.name}"?`
+
+    Alert.alert('Delete Folder', message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const fullPath = fileManager.getFullPath()
+            const folderPath = `${fullPath}/${folder.name}`
+
+            await FileSystem.deleteAsync(folderPath)
+            await loadFolderContents() // Refresh the list
+          } catch (error) {
+            console.error('Failed to delete folder:', error)
+            Alert.alert('Error', 'Failed to delete folder')
+          }
+        },
+      },
+    ])
+  }
+
+  const handleMoveFolder = async (folder: FolderData) => {
+    // TODO: Implement move functionality with FileNavigatorModal
+    Alert.alert('Move Folder', 'Move functionality will be implemented soon')
+  }
+
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -205,15 +267,9 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
 
             <View style={styles.folderMenuContainer}>
               <FolderContextMenuModal
-                onRename={() => {
-                  /* TODO: Implement */
-                }}
-                onMove={() => {
-                  /* TODO: Implement */
-                }}
-                onDelete={() => {
-                  /* TODO: Implement */
-                }}
+                onRename={() => handleRenameFolder(folder)}
+                onMove={() => handleMoveFolder(folder)}
+                onDelete={() => handleDeleteFolder(folder)}
               />
             </View>
           </View>
