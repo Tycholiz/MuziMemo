@@ -219,6 +219,39 @@ export async function doesFolderPathExist(relativePath: string): Promise<boolean
 }
 
 /**
+ * Get hierarchical item count for a folder (includes all files in subfolders)
+ */
+export async function getHierarchicalItemCount(folderPath: string): Promise<number> {
+  try {
+    const pathInfo = await FileSystem.getInfoAsync(folderPath)
+    if (!pathInfo.exists || !pathInfo.isDirectory) {
+      return 0
+    }
+
+    let totalCount = 0
+    const items = await FileSystem.readDirectoryAsync(folderPath)
+
+    for (const item of items) {
+      const itemPath = joinPath(folderPath, item)
+      const itemInfo = await FileSystem.getInfoAsync(itemPath)
+
+      if (itemInfo.isDirectory) {
+        // Recursively count items in subdirectories
+        totalCount += await getHierarchicalItemCount(itemPath)
+      } else {
+        // Count files (audio files and any other files)
+        totalCount += 1
+      }
+    }
+
+    return totalCount
+  } catch (error) {
+    console.error('Error getting hierarchical item count:', error)
+    return 0
+  }
+}
+
+/**
  * Generate unique file name if file already exists
  */
 export function generateUniqueFileName(baseName: string, extension: string, existingNames: string[]): string {

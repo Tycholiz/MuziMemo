@@ -1,9 +1,13 @@
-import React, { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 import { Button } from './Button'
+import { doesFolderPathExist } from '@utils/pathUtils'
+
+// Maximum number of commonly used folders to display
+const MAX_COMMONLY_USED_FOLDERS = 6
 
 export type Folder = {
   id: string
@@ -36,6 +40,48 @@ export function FolderSelector({
   disabled = false,
 }: FolderSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [validatedFolders, setValidatedFolders] = useState<Folder[]>([])
+  const [isValidating, setIsValidating] = useState(false)
+
+  // Validate folder existence and apply intelligent ranking when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      validateAndRankFolders()
+    }
+  }, [isOpen, folders])
+
+  const validateAndRankFolders = async () => {
+    setIsValidating(true)
+    try {
+      const validFolders: Folder[] = []
+
+      // Validate each folder's existence
+      for (const folder of folders) {
+        try {
+          const exists = await doesFolderPathExist(folder.path || '')
+          if (exists) {
+            validFolders.push(folder)
+          } else {
+            console.log(`Folder no longer exists: ${folder.path || folder.name}`)
+          }
+        } catch (error) {
+          console.error(`Error validating folder ${folder.name}:`, error)
+          // On error, exclude the folder to be safe
+        }
+      }
+
+      // Sort by hierarchical item count (descending) and limit to top 6
+      const rankedFolders = validFolders.sort((a, b) => b.itemCount - a.itemCount).slice(0, MAX_COMMONLY_USED_FOLDERS)
+
+      setValidatedFolders(rankedFolders)
+    } catch (error) {
+      console.error('Error validating and ranking folders:', error)
+      // Fallback to original folders if validation fails
+      setValidatedFolders(folders.slice(0, MAX_COMMONLY_USED_FOLDERS))
+    } finally {
+      setIsValidating(false)
+    }
+  }
 
   const selectedFolderData = folders.find(folder => folder.id === selectedFolder)
   const displayName = selectedFolderName || selectedFolderData?.name || 'Home'
@@ -62,9 +108,7 @@ export function FolderSelector({
     // Add separator and segments
     segments.forEach((segment, index) => {
       pathElements.push(
-        <Text key={`sep-${index}`} style={styles.selectorPathSeparator}>
-          {'>'}
-        </Text>
+        <Ionicons name="chevron-forward" size={14} color={theme.colors.text.secondary} style={styles.separator} />
       )
       pathElements.push(
         <Text key={`segment-${index}`} style={styles.selectorPathSegment}>
@@ -90,12 +134,12 @@ export function FolderSelector({
     // Show full path for nested folders to help distinguish between folders with same names
     const displayPath = item.path && item.path !== item.name ? item.path : item.name
 
-    // Format path with house icon and "/" separators like Breadcrumbs
+    // Format path with house icon and ">" separators like Breadcrumbs
     const formatPathDisplay = (path: string) => {
       if (!path || path === 'Home') {
         return (
           <View style={styles.pathDisplay}>
-            <Ionicons name="home" size={16} color={theme.colors.primary} testID="home-icon" />
+            <Ionicons name="home" size={14} color={theme.colors.primary} testID="home-icon" />
           </View>
         )
       }
@@ -109,9 +153,7 @@ export function FolderSelector({
       // Add separator and segments
       segments.forEach((segment, index) => {
         pathElements.push(
-          <Text key={`sep-${index}`} style={styles.pathSeparator}>
-            /
-          </Text>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.text.secondary} style={styles.separator} />
         )
         pathElements.push(
           <Text key={`segment-${index}`} style={styles.pathSegment}>
@@ -161,13 +203,20 @@ export function FolderSelector({
               </TouchableOpacity>
             </View>
 
-            <FlatList
-              data={folders}
-              renderItem={renderFolder}
-              keyExtractor={item => item.id}
-              style={styles.foldersList}
-              showsVerticalScrollIndicator={false}
-            />
+            {isValidating ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Validating folders...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={validatedFolders}
+                renderItem={renderFolder}
+                keyExtractor={item => item.id}
+                style={styles.foldersList}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
 
             <View style={styles.modalFooter}>
               <Button
@@ -324,5 +373,21 @@ const styles = StyleSheet.create({
   selectorPathSegment: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+
+  loadingText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.md,
+  },
+  separator: {
+    marginHorizontal: 4,
   },
 })

@@ -19,6 +19,8 @@ import {
   isValidRecordingPath,
   generateUniqueFileName,
   validateFileName,
+  getHierarchicalItemCount,
+  doesFolderPathExist,
 } from '../pathUtils'
 
 // Mock Platform
@@ -32,7 +34,11 @@ jest.mock('react-native', () => ({
 jest.mock('expo-file-system', () => ({
   documentDirectory: 'file:///mock/documents/',
   getInfoAsync: jest.fn(),
+  readDirectoryAsync: jest.fn(),
 }))
+
+const mockGetInfoAsync = require('expo-file-system').getInfoAsync as jest.MockedFunction<any>
+const mockReadDirectoryAsync = require('expo-file-system').readDirectoryAsync as jest.MockedFunction<any>
 
 describe('pathUtils', () => {
   beforeEach(() => {
@@ -335,6 +341,109 @@ describe('pathUtils', () => {
         isValid: false,
         error: 'Name is reserved',
       })
+    })
+  })
+
+  describe('getHierarchicalItemCount', () => {
+    beforeEach(() => {
+      mockGetInfoAsync.mockClear()
+      mockReadDirectoryAsync.mockClear()
+    })
+
+    it('should return 0 for non-existent folder', async () => {
+      mockGetInfoAsync.mockResolvedValue({ exists: false, isDirectory: false })
+
+      const count = await getHierarchicalItemCount('/non/existent/path')
+      expect(count).toBe(0)
+    })
+
+    it('should return 0 for file (not directory)', async () => {
+      mockGetInfoAsync.mockResolvedValue({ exists: true, isDirectory: false })
+
+      const count = await getHierarchicalItemCount('/path/to/file.txt')
+      expect(count).toBe(0)
+    })
+
+    it('should count files in a simple folder', async () => {
+      mockGetInfoAsync
+        .mockResolvedValueOnce({ exists: true, isDirectory: true }) // Main folder
+        .mockResolvedValueOnce({ exists: true, isDirectory: false }) // file1.txt
+        .mockResolvedValueOnce({ exists: true, isDirectory: false }) // file2.txt
+
+      mockReadDirectoryAsync.mockResolvedValue(['file1.txt', 'file2.txt'])
+
+      const count = await getHierarchicalItemCount('/path/to/folder')
+      expect(count).toBe(2)
+    })
+
+    it('should handle folders with subdirectories', async () => {
+      // Test that it recognizes subdirectories but doesn't crash
+      mockGetInfoAsync.mockResolvedValueOnce({ exists: true, isDirectory: true })
+      mockReadDirectoryAsync.mockResolvedValueOnce(['file1.txt', 'subfolder'])
+
+      // Mock file1.txt
+      mockGetInfoAsync.mockResolvedValueOnce({ exists: true, isDirectory: false })
+
+      // Mock subfolder - it's a directory, so it will be processed recursively
+      mockGetInfoAsync.mockResolvedValueOnce({ exists: true, isDirectory: true })
+      mockReadDirectoryAsync.mockResolvedValueOnce([]) // Empty subfolder for simplicity
+
+      const count = await getHierarchicalItemCount('/path/to/folder')
+      expect(count).toBe(1) // Only file1.txt (subfolder is empty)
+    })
+
+    it('should handle errors gracefully', async () => {
+      mockGetInfoAsync.mockRejectedValue(new Error('File system error'))
+
+      const count = await getHierarchicalItemCount('/error/path')
+      expect(count).toBe(0)
+    })
+
+    it('should handle empty folders', async () => {
+      mockGetInfoAsync.mockResolvedValue({ exists: true, isDirectory: true })
+      mockReadDirectoryAsync.mockResolvedValue([])
+
+      const count = await getHierarchicalItemCount('/empty/folder')
+      expect(count).toBe(0)
+    })
+  })
+
+  describe('doesFolderPathExist', () => {
+    beforeEach(() => {
+      mockGetInfoAsync.mockClear()
+    })
+
+    it('should return true for empty path (root directory)', async () => {
+      const exists = await doesFolderPathExist('')
+      expect(exists).toBe(true)
+    })
+
+    it('should return true for existing directory', async () => {
+      mockGetInfoAsync.mockResolvedValue({ exists: true, isDirectory: true })
+
+      const exists = await doesFolderPathExist('Music')
+      expect(exists).toBe(true)
+    })
+
+    it('should return false for non-existent path', async () => {
+      mockGetInfoAsync.mockResolvedValue({ exists: false, isDirectory: false })
+
+      const exists = await doesFolderPathExist('NonExistent')
+      expect(exists).toBe(false)
+    })
+
+    it('should return false for file (not directory)', async () => {
+      mockGetInfoAsync.mockResolvedValue({ exists: true, isDirectory: false })
+
+      const exists = await doesFolderPathExist('file.txt')
+      expect(exists).toBe(false)
+    })
+
+    it('should handle errors gracefully', async () => {
+      mockGetInfoAsync.mockRejectedValue(new Error('File system error'))
+
+      const exists = await doesFolderPathExist('ErrorPath')
+      expect(exists).toBe(false)
     })
   })
 })

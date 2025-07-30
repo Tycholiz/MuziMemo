@@ -18,7 +18,7 @@ import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording
 import { useFileManager } from '../contexts/FileManagerContext'
 import { theme } from '../utils/theme'
 import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
-import { joinPath, getRecordingsDirectory, doesFolderPathExist } from '../utils/pathUtils'
+import { joinPath, getRecordingsDirectory, doesFolderPathExist, getHierarchicalItemCount } from '../utils/pathUtils'
 import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
 
@@ -128,8 +128,8 @@ export default function RecordScreen() {
         for (const item of contents) {
           if (item.type === 'folder') {
             try {
-              const folderContents = await fileSystemService.getFolderContents(item.path)
-              const fileCount = folderContents.filter(subItem => subItem.type === 'file').length
+              // Use hierarchical counting to get total items in entire folder tree
+              const hierarchicalCount = await getHierarchicalItemCount(item.path)
 
               const fullRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name
 
@@ -139,7 +139,7 @@ export default function RecordScreen() {
               folderData.push({
                 id: uniqueId,
                 name: item.name,
-                itemCount: fileCount,
+                itemCount: hierarchicalCount, // Now represents total items in folder tree
                 path: fullRelativePath, // Store the full relative path
               })
 
