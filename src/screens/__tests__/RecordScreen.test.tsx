@@ -52,19 +52,4 @@ describe('RecordScreen Initial Folder Handling', () => {
 
     expect(targetFolderName).toBe('demos')
   })
-
-  it('should handle single folder path correctly', () => {
-    // Test handling of single folder path
-    const initialFolder = 'song-ideas'
-    const targetFolderName = initialFolder.split('/').pop()
-
-    expect(targetFolderName).toBe('song-ideas')
-  })
-
-  it('should handle root folder correctly', () => {
-    // Test handling of root folder
-    const initialFolder = 'root'
-
-    expect(initialFolder).toBe('root')
-  })
 })

@@ -1,10 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, Alert } from 'react-native'
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 
 import { Screen, Container, Spacer } from '../components/Layout'
-import { RecordButton, Icon } from '../components/Icon'
-import { FolderSelector, Dropdown, FileNavigatorModal, Button, SoundWave } from '../components/index'
+import { Icon } from '../components/Icon'
+import {
+  Dropdown,
+  FileNavigatorModal,
+  Button,
+  SoundWave,
+  RecordingStatusBadge,
+  RecordButton,
+  FolderSelectorWithGoTo,
+} from '../components/index'
 import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/index'
 import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
 import { useFileManager } from '../contexts/FileManagerContext'
@@ -420,21 +428,7 @@ export default function RecordScreen() {
         <Spacer size="xl" />
 
         {/* Status Badge */}
-        <View style={styles.statusBadgeContainer}>
-          <View style={[styles.statusBadge, status === 'paused' && styles.statusBadgePaused]}>
-            <Text style={styles.statusBadgeText}>
-              {!isInitialized
-                ? 'Initializing...'
-                : !hasPermissions
-                  ? 'Microphone Permission Required'
-                  : status === 'recording'
-                    ? 'Recording'
-                    : status === 'paused'
-                      ? 'Paused'
-                      : 'Ready to Record'}
-            </Text>
-          </View>
-        </View>
+        <RecordingStatusBadge status={status} isInitialized={isInitialized} hasPermissions={hasPermissions} />
 
         <Spacer size="lg" />
 
@@ -485,29 +479,17 @@ export default function RecordScreen() {
         <Spacer size="2xl" />
 
         {/* Folder Selector with Go To Button */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading folders...</Text>
-          </View>
-        ) : (
-          <View style={styles.folderSelectorContainer}>
-            <View style={styles.folderSelectorWrapper}>
-              <FolderSelector
-                label="Saving to:"
-                selectedFolder={selectedFolderId}
-                selectedFolderName={selectedFolderDisplayName}
-                folders={folders}
-                onSelectFolder={handleFolderSelect}
-                onOpenFileNavigator={() => setShowFileNavigator(true)}
-              />
-            </View>
-            <TouchableOpacity style={styles.goToButton} onPress={handleGoToFolder} activeOpacity={0.7}>
-              <Text style={styles.goToButtonIcon}>↪</Text>
-              <Text style={styles.goToButtonText}>Go to</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={styles.folderSelectorContainer}>
+          <FolderSelectorWithGoTo
+            selectedFolderId={selectedFolderId}
+            selectedFolderDisplayName={selectedFolderDisplayName}
+            folders={folders}
+            loading={loading}
+            onSelectFolder={handleFolderSelect}
+            onOpenFileNavigator={() => setShowFileNavigator(true)}
+            onGoToFolder={handleGoToFolder}
+          />
+        </View>
 
         <Spacer size="lg" />
 
@@ -556,24 +538,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
   },
-  statusBadgeContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  statusBadge: {
-    backgroundColor: theme.colors.surface.secondary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-  },
-  statusBadgePaused: {
-    backgroundColor: theme.colors.secondary,
-  },
-  statusBadgeText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
+
   dottedLine: {
     height: 2,
     width: '80%',
@@ -668,44 +633,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: theme.typography.fontSize.sm,
   },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
-  },
-  loadingText: {
-    marginLeft: theme.spacing.sm,
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.secondary,
-  },
   folderSelectorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  folderSelectorWrapper: {
-    flex: 1,
-  },
-  goToButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border.light,
-    minHeight: 48, // Match the FolderSelector height
-  },
-  goToButtonIcon: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-    marginRight: theme.spacing.xs,
-  },
-  goToButtonText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.fontWeight.medium,
+    width: '100%',
   },
 })

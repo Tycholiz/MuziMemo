@@ -96,53 +96,6 @@ export function IconButton({
   )
 }
 
-/**
- * Large circular record button as seen in the mockup
- */
-export function RecordButton({
-  isRecording = false,
-  isPaused = false,
-  onPress,
-  disabled = false,
-  style,
-  testID,
-}: {
-  isRecording?: boolean
-  isPaused?: boolean
-  onPress?: () => void
-  disabled?: boolean
-  style?: ViewStyle
-  testID?: string
-}) {
-  // Determine the icon to show
-  const getIconName = () => {
-    if (isPaused) return 'play'
-    if (isRecording) return 'pause'
-    return 'mic'
-  }
-
-  // Determine the button color
-  const getButtonStyle = () => {
-    if (isPaused) return styles.recordButtonPaused
-    if (isRecording) return styles.recordButtonRecording
-    return null
-  }
-
-  return (
-    <TouchableOpacity
-      testID={testID}
-      style={[styles.recordButton, disabled && styles.disabled, style]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.recordButtonInner, getButtonStyle()]}>
-        <Ionicons name={getIconName()} size={32} color={theme.colors.white} />
-      </View>
-    </TouchableOpacity>
-  )
-}
-
 function getIconSize(size: IconSize | number): number {
   if (typeof size === 'number') return size
 
@@ -210,33 +163,5 @@ const styles = StyleSheet.create({
 
   disabled: {
     opacity: 0.5,
-  },
-
-  // Record button styles
-  recordButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.colors.surface.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.lg,
-  },
-
-  recordButtonInner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: theme.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  recordButtonRecording: {
-    backgroundColor: theme.colors.warning, // Orange color when recording
-  },
-
-  recordButtonPaused: {
-    backgroundColor: theme.colors.secondary, // Different color when paused
   },
 })

@@ -163,7 +163,6 @@ export function FileNavigatorModal({
               try {
                 const newFolderPath = `${currentFolderPath}/${folderName.trim()}`
                 await FileSystem.makeDirectoryAsync(newFolderPath)
-                // Folder created successfully - no dialog popup needed
                 loadFolderContents() // Refresh the list
               } catch (error: any) {
                 Alert.alert('Error', error.message || 'Failed to create folder')

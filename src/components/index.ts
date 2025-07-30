@@ -14,7 +14,7 @@ export type { InputProps } from './Input'
 export { Card, FileCard, MediaCard } from './Card'
 export type { CardProps, FileCardProps, CardVariant } from './Card'
 
-export { Icon, IconButton, RecordButton } from './Icon'
+export { Icon, IconButton } from './Icon'
 export type { IconProps, IconSize, IconColor } from './Icon'
 
 export { SoundWave } from './SoundWave'
@@ -51,6 +51,15 @@ export { Breadcrumbs } from './Breadcrumbs'
 export type { BreadcrumbsProps } from './Breadcrumbs'
 
 export { SuccessToastWithButton, toastConfig } from './CustomToast'
+
+export { RecordingStatusBadge } from './RecordingStatusBadge'
+export type { RecordingStatusBadgeProps } from './RecordingStatusBadge'
+
+export { RecordButton } from './RecordButton'
+export type { RecordButtonProps } from './RecordButton'
+
+export { FolderSelectorWithGoTo } from './FolderSelectorWithGoTo'
+export type { FolderSelectorWithGoToProps } from './FolderSelectorWithGoTo'
 
 export { AudioClipCard } from './AudioClipCard'
 export type { AudioClipCardProps, AudioClipData } from './AudioClipCard'
