@@ -5,8 +5,6 @@ import * as FileSystem from 'expo-file-system'
 
 import { theme } from '../utils/theme'
 import { Button } from './Button'
-import { Breadcrumbs } from './Breadcrumbs'
-import { useFileManager } from '../contexts/FileManagerContext'
 
 export type FileNavigatorFolder = {
   id: string
@@ -44,8 +42,6 @@ export function FileNavigatorModal({
   disablePrimaryButton = false,
   excludePath,
 }: FileNavigatorModalProps) {
-  const fileManager = useFileManager()
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -135,12 +131,17 @@ export function FileNavigatorModal({
       onPrimaryAction(currentFolderPath)
       onClose()
     } else {
-      // Default behavior - select a specific folder
-      const folder = folders.find(f => f.id === selectedFolder)
-      if (folder) {
-        onSelectFolder(folder)
-        onClose()
+      // Default behavior - select the current directory being viewed
+      const currentFolderName = breadcrumbs[breadcrumbs.length - 1]?.name || 'Home'
+      const currentFolder: FileNavigatorFolder = {
+        id: `folder-${currentFolderName}`,
+        name: currentFolderName,
+        path: currentFolderPath,
+        isBeingMoved: false,
       }
+
+      onSelectFolder(currentFolder)
+      onClose()
     }
   }
 
@@ -172,13 +173,11 @@ export function FileNavigatorModal({
 
   const handleBreadcrumbPress = (path: string, _index: number) => {
     setCurrentFolderPath(path)
-    setSelectedFolder(null)
   }
 
   const handleFolderDoublePress = (folder: FileNavigatorFolder) => {
     // Navigate into the folder
     setCurrentFolderPath(folder.path)
-    setSelectedFolder(null)
   }
 
   const renderFolder = ({ item }: { item: FileNavigatorFolder }) => {
@@ -275,7 +274,7 @@ export function FileNavigatorModal({
               title={primaryButtonText}
               variant="primary"
               onPress={handleConfirmSelection}
-              disabled={disablePrimaryButton || (!onPrimaryAction && !selectedFolder)}
+              disabled={disablePrimaryButton}
               icon={primaryButtonIcon}
               style={styles.selectButton}
             />

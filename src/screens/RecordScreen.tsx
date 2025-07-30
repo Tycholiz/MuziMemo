@@ -289,13 +289,19 @@ export default function RecordScreen() {
   }
 
   const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
-    // Update the selected folder and refresh the folder list
-    setSelectedFolder(folder.id)
-    setSelectedFolderName(folder.name) // Also update the folder name
-    setSelectedFolderPath(folder.name) // Reset to single folder when manually selected
+    // For nested folders, we need to handle the path properly
+    const recordingsDir = getRecordingsDirectory()
+    const relativePath = folder.path.replace(recordingsDir, '').replace(/^\/+|\/+$/g, '') // Remove leading/trailing slashes
+
+    // Update the selected folder state - use a consistent ID format
+    const consistentId = `folder-${folder.name}`
+    setSelectedFolder(consistentId)
+    setSelectedFolderName(folder.name)
+    setSelectedFolderPath(relativePath || folder.name) // Use relative path for nested folders
     setShowFileNavigator(false)
-    loadFolders() // Refresh the folder list to include any new folders
-    // Folder selected successfully - no dialog popup needed
+
+    // Don't call loadFolders() here - it resets selectedFolderName for nested folders
+    // The folder list doesn't need to be refreshed just for selection
   }
 
   const handleAudioQualitySelect = (option: DropdownOption) => {
@@ -417,6 +423,7 @@ export default function RecordScreen() {
               <FolderSelector
                 label="Saving to:"
                 selectedFolder={selectedFolder}
+                selectedFolderName={selectedFolderName}
                 folders={folders}
                 onSelectFolder={handleFolderSelect}
                 onOpenFileNavigator={() => setShowFileNavigator(true)}

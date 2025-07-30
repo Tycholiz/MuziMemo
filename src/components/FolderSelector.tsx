@@ -14,6 +14,7 @@ export type Folder = {
 export type FolderSelectorProps = {
   label?: string
   selectedFolder: string
+  selectedFolderName?: string // Optional override for display name
   folders: Folder[]
   onSelectFolder: (folderId: string) => void
   onOpenFileNavigator: () => void
@@ -27,6 +28,7 @@ export type FolderSelectorProps = {
 export function FolderSelector({
   label,
   selectedFolder,
+  selectedFolderName,
   folders,
   onSelectFolder,
   onOpenFileNavigator,
@@ -35,6 +37,7 @@ export function FolderSelector({
   const [isOpen, setIsOpen] = useState(false)
 
   const selectedFolderData = folders.find(folder => folder.id === selectedFolder)
+  const displayName = selectedFolderName || selectedFolderData?.name || 'Home'
 
   const handleSelectFolder = (folderId: string) => {
     onSelectFolder(folderId)
@@ -69,7 +72,7 @@ export function FolderSelector({
       >
         <View style={styles.selectorContent}>
           <Ionicons name="folder-outline" size={20} color={theme.colors.text.secondary} style={styles.selectorIcon} />
-          <Text style={styles.selectorText}>{selectedFolderData?.name || 'Home'}</Text>
+          <Text style={styles.selectorText}>{displayName}</Text>
         </View>
         <Ionicons name="chevron-down" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
