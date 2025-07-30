@@ -43,7 +43,7 @@ describe('RecordScreen Go To Folder functionality', () => {
     const simulateRecordScreenLogic = () => {
       // Initial state
       let selectedFolder = 'id-2' // Initially selected "Drafts"
-      let selectedFolderName = 'Drafts'
+      const selectedFolderName = 'Drafts'
       let folders = mockFolders
 
       // Simulate navigation away and back (folders get new IDs)
@@ -136,7 +136,7 @@ describe('RecordScreen Go To Folder functionality', () => {
   it('should update both folder ID and name when folder is selected', () => {
     // Test the folder selection update logic
     const testFolderSelection = (folderId: string, folders: typeof mockFolders) => {
-      let selectedFolder = folderId
+      const selectedFolder = folderId
       let selectedFolderName = ''
 
       // Simulate handleFolderSelect logic

@@ -21,7 +21,6 @@ import * as FileSystem from 'expo-file-system'
 export default function RecordScreen() {
   const router = useRouter()
   const params = useLocalSearchParams<{ initialFolder?: string }>()
-  console.log('params: ', params)
   const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
 
   const fileManager = useFileManager()

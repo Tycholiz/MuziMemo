@@ -1,17 +1,13 @@
 /**
  * Test for RecordScreen navigation parameter passing bug fix
- * 
+ *
  * Bug: When navigating from Browse screen to Record screen using router.push(),
  * the initialFolder parameter was not being passed correctly due to incorrect pathname.
- * 
+ *
  * Root Cause: router.push() was using pathname: '/record' instead of '/(tabs)/record'
- * 
+ *
  * Fix: Updated pathname to '/(tabs)/record' to match the actual route structure
  */
-
-import React from 'react'
-import { render } from '@testing-library/react-native'
-import { useRouter, useLocalSearchParams } from 'expo-router'
 
 // Mock expo-router
 const mockRouterPush = jest.fn()

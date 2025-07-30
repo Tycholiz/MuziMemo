@@ -103,7 +103,7 @@ describe('RecordScreen Folder Path Resolution Bug Fix', () => {
 
   describe('Path construction for recording save', () => {
     it('should construct correct target path for nested folders', () => {
-      const selectedFolderPath = 'hello/Song Ideas'
+      const selectedFolderPath: string = 'hello/Song Ideas'
       const recordingsDir = getRecordingsDirectory()
 
       // This is the logic from saveRecordingToFolder function
@@ -145,13 +145,13 @@ describe('RecordScreen Folder Path Resolution Bug Fix', () => {
     })
 
     it('should handle root path correctly for navigation', () => {
-      const selectedFolderPath = ''
+      const selectedFolderPath: string = ''
 
       if (!selectedFolderPath || selectedFolderPath === '') {
         // Should navigate to root
         expect(selectedFolderPath).toBe('')
       } else {
-        const pathSegments = selectedFolderPath.split('/').filter(segment => segment.length > 0)
+        const pathSegments = selectedFolderPath.split('/').filter((segment: string) => segment.length > 0)
         expect(pathSegments).toEqual([])
       }
     })
@@ -169,7 +169,7 @@ describe('RecordScreen Folder Path Resolution Bug Fix', () => {
   describe('Folder loading with recursive paths', () => {
     it('should generate correct relative paths for nested folders', () => {
       // Simulate the recursive folder loading logic
-      const generateFolderPath = (basePath: string, relativePath: string, folderName: string) => {
+      const generateFolderPath = (_basePath: string, relativePath: string, folderName: string) => {
         return relativePath ? `${relativePath}/${folderName}` : folderName
       }
 

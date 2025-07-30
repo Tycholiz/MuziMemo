@@ -5,8 +5,6 @@
  * The path shows full file system path instead of "Home" representation
  */
 
-import React from 'react'
-
 // Mock expo-router
 const mockRouterPush = jest.fn()
 jest.mock('expo-router', () => ({
@@ -59,9 +57,6 @@ type FileNavigatorFolder = {
 }
 
 // Import RecordScreen and context providers for integration test
-import RecordScreen from '../RecordScreen'
-import { FileManagerProvider } from '../../contexts/FileManagerContext'
-import { AudioPlayerProvider } from '../../contexts/AudioPlayerContext'
 
 describe('RecordScreen Folder Navigation Bug', () => {
   const mockRecordingsDir = 'file:///mock/documents/recordings/'
@@ -155,7 +150,7 @@ describe('RecordScreen Folder Navigation Bug', () => {
 
   describe('handleGoToFolder logic', () => {
     it('should handle empty path correctly for root navigation', () => {
-      const selectedFolderPath = '' // Empty string from fixed handleFileNavigatorSelect
+      const selectedFolderPath: string = '' // Empty string from fixed handleFileNavigatorSelect
 
       // Mock FileManagerContext methods
       const mockNavigateToRoot = jest.fn()
@@ -166,7 +161,7 @@ describe('RecordScreen Folder Navigation Bug', () => {
         console.log('🏠 Navigating to root directory')
         mockNavigateToRoot()
       } else {
-        const pathSegments = selectedFolderPath.split('/').filter(segment => segment.length > 0)
+        const pathSegments = selectedFolderPath.split('/').filter((segment: string) => segment.length > 0)
         mockNavigateToPath(pathSegments)
       }
 
@@ -175,7 +170,7 @@ describe('RecordScreen Folder Navigation Bug', () => {
     })
 
     it('should handle nested folder path correctly', () => {
-      const selectedFolderPath = 'folder1/folder2' // Nested folder path
+      const selectedFolderPath: string = 'folder1/folder2' // Nested folder path
 
       // Mock FileManagerContext methods
       const mockNavigateToRoot = jest.fn()

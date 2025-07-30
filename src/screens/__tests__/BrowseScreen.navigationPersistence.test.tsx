@@ -6,7 +6,7 @@ describe('BrowseScreen Navigation Persistence', () => {
   it('should track initial folder changes correctly', () => {
     // Test the logic for tracking initialFolder changes
     let lastProcessedInitialFolder: string | undefined = undefined
-    let initialFolder = 'lyrics'
+    const initialFolder = 'lyrics'
 
     // Simulate first focus effect call
     if (initialFolder !== lastProcessedInitialFolder) {
@@ -231,8 +231,8 @@ describe('BrowseScreen Navigation Persistence', () => {
       let currentPath: string[] = []
 
       // Simulate: User clicks "Go To" with "Song Ideas" folder
-      let initialFolder = 'Song Ideas'
-      let intentional = 'true'
+      const initialFolder = 'Song Ideas'
+      const intentional = 'true'
       const isIntentionalNavigation = intentional === 'true'
 
       if (initialFolder !== lastProcessedInitialFolder && (!hasUserNavigated || isIntentionalNavigation)) {

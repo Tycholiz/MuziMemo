@@ -1,8 +1,4 @@
-import React from 'react'
-import { render } from '@testing-library/react-native'
-import { useRouter, useLocalSearchParams } from 'expo-router'
-
-import RecordScreen from '../RecordScreen'
+import { useRouter } from 'expo-router'
 import { useFileManager } from '../../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../../contexts/AudioPlayerContext'
 
@@ -14,7 +10,6 @@ jest.mock('../../hooks/useAudioRecording')
 jest.mock('../../services/FileSystemService')
 
 const mockRouter = useRouter as jest.MockedFunction<typeof useRouter>
-const mockUseLocalSearchParams = useLocalSearchParams as jest.MockedFunction<typeof useLocalSearchParams>
 const mockUseFileManager = useFileManager as jest.MockedFunction<typeof useFileManager>
 const mockUseAudioPlayerContext = useAudioPlayerContext as jest.MockedFunction<typeof useAudioPlayerContext>
 
