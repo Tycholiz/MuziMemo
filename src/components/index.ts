@@ -50,6 +50,8 @@ export type { FileContextMenuModalProps } from './FileContextMenuModal'
 export { Breadcrumbs } from './Breadcrumbs'
 export type { BreadcrumbsProps } from './Breadcrumbs'
 
+export { SuccessToastWithButton, toastConfig } from './CustomToast'
+
 export { AudioClipCard } from './AudioClipCard'
 export type { AudioClipCardProps, AudioClipData } from './AudioClipCard'
 

@@ -10,7 +10,15 @@ import { Breadcrumbs } from './Breadcrumbs'
 import { AudioClipCard } from './AudioClipCard'
 import { FolderContextMenuModal } from './FolderContextMenuModal'
 import { CreateFolderModal } from './CreateFolderModal'
+import { FileNavigatorModal } from './FileNavigatorModal'
 import { theme } from '../utils/theme'
+import {
+  moveItem,
+  showMoveSuccessToast,
+  showMoveErrorToast,
+  getRelativePathFromRecordings,
+  pathToNavigationArray,
+} from '../utils/moveUtils'
 
 export type FolderData = {
   id: string
@@ -35,6 +43,9 @@ export function FileSystemComponent() {
   const [folders, setFolders] = useState<FolderData[]>([])
   const [audioFiles, setAudioFiles] = useState<AudioFileData[]>([])
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
+  const [showMoveModal, setShowMoveModal] = useState(false)
+  const [selectedFolderForMove, setSelectedFolderForMove] = useState<FolderData | null>(null)
+  const [selectedFileForMove, setSelectedFileForMove] = useState<AudioFileData | null>(null)
 
   // Load folder contents when path changes
   useEffect(() => {
@@ -197,9 +208,9 @@ export function FileSystemComponent() {
     ])
   }
 
-  const handleMoveFolder = async (_folder: FolderData) => {
-    // TODO: Implement move functionality with FileNavigatorModal
-    Alert.alert('Move Folder', 'Move functionality will be implemented soon')
+  const handleMoveFolder = async (folder: FolderData) => {
+    setSelectedFolderForMove(folder)
+    setShowMoveModal(true)
   }
 
   const handleRenameAudioFile = async (audioFile: AudioFileData) => {
@@ -262,9 +273,59 @@ export function FileSystemComponent() {
     ])
   }
 
-  const handleMoveAudioFile = async (_audioFile: AudioFileData) => {
-    // TODO: Implement move functionality with FileNavigatorModal
-    Alert.alert('Move Audio File', 'Move functionality will be implemented soon')
+  const handleMoveAudioFile = async (audioFile: AudioFileData) => {
+    setSelectedFileForMove(audioFile)
+    setSelectedFolderForMove(null)
+    setShowMoveModal(true)
+  }
+
+  const handleMoveConfirm = async (destinationPath: string) => {
+    try {
+      const recordingsBasePath = fileManager
+        .getFullPath()
+        .replace(fileManager.getCurrentPathString(), '')
+        .replace(/\/$/, '')
+
+      if (selectedFolderForMove) {
+        // Moving a folder
+        const sourcePath = `${fileManager.getFullPath()}/${selectedFolderForMove.name}`
+        await moveItem(sourcePath, destinationPath, selectedFolderForMove.name)
+
+        // Show success toast with navigation
+        const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
+        showMoveSuccessToast(selectedFolderForMove.name, () => {
+          const navigationPath = pathToNavigationArray(relativePath)
+          fileManager.navigateToPath(navigationPath)
+        })
+      } else if (selectedFileForMove) {
+        // Moving a file
+        const sourcePath = `${fileManager.getFullPath()}/${selectedFileForMove.name}`
+        await moveItem(sourcePath, destinationPath, selectedFileForMove.name)
+
+        // Show success toast with navigation
+        const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
+        showMoveSuccessToast(selectedFileForMove.name, () => {
+          const navigationPath = pathToNavigationArray(relativePath)
+          fileManager.navigateToPath(navigationPath)
+        })
+      }
+
+      // Refresh the current folder contents
+      await loadFolderContents()
+    } catch (error: any) {
+      console.error('Failed to move item:', error)
+      showMoveErrorToast(error.message || 'Failed to move item')
+    } finally {
+      setShowMoveModal(false)
+      setSelectedFolderForMove(null)
+      setSelectedFileForMove(null)
+    }
+  }
+
+  const handleMoveCancelOrClose = () => {
+    setShowMoveModal(false)
+    setSelectedFolderForMove(null)
+    setSelectedFileForMove(null)
   }
 
   if (fileManager.isLoading) {
@@ -374,6 +435,18 @@ export function FileSystemComponent() {
         onClose={() => setShowCreateFolderModal(false)}
         onCreateFolder={handleCreateFolder}
         currentPath={fileManager.getCurrentPathString()}
+      />
+
+      {/* Move Modal */}
+      <FileNavigatorModal
+        visible={showMoveModal}
+        onClose={handleMoveCancelOrClose}
+        onSelectFolder={() => {}} // Not used for move operations
+        title={`Move ${selectedFolderForMove ? selectedFolderForMove.name : selectedFileForMove?.name || ''}`}
+        primaryButtonText="Move Here"
+        primaryButtonIcon="arrow-forward"
+        onPrimaryAction={handleMoveConfirm}
+        excludePath={selectedFolderForMove ? `${fileManager.getFullPath()}/${selectedFolderForMove.name}` : undefined}
       />
     </View>
   )

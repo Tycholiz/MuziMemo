@@ -145,6 +145,11 @@ export function FileNavigatorModal({
     }
   }
 
+  // Check if the current directory is invalid for move operations
+  const isCurrentDirectoryInvalid = Boolean(
+    excludePath && (currentFolderPath === excludePath || currentFolderPath.startsWith(excludePath + '/'))
+  )
+
   const handleNewFolder = () => {
     Alert.prompt(
       'New Folder',
@@ -274,7 +279,7 @@ export function FileNavigatorModal({
               title={primaryButtonText}
               variant="primary"
               onPress={handleConfirmSelection}
-              disabled={disablePrimaryButton}
+              disabled={disablePrimaryButton || isCurrentDirectoryInvalid}
               icon={primaryButtonIcon}
               style={styles.selectButton}
             />
