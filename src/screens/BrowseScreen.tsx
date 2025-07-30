@@ -23,10 +23,21 @@ export default function BrowseScreen() {
     <Screen>
       <View style={styles.container}>
         <FileSystemComponent onRecordPress={handleRecordPress} />
-        
+
         {/* Show media player if audio is playing */}
         {audioPlayer.currentClip && (
-          <BottomMediaPlayer />
+          <BottomMediaPlayer
+            title={audioPlayer.currentClip.name}
+            isPlaying={audioPlayer.isPlaying}
+            isVisible={true}
+            onPlayPause={() => {
+              if (audioPlayer.isPlaying) {
+                audioPlayer.pauseClip()
+              } else {
+                audioPlayer.playClip(audioPlayer.currentClip!)
+              }
+            }}
+          />
         )}
       </View>
     </Screen>

@@ -208,6 +208,71 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
     Alert.alert('Move Folder', 'Move functionality will be implemented soon')
   }
 
+  const handleRenameAudioFile = async (audioFile: AudioFileData) => {
+    const fileExtension = audioFile.name.split('.').pop()
+    const nameWithoutExtension = audioFile.name.replace(`.${fileExtension}`, '')
+
+    Alert.prompt(
+      'Rename Audio File',
+      'Enter new file name:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Rename',
+          onPress: async newName => {
+            if (newName?.trim() && newName.trim() !== nameWithoutExtension) {
+              try {
+                const fullPath = fileManager.getFullPath()
+                const oldPath = `${fullPath}/${audioFile.name}`
+                const newPath = `${fullPath}/${newName.trim()}.${fileExtension}`
+
+                await FileSystem.moveAsync({ from: oldPath, to: newPath })
+                await loadFolderContents() // Refresh the list
+              } catch (error) {
+                console.error('Failed to rename audio file:', error)
+                Alert.alert('Error', 'Failed to rename audio file')
+              }
+            }
+          },
+        },
+      ],
+      'plain-text',
+      nameWithoutExtension
+    )
+  }
+
+  const handleDeleteAudioFile = async (audioFile: AudioFileData) => {
+    Alert.alert('Delete Audio File', `Delete "${audioFile.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const fullPath = fileManager.getFullPath()
+            const filePath = `${fullPath}/${audioFile.name}`
+
+            // Stop playback if this file is currently playing
+            if (audioPlayer.currentClip?.id === audioFile.id) {
+              audioPlayer.cleanup()
+            }
+
+            await FileSystem.deleteAsync(filePath)
+            await loadFolderContents() // Refresh the list
+          } catch (error) {
+            console.error('Failed to delete audio file:', error)
+            Alert.alert('Error', 'Failed to delete audio file')
+          }
+        },
+      },
+    ])
+  }
+
+  const handleMoveAudioFile = async (audioFile: AudioFileData) => {
+    // TODO: Implement move functionality with FileNavigatorModal
+    Alert.alert('Move Audio File', 'Move functionality will be implemented soon')
+  }
+
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -283,6 +348,9 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
             isPlaying={audioPlayer.currentClip?.id === audioFile.id && audioPlayer.isPlaying}
             onPlay={() => audioPlayer.playClip(audioFile)}
             onPause={() => audioPlayer.pauseClip()}
+            onRename={() => handleRenameAudioFile(audioFile)}
+            onMove={() => handleMoveAudioFile(audioFile)}
+            onDelete={() => handleDeleteAudioFile(audioFile)}
           />
         ))}
 
