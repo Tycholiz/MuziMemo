@@ -118,6 +118,7 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
   const handleRecordButtonPress = () => {
     const currentPathString = fileManager.getCurrentPathString()
     const folderName = currentPathString || 'root'
+    console.log('folderName: ', folderName)
 
     if (onRecordPress) {
       onRecordPress()
@@ -203,7 +204,7 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
     ])
   }
 
-  const handleMoveFolder = async (folder: FolderData) => {
+  const handleMoveFolder = async (_folder: FolderData) => {
     // TODO: Implement move functionality with FileNavigatorModal
     Alert.alert('Move Folder', 'Move functionality will be implemented soon')
   }
@@ -268,7 +269,7 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
     ])
   }
 
-  const handleMoveAudioFile = async (audioFile: AudioFileData) => {
+  const handleMoveAudioFile = async (_audioFile: AudioFileData) => {
     // TODO: Implement move functionality with FileNavigatorModal
     Alert.alert('Move Audio File', 'Move functionality will be implemented soon')
   }

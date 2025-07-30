@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { StyleSheet, Text, View, Alert, ActivityIndicator, TouchableOpacity } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 
@@ -13,6 +13,39 @@ import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/f
 import { joinPath, getRecordingsDirectory } from '../utils/pathUtils'
 import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
+
+/**
+ * Helper function to calculate path similarity score
+ * Returns a score from 0 to 1, where 1 is an exact match
+ * Prioritizes matching segments from the end (most specific parts)
+ */
+function getPathSimilarity(path1: string, path2: string): number {
+  if (path1 === path2) return 1
+
+  const segments1 = path1.split('/').filter(s => s.length > 0)
+  const segments2 = path2.split('/').filter(s => s.length > 0)
+
+  // Count matching segments from the end (most specific parts)
+  let matchingSegments = 0
+  const minLength = Math.min(segments1.length, segments2.length)
+
+  for (let i = 1; i <= minLength; i++) {
+    if (segments1[segments1.length - i] === segments2[segments2.length - i]) {
+      matchingSegments++
+    } else {
+      break
+    }
+  }
+
+  // Calculate base similarity score
+  const maxLength = Math.max(segments1.length, segments2.length)
+  const baseSimilarity = matchingSegments / maxLength
+
+  // Bonus for having more matching segments (prioritize deeper matches)
+  const depthBonus = matchingSegments / 10 // Small bonus for each matching segment
+
+  return Math.min(1, baseSimilarity + depthBonus)
+}
 
 /**
  * RecordScreen Component
@@ -42,13 +75,27 @@ export default function RecordScreen() {
   } = useAudioRecording(audioQuality)
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
-  // State for folder selection - store both ID and name for stability
-  const [selectedFolder, setSelectedFolder] = useState('song-ideas')
-  const [selectedFolderName, setSelectedFolderName] = useState('Song Ideas') // Store the actual folder name
+  // Simplified state - only store the folder path
   const [selectedFolderPath, setSelectedFolderPath] = useState<string>('Song Ideas') // Store the full path for nested folders
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
+
+  // Memoized computed values derived from path
+  const selectedFolderId = useMemo((): string => {
+    if (!selectedFolderPath || selectedFolderPath === '') {
+      return 'folder-root'
+    }
+    return `folder-${selectedFolderPath.replace(/\//g, '-')}`
+  }, [selectedFolderPath])
+
+  const selectedFolderDisplayName = useMemo((): string => {
+    if (!selectedFolderPath || selectedFolderPath === '') {
+      return 'Home'
+    }
+    // Show the full path for clarity
+    return selectedFolderPath
+  }, [selectedFolderPath])
 
   // Load folders on component mount and when initialFolder changes
   useEffect(() => {
@@ -59,73 +106,108 @@ export default function RecordScreen() {
     setLoading(true)
     try {
       await fileSystemService.initialize()
-      const contents = await fileSystemService.getFolderContents(getRecordingsDirectory())
 
-      // Convert to Folder format and count items in each folder
+      // Recursively load all folders to handle nested folder paths
       const folderData: Folder[] = []
-      for (const item of contents) {
-        if (item.type === 'folder') {
-          try {
-            const folderContents = await fileSystemService.getFolderContents(item.path)
-            const fileCount = folderContents.filter(subItem => subItem.type === 'file').length
 
-            folderData.push({
-              id: item.id,
-              name: item.name,
-              itemCount: fileCount,
-            })
-          } catch (error) {
-            // If we can't read the folder, add it with 0 count
-            folderData.push({
-              id: item.id,
-              name: item.name,
-              itemCount: 0,
-            })
+      const loadFoldersRecursively = async (basePath: string, relativePath: string = '') => {
+        const contents = await fileSystemService.getFolderContents(basePath)
+
+        for (const item of contents) {
+          if (item.type === 'folder') {
+            try {
+              const folderContents = await fileSystemService.getFolderContents(item.path)
+              const fileCount = folderContents.filter(subItem => subItem.type === 'file').length
+
+              const fullRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name
+
+              // Generate unique ID based on full path to avoid conflicts with duplicate folder names
+              const uniqueId = `folder-${fullRelativePath.replace(/\//g, '-')}`
+
+              folderData.push({
+                id: uniqueId,
+                name: item.name,
+                itemCount: fileCount,
+                path: fullRelativePath, // Store the full relative path
+              })
+
+              // Recursively load subfolders
+              await loadFoldersRecursively(item.path, fullRelativePath)
+            } catch (error) {
+              // If we can't read the folder, add it with 0 count
+              const fullRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name
+
+              // Generate unique ID based on full path to avoid conflicts with duplicate folder names
+              const uniqueId = `folder-${fullRelativePath.replace(/\//g, '-')}`
+
+              folderData.push({
+                id: uniqueId,
+                name: item.name,
+                itemCount: 0,
+                path: fullRelativePath,
+              })
+            }
           }
         }
       }
 
+      await loadFoldersRecursively(getRecordingsDirectory())
       setFolders(folderData)
 
       // Set initial folder selection based on navigation parameter
       if (initialFolder && initialFolder !== 'root') {
-        console.log('🔍 RecordScreen processing initialFolder:', initialFolder)
-
         // Store the full path for later use in "Go To" navigation
         setSelectedFolderPath(initialFolder)
 
-        // Handle nested folder paths (e.g., "folder1/folder2")
-        const targetFolderName = initialFolder.split('/').pop() // Get the last folder name
-        console.log('🔍 RecordScreen targetFolderName:', targetFolderName)
+        // Find folder by exact path match
+        const targetFolder = folderData.find(folder => folder.path === initialFolder)
 
-        const targetFolder = folderData.find(folder => folder.name === targetFolderName)
         if (targetFolder) {
-          console.log('🔍 RecordScreen found target folder:', targetFolder)
-          setSelectedFolder(targetFolder.id)
-          setSelectedFolderName(targetFolder.name)
-        } else if (folderData.length > 0) {
-          console.log('🔍 RecordScreen target folder not found, using fallback:', folderData[0])
-          // Fallback to first folder if target not found
-          setSelectedFolder(folderData[0].id)
-          setSelectedFolderName(folderData[0].name)
-          // Update the path to match the fallback folder
-          setSelectedFolderPath(folderData[0].name)
-        }
-
-        console.log('🔍 RecordScreen final state:', {
-          selectedFolderPath: initialFolder,
-          selectedFolderName: targetFolder?.name || folderData[0]?.name,
-        })
-      } else if (folderData.length > 0) {
-        // Try to maintain the same folder selection by name (more stable than ID)
-        const currentFolderByName = folderData.find(folder => folder.name === selectedFolderName)
-        if (currentFolderByName) {
-          // Update the ID to match the current folder data, keep the same name
-          setSelectedFolder(currentFolderByName.id)
+          // Simply set the path - no need for separate ID and name state
+          setSelectedFolderPath(targetFolder.path || targetFolder.name)
         } else {
-          // If the previously selected folder name doesn't exist, fallback to first folder
-          setSelectedFolder(folderData[0].id)
-          setSelectedFolderName(folderData[0].name)
+          // Enhanced fallback logic: try to find the most specific path match
+          const targetFolderName = initialFolder.split('/').pop()
+
+          // First, try to find folders with matching name and prioritize by path specificity
+          const candidateFolders = folderData.filter(folder => folder.name === targetFolderName)
+
+          if (candidateFolders.length > 0) {
+            // If multiple candidates, prefer the one with the most similar path
+            let bestMatch = candidateFolders[0]
+
+            if (candidateFolders.length > 1) {
+              // Find the folder whose path most closely matches the initialFolder
+              bestMatch = candidateFolders.reduce((best, current) => {
+                const bestPathSimilarity = getPathSimilarity(best.path || '', initialFolder)
+                const currentPathSimilarity = getPathSimilarity(current.path || '', initialFolder)
+                return currentPathSimilarity > bestPathSimilarity ? current : best
+              })
+            }
+
+            // Use the actual path of the found folder, not the initialFolder
+            setSelectedFolderPath(bestMatch.path || bestMatch.name)
+          } else if (folderData.length > 0) {
+            // Final fallback to first folder if target not found
+            setSelectedFolderPath(folderData[0].path || folderData[0].name)
+          }
+        }
+      } else if (folderData.length > 0) {
+        // Try to maintain the same folder selection by path first
+        const currentFolderByPath = folderData.find(folder => folder.path === selectedFolderPath)
+        if (currentFolderByPath) {
+          // Path still exists, keep it
+          setSelectedFolderPath(currentFolderByPath.path || currentFolderByPath.name)
+        } else {
+          // Fallback: try to find by folder name (last segment of path)
+          const currentFolderName = selectedFolderPath.split('/').pop() || selectedFolderPath
+          const currentFolderByName = folderData.find(folder => folder.name === currentFolderName)
+          if (currentFolderByName) {
+            setSelectedFolderPath(currentFolderByName.path || currentFolderByName.name)
+          } else {
+            // If neither path nor name match, fallback to first folder
+            setSelectedFolderPath(folderData[0].path || folderData[0].name)
+          }
         }
       }
     } catch (error) {
@@ -237,7 +319,6 @@ export default function RecordScreen() {
 
       console.log('🎵 saveRecordingToFolder:', {
         selectedFolderPath,
-        selectedFolderName,
         targetFolderPath,
         targetFilePath,
         fileName,
@@ -297,12 +378,10 @@ export default function RecordScreen() {
   }
 
   const handleFolderSelect = (folderId: string) => {
-    setSelectedFolder(folderId)
-    // Also update the folder name and path for consistency
+    // Find the folder data and set the path directly
     const selectedFolderData = folders.find(f => f.id === folderId)
     if (selectedFolderData) {
-      setSelectedFolderName(selectedFolderData.name)
-      setSelectedFolderPath(selectedFolderData.name) // Reset to single folder when manually selected
+      setSelectedFolderPath(selectedFolderData.path || selectedFolderData.name) // Use full path if available
     }
   }
 
@@ -336,12 +415,7 @@ export default function RecordScreen() {
       relativePath,
     })
 
-    // Update the selected folder state - use a consistent ID format
-    const consistentId = `folder-${folder.name}`
-    setSelectedFolder(consistentId)
-    setSelectedFolderName(folder.name)
-
-    // Handle root directory case - when at root, use empty string
+    // Update the selected folder path directly
     if (isRootDirectory) {
       setSelectedFolderPath('') // Empty string represents root for FileManagerContext
     } else {
@@ -350,8 +424,7 @@ export default function RecordScreen() {
 
     setShowFileNavigator(false)
 
-    // Don't call loadFolders() here - it resets selectedFolderName for nested folders
-    // The folder list doesn't need to be refreshed just for selection
+    // Don't call loadFolders() here - the folder list doesn't need to be refreshed just for selection
   }
 
   const handleAudioQualitySelect = (option: DropdownOption) => {
@@ -364,7 +437,6 @@ export default function RecordScreen() {
 
     console.log('🔍 RecordScreen handleGoToFolder:', {
       selectedFolderPath,
-      selectedFolderName,
       initialFolder,
       folderPath,
     })
@@ -432,6 +504,7 @@ export default function RecordScreen() {
         {/* Record Button */}
         <View style={styles.recordButtonContainer}>
           <RecordButton
+            testID="record-button"
             isRecording={status === 'recording'}
             isPaused={status === 'paused'}
             onPress={handleRecordPress}
@@ -473,8 +546,8 @@ export default function RecordScreen() {
             <View style={styles.folderSelectorWrapper}>
               <FolderSelector
                 label="Saving to:"
-                selectedFolder={selectedFolder}
-                selectedFolderName={selectedFolderName}
+                selectedFolder={selectedFolderId}
+                selectedFolderName={selectedFolderDisplayName}
                 folders={folders}
                 onSelectFolder={handleFolderSelect}
                 onOpenFileNavigator={() => setShowFileNavigator(true)}

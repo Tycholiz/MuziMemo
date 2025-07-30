@@ -9,6 +9,7 @@ export type Folder = {
   id: string
   name: string
   itemCount: number
+  path?: string // Full relative path from recordings directory (e.g., "hello/Song Ideas")
 }
 
 export type FolderSelectorProps = {
@@ -49,17 +50,22 @@ export function FolderSelector({
     onOpenFileNavigator()
   }
 
-  const renderFolder = ({ item }: { item: Folder }) => (
-    <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
-      <View style={styles.folderContent}>
-        <Ionicons name="folder-outline" size={20} color={theme.colors.primary} style={styles.folderIcon} />
-        <View style={styles.folderText}>
-          <Text style={styles.folderName}>{item.name}</Text>
-          <Text style={styles.folderCount}>{item.itemCount} items</Text>
+  const renderFolder = ({ item }: { item: Folder }) => {
+    // Show full path for nested folders to help distinguish between folders with same names
+    const displayPath = item.path && item.path !== item.name ? item.path : item.name
+
+    return (
+      <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
+        <View style={styles.folderContent}>
+          <Ionicons name="folder-outline" size={20} color={theme.colors.primary} style={styles.folderIcon} />
+          <View style={styles.folderText}>
+            <Text style={styles.folderName}>{displayPath}</Text>
+            <Text style={styles.folderCount}>{item.itemCount} items</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  )
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <View style={styles.container}>

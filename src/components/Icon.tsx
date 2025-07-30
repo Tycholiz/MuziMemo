@@ -105,12 +105,14 @@ export function RecordButton({
   onPress,
   disabled = false,
   style,
+  testID,
 }: {
   isRecording?: boolean
   isPaused?: boolean
   onPress?: () => void
   disabled?: boolean
   style?: ViewStyle
+  testID?: string
 }) {
   // Determine the icon to show
   const getIconName = () => {
@@ -128,6 +130,7 @@ export function RecordButton({
 
   return (
     <TouchableOpacity
+      testID={testID}
       style={[styles.recordButton, disabled && styles.disabled, style]}
       onPress={onPress}
       disabled={disabled}
