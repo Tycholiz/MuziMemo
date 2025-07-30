@@ -303,8 +303,8 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
           style={[styles.actionButton, styles.newFolderButton]}
           onPress={() => setShowCreateFolderModal(true)}
         >
-          <Ionicons name="folder-outline" size={20} color={theme.colors.text.primary} />
-          <Text style={styles.actionButtonText}>New Folder</Text>
+          <Ionicons name="add" size={20} color="white" />
+          <Text style={[styles.actionButtonText, styles.newFolderButtonText]}>New Folder</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
@@ -315,30 +315,36 @@ export function FileSystemComponent({ onRecordPress }: FileSystemProps) {
 
       {/* Content */}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Folders */}
-        {folders.map(folder => (
-          <View key={folder.id} style={styles.folderCard}>
-            <TouchableOpacity
-              style={styles.folderContent}
-              onPress={() => handleFolderPress(folder)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.folderIcon}>
-                <Ionicons name="folder" size={32} color={theme.colors.primary} />
-              </View>
-              <Text style={styles.folderName}>{folder.name}</Text>
-              <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
-            </TouchableOpacity>
+        {/* Folders Grid */}
+        {folders.length > 0 && (
+          <View style={styles.foldersGrid}>
+            {folders.map(folder => (
+              <View key={folder.id} style={styles.folderCard}>
+                <TouchableOpacity
+                  style={styles.folderContent}
+                  onPress={() => handleFolderPress(folder)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.folderIcon}>
+                    <Ionicons name="folder" size={40} color="#FF4444" />
+                  </View>
+                  <Text style={styles.folderName} numberOfLines={1} ellipsizeMode="tail">
+                    {folder.name}
+                  </Text>
+                  <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
+                </TouchableOpacity>
 
-            <View style={styles.folderMenuContainer}>
-              <FolderContextMenuModal
-                onRename={() => handleRenameFolder(folder)}
-                onMove={() => handleMoveFolder(folder)}
-                onDelete={() => handleDeleteFolder(folder)}
-              />
-            </View>
+                <View style={styles.folderMenuContainer}>
+                  <FolderContextMenuModal
+                    onRename={() => handleRenameFolder(folder)}
+                    onMove={() => handleMoveFolder(folder)}
+                    onDelete={() => handleDeleteFolder(folder)}
+                  />
+                </View>
+              </View>
+            ))}
           </View>
-        ))}
+        )}
 
         {/* Audio Files */}
         {audioFiles.map(audioFile => (
@@ -426,17 +432,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   newFolderButton: {
-    backgroundColor: theme.colors.surface.primary,
-    borderWidth: 1,
-    borderColor: theme.colors.border.light,
+    backgroundColor: '#4CAF50', // Green color
   },
   recordButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: '#FF4444', // Red color
   },
   actionButtonText: {
     fontSize: 16,
     fontFamily: theme.typography.fontFamily.medium,
     color: theme.colors.text.primary,
+  },
+  newFolderButtonText: {
+    color: 'white',
   },
   recordButtonText: {
     color: 'white',
@@ -445,38 +452,49 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  foldersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   folderCard: {
     backgroundColor: theme.colors.surface.primary,
     borderRadius: 12,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: '31%', // 3 columns with small gaps
+    minHeight: 100,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.border.light,
+    position: 'relative',
   },
   folderContent: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: 'column',
     alignItems: 'center',
-    padding: 16,
+    justifyContent: 'center',
+    padding: 12,
   },
   folderIcon: {
-    marginRight: 12,
+    marginBottom: 8,
   },
   folderName: {
-    flex: 1,
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: theme.typography.fontFamily.medium,
     color: theme.colors.text.primary,
+    textAlign: 'center',
+    marginBottom: 4,
   },
   folderItemCount: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: theme.typography.fontFamily.regular,
     color: theme.colors.text.secondary,
-    marginRight: 8,
+    textAlign: 'center',
   },
   folderMenuContainer: {
-    paddingRight: 8,
+    position: 'absolute',
+    top: 4,
+    right: 4,
   },
   emptyState: {
     alignItems: 'center',
