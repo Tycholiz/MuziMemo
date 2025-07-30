@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
 export type AudioClip = {
@@ -43,8 +44,16 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       try {
         await setAudioModeAsync({
           playsInSilentMode: true,
+          allowsRecording: false,
+          shouldPlayInBackground: false,
+          // Force audio to use main speaker for playback (not earpiece)
+          ...(Platform.OS === 'ios' && {
+            iosCategory: 'playback',
+            iosCategoryMode: 'default',
+            iosCategoryOptions: ['defaultToSpeaker'],
+          }),
         })
-        console.log('🎵 Audio session configured successfully')
+        console.log('🎵 Audio session configured successfully for main speakers')
       } catch (error) {
         console.error('❌ Failed to configure audio session:', error)
       }
@@ -63,6 +72,24 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
           currentTime: audioPlayer.currentTime,
           duration: audioPlayer.duration,
         })
+
+        // Ensure audio mode is set for main speakers before playing
+        try {
+          await setAudioModeAsync({
+            playsInSilentMode: true,
+            allowsRecording: false,
+            shouldPlayInBackground: false,
+            // Force audio to use main speaker for playback (not earpiece)
+            ...(Platform.OS === 'ios' && {
+              iosCategory: 'playback',
+              iosCategoryMode: 'default',
+              iosCategoryOptions: ['defaultToSpeaker'],
+            }),
+          })
+          console.log('🎵 AudioPlayerContext: Audio mode set for main speakers')
+        } catch (audioModeError) {
+          console.warn('⚠️ Failed to set audio mode for playback:', audioModeError)
+        }
 
         setIsLoading(true)
         setCurrentClip(clip)
