@@ -3,13 +3,13 @@
  * Tests the complete flow from directory scanning to name generation
  */
 
-import { generateIntelligentRecordingName } from '../formatUtils'
+import { generateRecordingFilename } from '../formatUtils'
 
 describe('Intelligent Recording Naming - Integration Tests', () => {
   describe('Real-world scenarios', () => {
     it('should handle empty folder correctly', () => {
       const emptyFolder: string[] = []
-      const result = generateIntelligentRecordingName(emptyFolder)
+      const result = generateRecordingFilename(emptyFolder)
       expect(result).toBe('Recording 1.m4a')
     })
 
@@ -24,7 +24,7 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
         'another-folder',
         'music.mp3',
       ]
-      const result = generateIntelligentRecordingName(mixedFolder)
+      const result = generateRecordingFilename(mixedFolder)
       expect(result).toBe('Recording 2.m4a')
     })
 
@@ -36,7 +36,7 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
         'Recording 4.m4a',
         'Recording 5.m4a',
       ]
-      const result = generateIntelligentRecordingName(sequentialFolder)
+      const result = generateRecordingFilename(sequentialFolder)
       expect(result).toBe('Recording 6.m4a')
     })
 
@@ -48,19 +48,19 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
         'Recording 7.m4a',
         'Recording 10.m4a',
       ]
-      const result = generateIntelligentRecordingName(gappyFolder)
+      const result = generateRecordingFilename(gappyFolder)
       expect(result).toBe('Recording 2.m4a')
     })
 
     it('should handle recordings starting from higher numbers', () => {
       const highNumberFolder = ['Recording 5.m4a', 'Recording 6.m4a', 'Recording 8.m4a']
-      const result = generateIntelligentRecordingName(highNumberFolder)
+      const result = generateRecordingFilename(highNumberFolder)
       expect(result).toBe('Recording 1.m4a')
     })
 
     it('should handle very large numbers efficiently', () => {
       const largeNumberFolder = ['Recording 1.m4a', 'Recording 2.m4a', 'Recording 1000.m4a', 'Recording 9999.m4a']
-      const result = generateIntelligentRecordingName(largeNumberFolder)
+      const result = generateRecordingFilename(largeNumberFolder)
       expect(result).toBe('Recording 3.m4a')
     })
 
@@ -74,7 +74,7 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
         'Voice Memo 3.m4a', // Different prefix
         'Recording 4.m4a', // Valid
       ]
-      const result = generateIntelligentRecordingName(nonStandardFolder)
+      const result = generateRecordingFilename(nonStandardFolder)
       expect(result).toBe('Recording 3.m4a') // Should find gap at 3 (1, 2, 4 exist)
     })
 
@@ -84,7 +84,7 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
         'RECORDING 2.M4A', // uppercase
         'Recording 4.m4a', // normal case
       ]
-      const result = generateIntelligentRecordingName(caseVariationFolder)
+      const result = generateRecordingFilename(caseVariationFolder)
       expect(result).toBe('Recording 3.m4a')
     })
 
@@ -95,7 +95,7 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
         'Recording 4', // No extension
         'Recording 5.m4a', // With extension
       ]
-      const result = generateIntelligentRecordingName(mixedExtensionFolder)
+      const result = generateRecordingFilename(mixedExtensionFolder)
       expect(result).toBe('Recording 3.m4a')
     })
   })
@@ -103,7 +103,7 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
   describe('Edge cases', () => {
     it('should handle single file scenarios', () => {
       const singleFileFolder = ['Recording 5.m4a']
-      const result = generateIntelligentRecordingName(singleFileFolder)
+      const result = generateRecordingFilename(singleFileFolder)
       expect(result).toBe('Recording 1.m4a')
     })
 
@@ -113,13 +113,13 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
         'Recording 1.m4a', // Duplicate (shouldn't happen in real FS)
         'Recording 3.m4a',
       ]
-      const result = generateIntelligentRecordingName(duplicateFolder)
+      const result = generateRecordingFilename(duplicateFolder)
       expect(result).toBe('Recording 2.m4a')
     })
 
     it('should handle very sparse numbering', () => {
       const sparseFolder = ['Recording 1.m4a', 'Recording 100.m4a', 'Recording 1000.m4a']
-      const result = generateIntelligentRecordingName(sparseFolder)
+      const result = generateRecordingFilename(sparseFolder)
       expect(result).toBe('Recording 2.m4a')
     })
   })
@@ -140,7 +140,7 @@ describe('Intelligent Recording Naming - Integration Tests', () => {
       largeFolder.push('Recording 5.m4a')
 
       const startTime = Date.now()
-      const result = generateIntelligentRecordingName(largeFolder)
+      const result = generateRecordingFilename(largeFolder)
       const endTime = Date.now()
 
       expect(result).toBe('Recording 2.m4a')

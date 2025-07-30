@@ -112,7 +112,7 @@ The app creates a default "song-ideas" folder on first launch to provide immedia
 ```typescript
 // Intelligent naming with gap-filling logic
 const existingFiles = await FileSystem.readDirectoryAsync(targetPath)
-const fileName = generateIntelligentRecordingName(existingFiles)
+const fileName = generateRecordingFilename(existingFiles)
 // Results in: "Recording 1.m4a", "Recording 2.m4a", etc.
 ```
 

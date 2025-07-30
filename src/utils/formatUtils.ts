@@ -50,21 +50,13 @@ export function formatDate(date: Date): string {
 }
 
 /**
- * Generate a unique filename for recordings
- */
-export function generateRecordingFilename(prefix = 'recording'): string {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  return `${prefix}_${timestamp}.m4a`
-}
-
-/**
  * Generate a default recording name with gap-filling logic
  * Scans existing files to find the lowest available number in the "Recording X" sequence
  *
  * @param existingFileNames Array of existing file names in the target directory
  * @returns A filename like "Recording 1.m4a", "Recording 2.m4a", etc.
  */
-export function generateIntelligentRecordingName(existingFileNames: string[]): string {
+export function generateRecordingFilename(existingFileNames: string[]): string {
   // Extract numbers from existing "Recording X" files
   const recordingNumbers = new Set<number>()
 
