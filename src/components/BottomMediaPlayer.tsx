@@ -62,6 +62,7 @@ export function BottomMediaPlayer({
         onNext={onNext}
         onPrevious={onPrevious}
         onMore={onMore}
+        style={styles.mediaCard}
       />
     </View>
   )
@@ -70,6 +71,11 @@ export function BottomMediaPlayer({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 0,
-    paddingBottom: theme.spacing.lg,
+    paddingBottom: 0,
+  } as ViewStyle,
+  mediaCard: {
+    borderRadius: 0, // Remove border radius for seamless integration
+    marginBottom: 0, // Remove bottom margin
+    backgroundColor: theme.colors.tabBar.background, // Match tab bar background for seamless integration
   } as ViewStyle,
 })

@@ -67,6 +67,7 @@ export function TabsWithMediaPlayer() {
                 audioPlayer.playClip(audioPlayer.currentClip!)
               }
             }}
+            style={styles.seamlessMediaPlayer}
           />
         </View>
       )}
@@ -82,7 +83,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    paddingHorizontal: theme.spacing.md,
     zIndex: 1000, // Ensure it appears above other content
+  },
+  seamlessMediaPlayer: {
+    width: '100%', // Ensure full width
   },
 })
