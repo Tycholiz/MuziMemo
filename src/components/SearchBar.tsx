@@ -63,7 +63,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
     }
   }), [search])
 
-  // Listen for keyboard events to hide suggestions when keyboard is dismissed
+  // Listen for keyboard events to hide dropdown when keyboard is dismissed programmatically
   useEffect(() => {
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       // Don't hide if user is actively interacting with the dropdown (scrolling)
@@ -71,8 +71,9 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
         return
       }
 
-      // Only hide if there's no query (showing suggestions) or if input is not focused
-      if (!search.query.trim() || !inputRef.current?.isFocused()) {
+      // Only hide if input is not focused (keyboard was dismissed programmatically)
+      // If input is still focused, let the blur handler manage the dismissal
+      if (!inputRef.current?.isFocused()) {
         search.setShowResults(false)
       }
     })
@@ -128,13 +129,11 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
   }
 
   const handleBlur = () => {
-    // Only hide results if there's no query (showing suggestions)
-    // For search results, let the keyboard listener handle hiding
-    if (!search.query.trim()) {
-      setTimeout(() => {
-        search.setShowResults(false)
-      }, 300)
-    }
+    // Always hide dropdown when search field loses focus
+    // Use timeout to allow for result selection before hiding
+    setTimeout(() => {
+      search.setShowResults(false)
+    }, 300)
   }
 
   const handleClear = () => {
