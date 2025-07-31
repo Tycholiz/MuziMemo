@@ -58,18 +58,14 @@ export function FileNavigatorModal({
   const [currentFolderPath, setCurrentFolderPath] = useState(
     currentPath || initialDirectory || getRecordingsDirectory()
   )
-  console.log('currentPath: ', currentPath)
-  console.log('initialDirectory: ', initialDirectory)
-  console.log('getRecordingsDirectory(): ', getRecordingsDirectory())
-  console.log('currentFolderPath: ', currentFolderPath)
 
   // Update currentFolderPath when currentPath or initialDirectory changes
   useEffect(() => {
     const newPath = currentPath || initialDirectory
-    if (newPath !== currentFolderPath) {
+    if (newPath && newPath !== currentFolderPath) {
       setCurrentFolderPath(newPath)
     }
-  }, [currentPath, initialDirectory])
+  }, [currentPath, initialDirectory, currentFolderPath])
 
   // Load folder contents when component mounts or path changes
   useEffect(() => {

@@ -340,6 +340,35 @@ export default function RecordScreen() {
     resetRecording()
   }
 
+  const handleCancelRecording = async () => {
+    try {
+      // Stop the recording without saving
+      const uri = await stopRecording()
+
+      // If a recording file was created, delete it
+      if (uri) {
+        try {
+          await FileSystem.deleteAsync(uri, { idempotent: true })
+        } catch (deleteError) {
+          console.warn('Failed to delete cancelled recording file:', deleteError)
+          // Continue with reset even if file deletion fails
+        }
+      }
+
+      // Reset the recording state to prepare for a new recording
+      resetRecording()
+
+      // Clear any recording URI state
+      setRecordingUri(null)
+    } catch (err) {
+      console.error('Cancel recording error:', err)
+      Alert.alert('Cancel Error', 'Failed to cancel recording properly, but recording has been stopped.')
+      // Still reset the state even if cancellation had issues
+      resetRecording()
+      setRecordingUri(null)
+    }
+  }
+
   const handleFolderSelect = (folderId: string) => {
     // Find the folder data and set the path directly
     const selectedFolderData = folders.find(f => f.id === folderId)
@@ -466,11 +495,23 @@ export default function RecordScreen() {
           {status === 'recording' ? 'Tap to Pause' : status === 'paused' ? 'Tap to Resume' : 'Tap to Record'}
         </Text>
 
-        {/* Done Button - Show when recording or paused */}
+        {/* Action Buttons - Show when recording or paused */}
         {(status === 'recording' || status === 'paused') && (
           <>
             <Spacer size="lg" />
-            <View style={styles.doneButtonContainer}>
+            <View style={styles.actionButtonsContainer}>
+              {/* Cancel Button - Only show during active recording */}
+              {status === 'recording' && (
+                <Button
+                  title="Cancel"
+                  variant="secondary"
+                  onPress={handleCancelRecording}
+                  style={styles.cancelButton}
+                  icon="close"
+                />
+              )}
+
+              {/* Done Button */}
               <Button
                 title="Done"
                 variant="primary"
@@ -578,14 +619,26 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '80%',
   },
-  doneButtonContainer: {
+  actionButtonsContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
+    gap: theme.spacing.md, // Space between buttons
   },
   doneButton: {
     backgroundColor: theme.colors.success,
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.md,
+    flex: 1,
+    maxWidth: 120, // Prevent buttons from getting too wide
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.error,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    flex: 1,
+    maxWidth: 120, // Prevent buttons from getting too wide
   },
   recordingIndicator: {
     flexDirection: 'row',
