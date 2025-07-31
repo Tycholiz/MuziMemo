@@ -352,22 +352,6 @@ export function FileSystemComponent() {
       {/* Breadcrumbs */}
       <Breadcrumbs />
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsContainer}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.newFolderButton]}
-          onPress={() => setShowCreateFolderModal(true)}
-        >
-          <Ionicons name="add" size={20} color="white" />
-          <Text style={[styles.actionButtonText, styles.newFolderButtonText]}>New Folder</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
-          <Ionicons name="mic" size={20} color="white" />
-          <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Content */}
       <ScrollView
         style={styles.scrollView}
@@ -405,7 +389,26 @@ export function FileSystemComponent() {
           </View>
         )}
 
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.newFolderButton]}
+            onPress={() => setShowCreateFolderModal(true)}
+          >
+            <Ionicons name="add" size={20} color="white" />
+            <Text style={[styles.actionButtonText, styles.newFolderButtonText]}>New Folder</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
+            <Ionicons name="mic" size={20} color="white" />
+            <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Audio Files */}
+        <View>
+          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>13 audio files</Text>
+        </View>
         {audioFiles.map(audioFile => (
           <AudioClipCard
             key={audioFile.id}
@@ -489,7 +492,6 @@ const styles = StyleSheet.create({
   },
   actionButtonsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
   },
