@@ -1,0 +1,106 @@
+import React from 'react'
+import { render, act } from '@testing-library/react-native'
+import { AudioPlayerProvider, useAudioPlayerContext } from '../AudioPlayerContext'
+
+// Mock expo-audio
+jest.mock('expo-audio', () => ({
+  useAudioPlayer: () => ({
+    playing: false,
+    currentTime: 0,
+    duration: 0,
+    replace: jest.fn(),
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(),
+  }),
+  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+}))
+
+// Test component to access context
+const TestComponent = () => {
+  const audioPlayer = useAudioPlayerContext()
+  return (
+    <>
+      <div testID="currentClip">{audioPlayer.currentClip?.name || 'none'}</div>
+      <div testID="isPlaying">{audioPlayer.isPlaying.toString()}</div>
+      <div testID="isLoading">{audioPlayer.isLoading.toString()}</div>
+    </>
+  )
+}
+
+describe('AudioPlayerContext', () => {
+  it('should provide initial state', () => {
+    const { getByTestId } = render(
+      <AudioPlayerProvider>
+        <TestComponent />
+      </AudioPlayerProvider>
+    )
+
+    expect(getByTestId('currentClip')).toHaveTextContent('none')
+    expect(getByTestId('isPlaying')).toHaveTextContent('false')
+    expect(getByTestId('isLoading')).toHaveTextContent('false')
+  })
+
+  it('should set playing state immediately when playClip is called', async () => {
+    let audioPlayerRef: any
+
+    const TestComponentWithActions = () => {
+      audioPlayerRef = useAudioPlayerContext()
+      return <TestComponent />
+    }
+
+    const { getByTestId } = render(
+      <AudioPlayerProvider>
+        <TestComponentWithActions />
+      </AudioPlayerProvider>
+    )
+
+    const testClip = {
+      id: 'test-1',
+      name: 'Test Audio.m4a',
+      uri: 'file://test.m4a',
+    }
+
+    // Call playClip and check immediate state change
+    await act(async () => {
+      await audioPlayerRef.playClip(testClip)
+    })
+
+    expect(getByTestId('currentClip')).toHaveTextContent('Test Audio.m4a')
+    expect(getByTestId('isPlaying')).toHaveTextContent('true')
+  })
+
+  it('should reset state when cleanup is called', async () => {
+    let audioPlayerRef: any
+
+    const TestComponentWithActions = () => {
+      audioPlayerRef = useAudioPlayerContext()
+      return <TestComponent />
+    }
+
+    const { getByTestId } = render(
+      <AudioPlayerProvider>
+        <TestComponentWithActions />
+      </AudioPlayerProvider>
+    )
+
+    const testClip = {
+      id: 'test-1',
+      name: 'Test Audio.m4a',
+      uri: 'file://test.m4a',
+    }
+
+    // Set up playing state
+    await act(async () => {
+      await audioPlayerRef.playClip(testClip)
+    })
+
+    // Cleanup
+    act(() => {
+      audioPlayerRef.cleanup()
+    })
+
+    expect(getByTestId('currentClip')).toHaveTextContent('none')
+    expect(getByTestId('isPlaying')).toHaveTextContent('false')
+  })
+})

@@ -50,6 +50,28 @@ export function formatDate(date: Date): string {
 }
 
 /**
+ * Format date with smart Today/Yesterday handling
+ */
+export function formatDateSmart(date: Date): string {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+  const fileDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+  if (fileDate.getTime() === today.getTime()) {
+    return 'Today'
+  } else if (fileDate.getTime() === yesterday.getTime()) {
+    return 'Yesterday'
+  } else {
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  }
+}
+
+/**
  * Generate a default recording name with gap-filling logic
  * Scans existing files to find the lowest available number in the "Recording X" sequence
  *

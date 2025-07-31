@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
 import { FileContextMenuModal } from './FileContextMenuModal'
+import { formatDateSmart, formatFileSize } from '../utils/formatUtils'
 
 export type AudioClipData = {
   id: string
@@ -49,21 +50,7 @@ export const AudioClipCard = React.memo(function AudioClipCard({
     }
   }
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-  }
 
   return (
     <View style={[styles.container, isPlaying && styles.containerPlaying]}>
@@ -81,7 +68,7 @@ export const AudioClipCard = React.memo(function AudioClipCard({
             {clip.name}
           </Text>
           <Text style={styles.details}>
-            {formatDate(clip.createdAt)} • {formatFileSize(clip.size)}
+            {formatDateSmart(clip.createdAt)} • {formatFileSize(clip.size)}
             {clip.duration && ` • ${clip.duration}`}
           </Text>
         </View>

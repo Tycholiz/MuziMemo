@@ -141,12 +141,27 @@ export function FileSystemComponent() {
             itemCount: subItems.length,
           })
         } else if (item.endsWith('.m4a') || item.endsWith('.mp3') || item.endsWith('.wav')) {
+          // Try to get the most accurate timestamp available
+          let timestamp = Date.now() // fallback to current time
+
+          // Check for creation time first, then modification time
+          if ((itemInfo as any).creationTime) {
+            timestamp = (itemInfo as any).creationTime
+          } else if ((itemInfo as any).modificationTime) {
+            timestamp = (itemInfo as any).modificationTime
+          }
+
+          // Ensure we have a valid timestamp (not epoch time)
+          if (timestamp === 0 || timestamp < 946684800000) { // Jan 1, 2000
+            timestamp = Date.now()
+          }
+
           audioFileList.push({
             id: `audio-${item}`,
             name: item,
             uri: itemPath,
             size: (itemInfo as any).size || 0,
-            createdAt: new Date((itemInfo as any).modificationTime || Date.now()),
+            createdAt: new Date(timestamp),
           })
         }
       }
