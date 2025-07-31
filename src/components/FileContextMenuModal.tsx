@@ -47,7 +47,7 @@ export function FileContextMenuModal({
     ...(isInRecentlyDeleted && onRestore ? [{
       id: 'restore',
       label: 'Restore',
-      icon: 'refresh-outline',
+      icon: 'refresh-outline' as keyof typeof Ionicons.glyphMap,
       onPress: () => {
         setIsVisible(false)
         onRestore()
@@ -55,7 +55,7 @@ export function FileContextMenuModal({
     }] : onMove ? [{
       id: 'move',
       label: 'Move',
-      icon: 'folder-outline',
+      icon: 'folder-outline' as keyof typeof Ionicons.glyphMap,
       onPress: () => {
         setIsVisible(false)
         onMove()

@@ -4,8 +4,6 @@
 
 import {
   getRecentlyDeletedDirectory,
-  moveToRecentlyDeleted,
-  restoreFromRecentlyDeleted,
   isInRecentlyDeleted,
 } from '../../utils/recentlyDeletedUtils'
 
@@ -19,7 +17,8 @@ describe('Recently Deleted Utils', () => {
 
   describe('isInRecentlyDeleted', () => {
     it('should return true for paths within recently-deleted directory', () => {
-      const recentlyDeletedPath = '/some/path/recently-deleted/file.m4a'
+      const recentlyDeletedDir = getRecentlyDeletedDirectory()
+      const recentlyDeletedPath = `${recentlyDeletedDir}/file.m4a`
       const result = isInRecentlyDeleted(recentlyDeletedPath)
       expect(result).toBe(true)
     })
