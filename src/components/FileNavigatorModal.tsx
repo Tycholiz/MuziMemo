@@ -216,15 +216,6 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
             </TouchableOpacity>
           </View>
 
-          <View style={styles.pathContainer}>
-            <Breadcrumbs
-              variant="compact"
-              showHomeIcon={true}
-              directoryPath={currentFolderPath}
-              onBreadcrumbPress={handleBreadcrumbPress}
-            />
-          </View>
-
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -239,6 +230,15 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
               showsVerticalScrollIndicator={false}
             />
           )}
+
+          <View style={styles.pathContainer}>
+            <Breadcrumbs
+              variant="compact"
+              showHomeIcon={true}
+              directoryPath={currentFolderPath}
+              onBreadcrumbPress={handleBreadcrumbPress}
+            />
+          </View>
 
           <View style={styles.footer}>
             <Button
