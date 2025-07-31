@@ -106,6 +106,11 @@ export function FileSystemComponent() {
         const itemInfo = await FileSystem.getInfoAsync(itemPath)
 
         if (itemInfo.isDirectory) {
+          // Skip recently-deleted folder from normal folder listings
+          if (item === 'recently-deleted') {
+            continue
+          }
+
           // Count items in folder
           const subItems = await FileSystem.readDirectoryAsync(itemPath)
           folderList.push({
@@ -578,9 +583,19 @@ export function FileSystemComponent() {
         {/* Empty State */}
         {sortedFolders.length === 0 && sortedAudioFiles.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="folder-open-outline" size={64} color={theme.colors.text.secondary} />
-            <Text style={styles.emptyStateText}>No recordings yet</Text>
-            <Text style={styles.emptyStateSubtext}>Tap Record to create your first recording</Text>
+            <Ionicons
+              name={fileManager.getIsInRecentlyDeleted() ? "trash-outline" : "folder-open-outline"}
+              size={64}
+              color={theme.colors.text.secondary}
+            />
+            <Text style={styles.emptyStateText}>
+              {fileManager.getIsInRecentlyDeleted() ? "Your recycling bin is empty" : "No recordings yet"}
+            </Text>
+            <Text style={styles.emptyStateSubtext}>
+              {fileManager.getIsInRecentlyDeleted()
+                ? "Deleted audio files will appear here"
+                : "Tap Record to create your first recording"}
+            </Text>
           </View>
         )}
       </ScrollView>

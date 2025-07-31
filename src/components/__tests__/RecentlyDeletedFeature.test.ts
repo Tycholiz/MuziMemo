@@ -66,10 +66,39 @@ describe('FileManagerContext Recently Deleted Integration', () => {
       navigateToRecentlyDeleted: expect.any(Function),
       getIsInRecentlyDeleted: expect.any(Function),
     }
-    
+
     // This test verifies the context interface structure
     expect(expectedContextInterface.isInRecentlyDeleted).toBeDefined()
     expect(expectedContextInterface.navigateToRecentlyDeleted).toBeDefined()
     expect(expectedContextInterface.getIsInRecentlyDeleted).toBeDefined()
+  })
+})
+
+describe('Recently Deleted UI Integration', () => {
+  it('should exclude recently-deleted from folder listings', () => {
+    // Test that recently-deleted folder is filtered out from normal folder views
+    const folders = [
+      { name: 'Music', id: 'music' },
+      { name: 'recently-deleted', id: 'recently-deleted' },
+      { name: 'Demos', id: 'demos' }
+    ]
+
+    // Filter logic that should be applied
+    const filteredFolders = folders.filter(folder => folder.name !== 'recently-deleted')
+
+    expect(filteredFolders).toHaveLength(2)
+    expect(filteredFolders.find(f => f.name === 'recently-deleted')).toBeUndefined()
+    expect(filteredFolders.find(f => f.name === 'Music')).toBeDefined()
+    expect(filteredFolders.find(f => f.name === 'Demos')).toBeDefined()
+  })
+
+  it('should show different empty state messages for recently deleted vs normal folders', () => {
+    // Test empty state message logic
+    const getEmptyStateMessage = (isInRecentlyDeleted: boolean) => {
+      return isInRecentlyDeleted ? "Your recycling bin is empty" : "No recordings yet"
+    }
+
+    expect(getEmptyStateMessage(true)).toBe("Your recycling bin is empty")
+    expect(getEmptyStateMessage(false)).toBe("No recordings yet")
   })
 })

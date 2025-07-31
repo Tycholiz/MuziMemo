@@ -81,6 +81,11 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
         const itemInfo = await FileSystem.getInfoAsync(itemPath)
 
         if (itemInfo.isDirectory) {
+          // Skip recently-deleted folder from move/restore destination options
+          if (item === 'recently-deleted') {
+            continue
+          }
+
           folderItems.push({
             id: `folder-${item}`,
             name: item,

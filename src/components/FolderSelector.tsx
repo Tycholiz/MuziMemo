@@ -55,9 +55,14 @@ export function FolderSelector({
     try {
       const validFolders: Folder[] = []
 
-      // Validate each folder's existence
+      // Validate each folder's existence (exclude recently-deleted)
       for (const folder of folders) {
         try {
+          // Skip recently-deleted folder from commonly used folders
+          if (folder.name === 'recently-deleted' || folder.path === 'recently-deleted') {
+            continue
+          }
+
           const exists = await doesFolderPathExist(folder.path || '')
           if (exists) {
             validFolders.push(folder)
