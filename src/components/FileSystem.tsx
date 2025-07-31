@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'rea
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
+import Toast from 'react-native-toast-message'
 
 import { useFileManager } from '../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
@@ -11,6 +12,7 @@ import { AudioClipCard } from './AudioClipCard'
 import { FolderContextMenuModal } from './FolderContextMenuModal'
 import { CreateFolderModal } from './CreateFolderModal'
 import { FileNavigatorModal } from './FileNavigatorModal'
+import { HomeScreenMenuModal } from './HomeScreenMenuModal'
 import { theme } from '../utils/theme'
 import {
   moveItem,
@@ -19,6 +21,13 @@ import {
   getRelativePathFromRecordings,
   pathToNavigationArray,
 } from '../utils/moveUtils'
+import {
+  moveToRecentlyDeleted,
+  restoreFromRecentlyDeleted,
+  showRestoreSuccessToast,
+  showRestoreErrorToast,
+  deleteFolderAndMoveAudioFiles,
+} from '../utils/recentlyDeletedUtils'
 
 export type FolderData = {
   id: string
@@ -44,8 +53,10 @@ export function FileSystemComponent() {
   const [audioFiles, setAudioFiles] = useState<AudioFileData[]>([])
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
   const [showMoveModal, setShowMoveModal] = useState(false)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
   const [selectedFolderForMove, setSelectedFolderForMove] = useState<FolderData | null>(null)
   const [selectedFileForMove, setSelectedFileForMove] = useState<AudioFileData | null>(null)
+  const [selectedFileForRestore, setSelectedFileForRestore] = useState<AudioFileData | null>(null)
 
   // Scroll position preservation
   const scrollViewRef = useRef<ScrollView>(null)
@@ -97,6 +108,11 @@ export function FileSystemComponent() {
         const itemInfo = await FileSystem.getInfoAsync(itemPath)
 
         if (itemInfo.isDirectory) {
+          // Skip recently-deleted folder from normal folder listings
+          if (item === 'recently-deleted') {
+            continue
+          }
+
           // Count items in folder
           const subItems = await FileSystem.readDirectoryAsync(itemPath)
           folderList.push({
@@ -168,6 +184,14 @@ export function FileSystemComponent() {
     })
   }, [fileManager, router])
 
+  const handleNavigateToRecentlyDeleted = useCallback(() => {
+    // Stop current playback when navigating to recently deleted
+    audioPlayer.cleanup()
+
+    // Navigate to recently deleted
+    fileManager.navigateToRecentlyDeleted()
+  }, [audioPlayer, fileManager])
+
   const handleCreateFolder = useCallback(
     async (folderName: string) => {
       const newFolder: FolderData = {
@@ -228,7 +252,7 @@ export function FileSystemComponent() {
     async (folder: FolderData) => {
       const message =
         folder.itemCount > 0
-          ? `Delete "${folder.name}" and all ${folder.itemCount} items inside?`
+          ? `Delete "${folder.name}" and move all audio files to Recently Deleted?`
           : `Delete "${folder.name}"?`
 
       Alert.alert('Delete Folder', message, [
@@ -243,7 +267,21 @@ export function FileSystemComponent() {
             try {
               const fullPath = fileManager.getFullPath()
               const folderPath = `${fullPath}/${folder.name}`
-              await FileSystem.deleteAsync(folderPath)
+
+              // Move all audio files to recently-deleted and delete the folder
+              const movedAudioCount = await deleteFolderAndMoveAudioFiles(folderPath, folder.name)
+
+              // Show success message if audio files were moved
+              if (movedAudioCount > 0) {
+                const fileText = movedAudioCount === 1 ? 'audio file' : 'audio files'
+                Toast.show({
+                  type: 'success',
+                  text1: `Folder deleted`,
+                  text2: `${movedAudioCount} ${fileText} moved to Recently Deleted`,
+                  visibilityTime: 4000,
+                })
+              }
+
               // Success - folder already removed from state
             } catch (error) {
               console.error('Failed to delete folder:', error)
@@ -301,10 +339,14 @@ export function FileSystemComponent() {
 
   const handleDeleteAudioFile = useCallback(
     async (audioFile: AudioFileData) => {
-      Alert.alert('Delete Audio File', `Delete "${audioFile.name}"?`, [
+      const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+      const actionText = isInRecentlyDeletedFolder ? 'permanently delete' : 'delete'
+      const alertTitle = isInRecentlyDeletedFolder ? 'Permanently Delete Audio File' : 'Delete Audio File'
+
+      Alert.alert(alertTitle, `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} "${audioFile.name}"?`, [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: isInRecentlyDeletedFolder ? 'Permanently Delete' : 'Delete',
           style: 'destructive',
           onPress: async () => {
             // Stop playback if this file is currently playing
@@ -318,7 +360,14 @@ export function FileSystemComponent() {
             try {
               const fullPath = fileManager.getFullPath()
               const filePath = `${fullPath}/${audioFile.name}`
-              await FileSystem.deleteAsync(filePath)
+
+              if (isInRecentlyDeletedFolder) {
+                // Permanently delete from recently-deleted
+                await FileSystem.deleteAsync(filePath)
+              } else {
+                // Move to recently-deleted instead of permanent deletion
+                await moveToRecentlyDeleted(filePath, audioFile.name)
+              }
               // Success - item already removed from state
             } catch (error) {
               console.error('Failed to delete audio file:', error)
@@ -337,6 +386,11 @@ export function FileSystemComponent() {
     setSelectedFileForMove(audioFile)
     setSelectedFolderForMove(null)
     setShowMoveModal(true)
+  }, [])
+
+  const handleRestoreAudioFile = useCallback(async (audioFile: AudioFileData) => {
+    setSelectedFileForRestore(audioFile)
+    setShowRestoreModal(true)
   }, [])
 
   const handleMoveConfirm = async (destinationPath: string) => {
@@ -388,6 +442,41 @@ export function FileSystemComponent() {
     setSelectedFileForMove(null)
   }
 
+  const handleRestoreConfirm = async (destinationPath: string) => {
+    try {
+      // Get the recordings base path correctly (not from currently-deleted directory)
+      const documentsDirectory = FileSystem.documentDirectory
+      const recordingsBasePath = documentsDirectory ? `${documentsDirectory}recordings` : ''
+
+      if (selectedFileForRestore) {
+        // Restoring a file from recently-deleted
+        const sourcePath = `${fileManager.getFullPath()}/${selectedFileForRestore.name}`
+        await restoreFromRecentlyDeleted(sourcePath, destinationPath, selectedFileForRestore.name)
+
+        // Remove from current view (recently-deleted)
+        setAudioFiles(prev => prev.filter(file => file.id !== selectedFileForRestore.id))
+
+        // Show success toast with navigation
+        const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
+        showRestoreSuccessToast(selectedFileForRestore.name, () => {
+          const navigationPath = pathToNavigationArray(relativePath)
+          fileManager.navigateToPath(navigationPath)
+        })
+      }
+    } catch (error: any) {
+      console.error('Failed to restore item:', error)
+      showRestoreErrorToast(error.message || 'Failed to restore item')
+    } finally {
+      setShowRestoreModal(false)
+      setSelectedFileForRestore(null)
+    }
+  }
+
+  const handleRestoreCancelOrClose = () => {
+    setShowRestoreModal(false)
+    setSelectedFileForRestore(null)
+  }
+
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -409,8 +498,17 @@ export function FileSystemComponent() {
 
   return (
     <View style={styles.container}>
-      {/* Breadcrumbs */}
-      <Breadcrumbs />
+      {/* Header with Breadcrumbs and Menu */}
+      <View style={styles.header}>
+        <View style={styles.breadcrumbsContainer}>
+          <Breadcrumbs />
+        </View>
+        {!fileManager.getIsInRecentlyDeleted() && (
+          <View style={styles.headerMenuContainer}>
+            <HomeScreenMenuModal onRecentlyDeleted={handleNavigateToRecentlyDeleted} />
+          </View>
+        )}
+      </View>
 
       {/* Content */}
       <ScrollView
@@ -453,32 +551,36 @@ export function FileSystemComponent() {
           </View>
         )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.newFolderButton]}
-            onPress={() => setShowCreateFolderModal(true)}
-          >
-            <Ionicons name="add" size={20} color="white" />
-            <Text style={[styles.actionButtonText, styles.newFolderButtonText]}>New Folder</Text>
-          </TouchableOpacity>
+        {/* Action Buttons - Hidden in Recently Deleted */}
+        {!fileManager.getIsInRecentlyDeleted() && (
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.newFolderButton]}
+              onPress={() => setShowCreateFolderModal(true)}
+            >
+              <Ionicons name="add" size={20} color="white" />
+              <Text style={[styles.actionButtonText, styles.newFolderButtonText]}>New Folder</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
-            <Ionicons name="mic" size={20} color="white" />
-            <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
+              <Ionicons name="mic" size={20} color="white" />
+              <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Audio Files */}
         <View>
-          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>13 audio files</Text>
+          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>{sortedAudioFiles.length} audio files</Text>
         </View>
         {sortedAudioFiles.map(audioFile => {
           const handlePlay = () => audioPlayer.playClip(audioFile)
           const handlePause = () => audioPlayer.pauseClip()
           const handleRename = () => handleRenameAudioFile(audioFile)
           const handleMove = () => handleMoveAudioFile(audioFile)
+          const handleRestore = () => handleRestoreAudioFile(audioFile)
           const handleDelete = () => handleDeleteAudioFile(audioFile)
+          const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
 
           return (
             <AudioClipCard
@@ -488,8 +590,10 @@ export function FileSystemComponent() {
               onPlay={handlePlay}
               onPause={handlePause}
               onRename={handleRename}
-              onMove={handleMove}
+              onMove={isInRecentlyDeletedFolder ? undefined : handleMove}
+              onRestore={isInRecentlyDeletedFolder ? handleRestore : undefined}
               onDelete={handleDelete}
+              isInRecentlyDeleted={isInRecentlyDeletedFolder}
             />
           )
         })}
@@ -497,9 +601,19 @@ export function FileSystemComponent() {
         {/* Empty State */}
         {sortedFolders.length === 0 && sortedAudioFiles.length === 0 && (
           <View style={styles.emptyState}>
-            <Ionicons name="folder-open-outline" size={64} color={theme.colors.text.secondary} />
-            <Text style={styles.emptyStateText}>No recordings yet</Text>
-            <Text style={styles.emptyStateSubtext}>Tap Record to create your first recording</Text>
+            <Ionicons
+              name={fileManager.getIsInRecentlyDeleted() ? "trash-outline" : "folder-open-outline"}
+              size={64}
+              color={theme.colors.text.secondary}
+            />
+            <Text style={styles.emptyStateText}>
+              {fileManager.getIsInRecentlyDeleted() ? "Your recycling bin is empty" : "No recordings yet"}
+            </Text>
+            <Text style={styles.emptyStateSubtext}>
+              {fileManager.getIsInRecentlyDeleted()
+                ? "Deleted audio files will appear here"
+                : "Tap Record to create your first recording"}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -524,6 +638,18 @@ export function FileSystemComponent() {
         initialDirectory={fileManager.getFullPath()}
         excludePath={selectedFolderForMove ? `${fileManager.getFullPath()}/${selectedFolderForMove.name}` : undefined}
       />
+
+      {/* Restore Modal */}
+      <FileNavigatorModal
+        visible={showRestoreModal}
+        onClose={handleRestoreCancelOrClose}
+        onSelectFolder={() => {}} // Not used for restore operations
+        title={`Restore ${selectedFileForRestore?.name || ''}`}
+        primaryButtonText="Restore Here"
+        primaryButtonIcon="refresh"
+        onPrimaryAction={handleRestoreConfirm}
+        initialDirectory={`${FileSystem.documentDirectory}recordings`}
+      />
     </View>
   )
 }
@@ -532,6 +658,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background.primary,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  breadcrumbsContainer: {
+    flex: 1,
+  },
+  headerMenuContainer: {
+    marginLeft: 8,
   },
   centerContainer: {
     flex: 1,

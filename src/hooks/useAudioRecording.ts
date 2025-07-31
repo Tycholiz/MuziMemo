@@ -38,8 +38,8 @@ export function useAudioRecording(audioQuality: AudioQuality = 'high') {
 
   // Refs for tracking recording state
   const recordingStartTime = useRef<number | null>(null)
-  const durationInterval = useRef<number | null>(null)
-  const audioLevelInterval = useRef<number | null>(null)
+  const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+  const audioLevelInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   /**
    * Convert decibel value to normalized 0-1 range for UI

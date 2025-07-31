@@ -21,7 +21,9 @@ export type AudioClipCardProps = {
   onPause: () => void
   onRename?: () => void
   onMove?: () => void
+  onRestore?: () => void
   onDelete?: () => void
+  isInRecentlyDeleted?: boolean
 }
 
 export const AudioClipCard = React.memo(function AudioClipCard({
@@ -31,7 +33,9 @@ export const AudioClipCard = React.memo(function AudioClipCard({
   onPause,
   onRename,
   onMove,
+  onRestore,
   onDelete,
+  isInRecentlyDeleted = false,
 }: AudioClipCardProps) {
   const handlePress = () => {
     console.log('🎵 AudioClipCard: handlePress called for:', clip.name)
@@ -89,12 +93,14 @@ export const AudioClipCard = React.memo(function AudioClipCard({
         )}
       </TouchableOpacity>
 
-      {(onRename || onMove || onDelete) && (
+      {(onRename || onMove || onRestore || onDelete) && (
         <View style={styles.menuContainer}>
           <FileContextMenuModal
             onRename={onRename || (() => {})}
-            onMove={onMove || (() => {})}
+            onMove={onMove}
+            onRestore={onRestore}
             onDelete={onDelete || (() => {})}
+            isInRecentlyDeleted={isInRecentlyDeleted}
           />
         </View>
       )}
