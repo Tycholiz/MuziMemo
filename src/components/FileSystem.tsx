@@ -28,6 +28,8 @@ import {
   showRestoreErrorToast,
   deleteFolderAndMoveAudioFiles,
 } from '../utils/recentlyDeletedUtils'
+import { SortOption, SORT_OPTIONS, DEFAULT_SORT_OPTION, sortAudioFiles, sortFolders } from '../utils/sortUtils'
+import { loadSortPreference, saveSortPreference } from '../utils/storageUtils'
 
 export type FolderData = {
   id: string
@@ -57,6 +59,8 @@ export function FileSystemComponent() {
   const [selectedFolderForMove, setSelectedFolderForMove] = useState<FolderData | null>(null)
   const [selectedFileForMove, setSelectedFileForMove] = useState<AudioFileData | null>(null)
   const [selectedFileForRestore, setSelectedFileForRestore] = useState<AudioFileData | null>(null)
+  const [sortOption, setSortOption] = useState<SortOption>(DEFAULT_SORT_OPTION)
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
 
   // Scroll position preservation
   const scrollViewRef = useRef<ScrollView>(null)
@@ -65,17 +69,32 @@ export function FileSystemComponent() {
 
   // Memoized sorted arrays to prevent unnecessary re-renders
   const sortedFolders = useMemo(() => {
-    return [...folders].sort((a, b) => a.name.localeCompare(b.name))
+    return sortFolders(folders)
   }, [folders])
 
   const sortedAudioFiles = useMemo(() => {
-    return [...audioFiles].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-  }, [audioFiles])
+    return sortAudioFiles(audioFiles, sortOption)
+  }, [audioFiles, sortOption])
 
   // Load folder contents when path changes
   useEffect(() => {
     loadFolderContents()
   }, [fileManager.currentPath])
+
+  // Load saved sort preference on mount
+  useEffect(() => {
+    const loadSavedSortPreference = async () => {
+      try {
+        const savedSort = await loadSortPreference()
+        setSortOption(savedSort)
+      } catch (error) {
+        console.error('Failed to load sort preference:', error)
+        // Keep default sort option
+      }
+    }
+
+    loadSavedSortPreference()
+  }, [])
 
   const loadFolderContents = async () => {
     try {
@@ -191,6 +210,19 @@ export function FileSystemComponent() {
     // Navigate to recently deleted
     fileManager.navigateToRecentlyDeleted()
   }, [audioPlayer, fileManager])
+
+  const handleSortChange = useCallback(async (newSortOption: SortOption) => {
+    setSortOption(newSortOption)
+    setShowSortDropdown(false)
+
+    // Save preference to storage
+    try {
+      await saveSortPreference(newSortOption)
+    } catch (error) {
+      console.error('Failed to save sort preference:', error)
+      // Continue anyway - sorting will still work for current session
+    }
+  }, [])
 
   const handleCreateFolder = useCallback(
     async (folderName: string) => {
@@ -569,9 +601,19 @@ export function FileSystemComponent() {
           </View>
         )}
 
+        {/* Sort Button */}
+        <View style={styles.sortButtonContainer}>
+          <TouchableOpacity style={[styles.actionButton, styles.sortButton]} onPress={() => setShowSortDropdown(true)}>
+            <Ionicons name="funnel" size={20} color={theme.colors.text.primary} />
+            <Text style={[styles.actionButtonText, styles.sortButtonText]}>Sort</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Audio Files */}
         <View>
-          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>{sortedAudioFiles.length} audio files</Text>
+          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>
+            {sortedAudioFiles.length} audio file{sortedAudioFiles.length !== 1 ? 's' : ''}
+          </Text>
         </View>
         {sortedAudioFiles.map(audioFile => {
           const handlePlay = () => audioPlayer.playClip(audioFile)
@@ -602,17 +644,17 @@ export function FileSystemComponent() {
         {sortedFolders.length === 0 && sortedAudioFiles.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons
-              name={fileManager.getIsInRecentlyDeleted() ? "trash-outline" : "folder-open-outline"}
+              name={fileManager.getIsInRecentlyDeleted() ? 'trash-outline' : 'folder-open-outline'}
               size={64}
               color={theme.colors.text.secondary}
             />
             <Text style={styles.emptyStateText}>
-              {fileManager.getIsInRecentlyDeleted() ? "Your recycling bin is empty" : "No recordings yet"}
+              {fileManager.getIsInRecentlyDeleted() ? 'Your recycling bin is empty' : 'No recordings yet'}
             </Text>
             <Text style={styles.emptyStateSubtext}>
               {fileManager.getIsInRecentlyDeleted()
-                ? "Deleted audio files will appear here"
-                : "Tap Record to create your first recording"}
+                ? 'Deleted audio files will appear here'
+                : 'Tap Record to create your first recording'}
             </Text>
           </View>
         )}
@@ -650,6 +692,38 @@ export function FileSystemComponent() {
         onPrimaryAction={handleRestoreConfirm}
         initialDirectory={`${FileSystem.documentDirectory}recordings`}
       />
+
+      {/* Sort Modal */}
+      {showSortDropdown && (
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSortDropdown(false)}>
+            <View style={styles.sortModal}>
+              <Text style={styles.sortModalTitle}>Sort by</Text>
+              {SORT_OPTIONS.map(option => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={styles.sortOption}
+                  onPress={() => handleSortChange(option.value)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.sortOptionContent}>
+                    <Ionicons
+                      name={option.icon}
+                      size={20}
+                      color={theme.colors.text.secondary}
+                      style={styles.sortOptionIcon}
+                    />
+                    <Text style={styles.sortOptionText}>{option.label}</Text>
+                    {sortOption === option.value && (
+                      <Ionicons name="checkmark" size={20} color={theme.colors.primary} style={styles.sortCheckmark} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   )
 }
@@ -731,6 +805,70 @@ const styles = StyleSheet.create({
   },
   recordButtonText: {
     color: 'white',
+  },
+  sortButtonContainer: {
+    paddingVertical: 8,
+  },
+  sortButton: {
+    backgroundColor: theme.colors.surface.primary,
+    borderWidth: 1,
+    borderColor: theme.colors.border.light,
+  },
+  sortButtonText: {
+    color: theme.colors.text.primary,
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  sortModal: {
+    backgroundColor: theme.colors.surface.primary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    width: '80%',
+    maxWidth: 300,
+    ...theme.shadows?.lg,
+  },
+  sortModalTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontFamily: theme.typography.fontFamily.semiBold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+    textAlign: 'center',
+  },
+  sortOption: {
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border.light,
+  },
+  sortOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sortOptionIcon: {
+    marginRight: theme.spacing.sm,
+  },
+  sortOptionText: {
+    flex: 1,
+    fontSize: theme.typography.fontSize.base,
+    fontFamily: theme.typography.fontFamily.regular,
+    color: theme.colors.text.primary,
+  },
+  sortCheckmark: {
+    marginLeft: theme.spacing.sm,
   },
   scrollView: {
     flex: 1,
