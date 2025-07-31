@@ -5,6 +5,7 @@ import * as FileSystem from 'expo-file-system'
 
 import { theme } from '../utils/theme'
 import { Button } from './Button'
+import { Breadcrumbs } from './Breadcrumbs'
 
 export type FileNavigatorFolder = {
   id: string
@@ -54,30 +55,6 @@ export function FileNavigatorModal({
 
   const [currentFolderPath, setCurrentFolderPath] = useState(currentPath || getRecordingsDirectory())
 
-  // Generate breadcrumbs from current path
-  const generateBreadcrumbs = (path: string) => {
-    const recordingsDir = getRecordingsDirectory()
-    if (path === recordingsDir) {
-      return [{ name: 'Home', path: recordingsDir, isLast: true }]
-    }
-
-    const relativePath = path.replace(recordingsDir + '/', '')
-    const segments = relativePath.split('/').filter(Boolean)
-
-    const breadcrumbs = [
-      { name: 'Home', path: recordingsDir, isLast: false },
-      ...segments.map((segment, index) => ({
-        name: segment,
-        path: `${recordingsDir}/${segments.slice(0, index + 1).join('/')}`,
-        isLast: index === segments.length - 1,
-      })),
-    ]
-
-    return breadcrumbs
-  }
-
-  const [breadcrumbs, setBreadcrumbs] = useState(generateBreadcrumbs(currentFolderPath))
-
   // Load folder contents when component mounts or path changes
   useEffect(() => {
     if (visible) {
@@ -116,7 +93,6 @@ export function FileNavigatorModal({
       // Sort folders alphabetically
       folderItems.sort((a, b) => a.name.localeCompare(b.name))
       setFolders(folderItems)
-      setBreadcrumbs(generateBreadcrumbs(currentFolderPath))
     } catch (error) {
       console.error('Failed to load folder contents:', error)
       Alert.alert('Error', 'Failed to load folders')
@@ -132,7 +108,10 @@ export function FileNavigatorModal({
       onClose()
     } else {
       // Default behavior - select the current directory being viewed
-      const currentFolderName = breadcrumbs[breadcrumbs.length - 1]?.name || 'Home'
+      const recordingsDir = getRecordingsDirectory()
+      const currentFolderName =
+        currentFolderPath === recordingsDir ? 'Home' : currentFolderPath.split('/').pop() || 'Home'
+
       const currentFolder: FileNavigatorFolder = {
         id: `folder-${currentFolderName}`,
         name: currentFolderName,
@@ -226,28 +205,12 @@ export function FileNavigatorModal({
           </View>
 
           <View style={styles.pathContainer}>
-            <View style={styles.breadcrumbContainer}>
-              {breadcrumbs.map((breadcrumb, index) => (
-                <View key={breadcrumb.path} style={styles.breadcrumbItem}>
-                  <TouchableOpacity
-                    onPress={() => handleBreadcrumbPress(breadcrumb.path, index)}
-                    style={styles.breadcrumbButton}
-                  >
-                    <Text style={[styles.breadcrumbText, breadcrumb.isLast && styles.breadcrumbTextLast]}>
-                      {breadcrumb.name}
-                    </Text>
-                  </TouchableOpacity>
-                  {!breadcrumb.isLast && (
-                    <Ionicons
-                      name="chevron-forward"
-                      size={14}
-                      color={theme.colors.text.tertiary}
-                      style={styles.breadcrumbSeparator}
-                    />
-                  )}
-                </View>
-              ))}
-            </View>
+            <Breadcrumbs
+              variant="compact"
+              showHomeIcon={true}
+              directoryPath={currentFolderPath}
+              onBreadcrumbPress={handleBreadcrumbPress}
+            />
           </View>
 
           {loading ? (
@@ -411,36 +374,5 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.secondary,
-  },
-
-  breadcrumbContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-
-  breadcrumbItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-
-  breadcrumbButton: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-
-  breadcrumbText: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    fontFamily: theme.typography.fontFamily.regular,
-  },
-
-  breadcrumbTextLast: {
-    color: theme.colors.text.primary,
-    fontFamily: theme.typography.fontFamily.medium,
-  },
-
-  breadcrumbSeparator: {
-    marginHorizontal: 4,
   },
 })

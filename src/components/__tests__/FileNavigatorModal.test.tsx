@@ -1,6 +1,7 @@
 import React from 'react'
 import { render } from '@testing-library/react-native'
 import { FileNavigatorModal } from '../FileNavigatorModal'
+import { FileManagerProvider } from '../../contexts/FileManagerContext'
 
 // Mock expo-file-system
 jest.mock('expo-file-system', () => ({
@@ -9,6 +10,11 @@ jest.mock('expo-file-system', () => ({
   readDirectoryAsync: jest.fn().mockResolvedValue([]),
   makeDirectoryAsync: jest.fn().mockResolvedValue(undefined),
 }))
+
+// Helper function to render components with FileManagerProvider
+const renderWithProvider = (component: React.ReactElement) => {
+  return render(<FileManagerProvider>{component}</FileManagerProvider>)
+}
 
 describe('FileNavigatorModal - Move Validation', () => {
   const mockProps = {
@@ -26,7 +32,7 @@ describe('FileNavigatorModal - Move Validation', () => {
   })
 
   it('should disable Move Here button when in the folder being moved', async () => {
-    const { findByText } = render(
+    const { findByText } = renderWithProvider(
       <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/hello/test2" />
     )
 
@@ -35,7 +41,7 @@ describe('FileNavigatorModal - Move Validation', () => {
   })
 
   it('should disable Move Here button when in a subdirectory of the folder being moved', async () => {
-    const { findByText } = render(
+    const { findByText } = renderWithProvider(
       <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/hello/test2/subfolder" />
     )
 
@@ -44,14 +50,16 @@ describe('FileNavigatorModal - Move Validation', () => {
   })
 
   it('should enable Move Here button when in the parent directory of the folder being moved', async () => {
-    const { findByText } = render(<FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/hello" />)
+    const { findByText } = renderWithProvider(
+      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/hello" />
+    )
 
     const moveButton = await findByText('Move Here')
     expect(moveButton).not.toBeDisabled()
   })
 
   it('should enable Move Here button when in a completely different directory', async () => {
-    const { findByText } = render(
+    const { findByText } = renderWithProvider(
       <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/Song Ideas" />
     )
 
@@ -60,7 +68,7 @@ describe('FileNavigatorModal - Move Validation', () => {
   })
 
   it('should enable Move Here button when in the root directory', async () => {
-    const { findByText } = render(
+    const { findByText } = renderWithProvider(
       <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/recordings" />
     )
 
@@ -69,7 +77,9 @@ describe('FileNavigatorModal - Move Validation', () => {
   })
 
   it('should enable Move Here button when excludePath is not provided', async () => {
-    const { findByText } = render(<FileNavigatorModal {...mockProps} excludePath={undefined} currentPath="/hello" />)
+    const { findByText } = renderWithProvider(
+      <FileNavigatorModal {...mockProps} excludePath={undefined} currentPath="/hello" />
+    )
 
     const moveButton = await findByText('Move Here')
     expect(moveButton).not.toBeDisabled()
