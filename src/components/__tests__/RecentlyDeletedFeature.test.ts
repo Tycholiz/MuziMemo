@@ -5,6 +5,7 @@
 import {
   getRecentlyDeletedDirectory,
   isInRecentlyDeleted,
+  deleteFolderAndMoveAudioFiles,
 } from '../../utils/recentlyDeletedUtils'
 
 describe('Recently Deleted Utils', () => {
@@ -136,5 +137,37 @@ describe('Recently Deleted UI Integration', () => {
 
     expect(shouldShowActionButtons(true)).toBe(false) // Hidden in Recently Deleted
     expect(shouldShowActionButtons(false)).toBe(true) // Shown in normal folders
+  })
+})
+
+describe('Folder Deletion with Recently Deleted', () => {
+  it('should have deleteFolderAndMoveAudioFiles function available', () => {
+    // Test that the function exists and is callable
+    expect(typeof deleteFolderAndMoveAudioFiles).toBe('function')
+  })
+
+  it('should handle folder deletion confirmation message correctly', () => {
+    // Test folder deletion message logic
+    const getFolderDeletionMessage = (folderName: string, itemCount: number) => {
+      return itemCount > 0
+        ? `Delete "${folderName}" and move all audio files to Recently Deleted?`
+        : `Delete "${folderName}"?`
+    }
+
+    expect(getFolderDeletionMessage('Music', 5)).toBe('Delete "Music" and move all audio files to Recently Deleted?')
+    expect(getFolderDeletionMessage('Empty Folder', 0)).toBe('Delete "Empty Folder"?')
+  })
+
+  it('should provide appropriate success message for moved audio files', () => {
+    // Test success message logic
+    const getSuccessMessage = (movedCount: number) => {
+      if (movedCount === 0) return null
+      const fileText = movedCount === 1 ? 'audio file' : 'audio files'
+      return `${movedCount} ${fileText} moved to Recently Deleted`
+    }
+
+    expect(getSuccessMessage(0)).toBeNull()
+    expect(getSuccessMessage(1)).toBe('1 audio file moved to Recently Deleted')
+    expect(getSuccessMessage(5)).toBe('5 audio files moved to Recently Deleted')
   })
 })

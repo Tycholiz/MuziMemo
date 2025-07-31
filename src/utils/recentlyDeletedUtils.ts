@@ -155,3 +155,78 @@ export function getRecordingsDirectory(): string {
   if (!documentsDirectory) return ''
   return `${documentsDirectory}recordings`
 }
+
+/**
+ * Recursively finds all audio files in a directory and its subdirectories
+ * @param directoryPath - The directory path to search
+ * @returns Array of audio file paths with their names
+ */
+async function findAllAudioFilesInDirectory(directoryPath: string): Promise<Array<{ path: string; name: string }>> {
+  const audioFiles: Array<{ path: string; name: string }> = []
+
+  try {
+    const items = await FileSystem.readDirectoryAsync(directoryPath)
+
+    for (const item of items) {
+      const itemPath = `${directoryPath}/${item}`
+      const itemInfo = await FileSystem.getInfoAsync(itemPath)
+
+      if (itemInfo.isDirectory) {
+        // Recursively search subdirectories
+        const subAudioFiles = await findAllAudioFilesInDirectory(itemPath)
+        audioFiles.push(...subAudioFiles)
+      } else {
+        // Check if it's an audio file (common audio extensions)
+        const audioExtensions = ['.m4a', '.mp3', '.wav', '.aac', '.mp4', '.caf']
+        const isAudioFile = audioExtensions.some(ext =>
+          item.toLowerCase().endsWith(ext.toLowerCase())
+        )
+
+        if (isAudioFile) {
+          audioFiles.push({ path: itemPath, name: item })
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error reading directory:', directoryPath, error)
+  }
+
+  return audioFiles
+}
+
+/**
+ * Moves all audio files from a folder (and its subfolders) to recently-deleted
+ * Then deletes the empty folder structure
+ * @param folderPath - The path of the folder to delete
+ * @param folderName - The name of the folder being deleted
+ * @returns Promise that resolves to the number of audio files moved
+ */
+export async function deleteFolderAndMoveAudioFiles(folderPath: string, folderName: string): Promise<number> {
+  // Ensure recently-deleted directory exists
+  await ensureRecentlyDeletedDirectoryExists()
+
+  // Find all audio files in the folder and its subdirectories
+  const audioFiles = await findAllAudioFilesInDirectory(folderPath)
+
+  // Move each audio file to recently-deleted with a flat hierarchy
+  let movedCount = 0
+  for (const audioFile of audioFiles) {
+    try {
+      await moveToRecentlyDeleted(audioFile.path, audioFile.name)
+      movedCount++
+    } catch (error) {
+      console.error(`Failed to move audio file ${audioFile.name} to recently-deleted:`, error)
+      // Continue with other files even if one fails
+    }
+  }
+
+  // Delete the original folder structure (now empty of audio files)
+  try {
+    await FileSystem.deleteAsync(folderPath)
+  } catch (error) {
+    console.error(`Failed to delete folder ${folderName}:`, error)
+    throw error
+  }
+
+  return movedCount
+}

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'rea
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
+import Toast from 'react-native-toast-message'
 
 import { useFileManager } from '../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
@@ -25,6 +26,7 @@ import {
   restoreFromRecentlyDeleted,
   showRestoreSuccessToast,
   showRestoreErrorToast,
+  deleteFolderAndMoveAudioFiles,
 } from '../utils/recentlyDeletedUtils'
 
 export type FolderData = {
@@ -250,7 +252,7 @@ export function FileSystemComponent() {
     async (folder: FolderData) => {
       const message =
         folder.itemCount > 0
-          ? `Delete "${folder.name}" and all ${folder.itemCount} items inside?`
+          ? `Delete "${folder.name}" and move all audio files to Recently Deleted?`
           : `Delete "${folder.name}"?`
 
       Alert.alert('Delete Folder', message, [
@@ -265,7 +267,21 @@ export function FileSystemComponent() {
             try {
               const fullPath = fileManager.getFullPath()
               const folderPath = `${fullPath}/${folder.name}`
-              await FileSystem.deleteAsync(folderPath)
+
+              // Move all audio files to recently-deleted and delete the folder
+              const movedAudioCount = await deleteFolderAndMoveAudioFiles(folderPath, folder.name)
+
+              // Show success message if audio files were moved
+              if (movedAudioCount > 0) {
+                const fileText = movedAudioCount === 1 ? 'audio file' : 'audio files'
+                Toast.show({
+                  type: 'success',
+                  text1: `Folder deleted`,
+                  text2: `${movedAudioCount} ${fileText} moved to Recently Deleted`,
+                  visibilityTime: 4000,
+                })
+              }
+
               // Success - folder already removed from state
             } catch (error) {
               console.error('Failed to delete folder:', error)
