@@ -115,7 +115,7 @@ export function Breadcrumbs({
         testID="breadcrumb-scroll"
       >
         {breadcrumbItems.map((breadcrumb, index) => (
-          <View key={`${index}-${breadcrumb.path}`} style={styles.breadcrumbItem}>
+          <View key={`breadcrumb-${index}-${breadcrumb.name}`} style={styles.breadcrumbItem}>
             <TouchableOpacity
               onPress={() => handleBreadcrumbPress(index)}
               style={isCompact ? styles.compactButton : styles.button}

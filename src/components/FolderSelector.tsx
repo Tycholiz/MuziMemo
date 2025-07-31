@@ -108,7 +108,13 @@ export function FolderSelector({
     // Add separator and segments
     segments.forEach((segment, index) => {
       pathElements.push(
-        <Ionicons name="chevron-forward" size={14} color={theme.colors.text.secondary} style={styles.separator} />
+        <Ionicons
+          key={`separator-${index}`}
+          name="chevron-forward"
+          size={14}
+          color={theme.colors.text.secondary}
+          style={styles.separator}
+        />
       )
       pathElements.push(
         <Text key={`segment-${index}`} style={styles.selectorPathSegment}>
@@ -153,7 +159,13 @@ export function FolderSelector({
       // Add separator and segments
       segments.forEach((segment, index) => {
         pathElements.push(
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.text.secondary} style={styles.separator} />
+          <Ionicons
+            key={`separator-${index}`}
+            name="chevron-forward"
+            size={16}
+            color={theme.colors.text.secondary}
+            style={styles.separator}
+          />
         )
         pathElements.push(
           <Text key={`segment-${index}`} style={styles.pathSegment}>
