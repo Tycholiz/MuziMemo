@@ -50,8 +50,6 @@ export const AudioClipCard = React.memo(function AudioClipCard({
     }
   }
 
-
-
   return (
     <View style={[styles.container, isPlaying && styles.containerPlaying]}>
       <TouchableOpacity style={styles.content} onPress={handlePress} activeOpacity={0.7}>

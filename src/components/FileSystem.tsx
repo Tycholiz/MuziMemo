@@ -152,7 +152,8 @@ export function FileSystemComponent() {
           }
 
           // Ensure we have a valid timestamp (not epoch time)
-          if (timestamp === 0 || timestamp < 946684800000) { // Jan 1, 2000
+          if (timestamp === 0 || timestamp < 946684800000) {
+            // Jan 1, 2000
             timestamp = Date.now()
           }
 
@@ -161,7 +162,7 @@ export function FileSystemComponent() {
             name: item,
             uri: itemPath,
             size: (itemInfo as any).size || 0,
-            createdAt: new Date(timestamp),
+            createdAt: new Date((itemInfo as any).modificationTime * 1000),
           })
         }
       }
