@@ -600,6 +600,15 @@ export function FileSystemComponent() {
           </View>
         )}
 
+        {/* Folders Empty State */}
+        {sortedFolders.length === 0 && !fileManager.getIsInRecentlyDeleted() && (
+          <View style={styles.emptyState}>
+            <Ionicons name="folder-open-outline" size={64} color={theme.colors.text.secondary} />
+            <Text style={styles.emptyStateText}>No folders yet</Text>
+            <Text style={styles.emptyStateSubtext}>Create your first folder to organize recordings</Text>
+          </View>
+        )}
+
         {/* Action Buttons - Hidden in Recently Deleted */}
         {!fileManager.getIsInRecentlyDeleted() && (
           <View style={styles.actionButtonsContainer}>
@@ -652,11 +661,11 @@ export function FileSystemComponent() {
           )
         })}
 
-        {/* Empty State */}
-        {sortedFolders.length === 0 && sortedAudioFiles.length === 0 && (
+        {/* Audio Files Empty State */}
+        {sortedAudioFiles.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons
-              name={fileManager.getIsInRecentlyDeleted() ? 'trash-outline' : 'folder-open-outline'}
+              name={fileManager.getIsInRecentlyDeleted() ? 'trash-outline' : 'musical-notes-outline'}
               size={64}
               color={theme.colors.text.secondary}
             />
