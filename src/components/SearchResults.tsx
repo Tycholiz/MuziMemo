@@ -36,6 +36,8 @@ export type SearchResultsProps = {
   onAudioPlayPause: (audioFile: any) => void
   currentPlayingId?: string
   isPlaying?: boolean
+  onScrollStart?: () => void
+  onScrollEnd?: () => void
 }
 
 /**
@@ -58,6 +60,8 @@ export function SearchResults({
   onAudioPlayPause,
   currentPlayingId,
   isPlaying = false,
+  onScrollStart,
+  onScrollEnd,
 }: SearchResultsProps) {
   const hasResults = results.audioFiles.length > 0 || results.folders.length > 0
   const showHistory = !query.trim() && searchHistory.length > 0
@@ -83,16 +87,25 @@ export function SearchResults({
     })
   }
 
-  const handleScroll = () => {
+  const handleScrollBegin = () => {
+    // Notify parent that scrolling started (to prevent dismissal)
+    onScrollStart?.()
     // Dismiss keyboard when user starts scrolling, but keep results visible
     Keyboard.dismiss()
+  }
+
+  const handleScrollEnd = () => {
+    // Notify parent that scrolling ended
+    onScrollEnd?.()
   }
 
   return (
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
-      onScrollBeginDrag={handleScroll}
+      onScrollBeginDrag={handleScrollBegin}
+      onScrollEndDrag={handleScrollEnd}
+      onMomentumScrollEnd={handleScrollEnd}
       keyboardShouldPersistTaps="handled"
     >
       {/* Search Filters */}

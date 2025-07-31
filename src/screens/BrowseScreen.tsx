@@ -1,10 +1,10 @@
 import React, { useCallback, useRef } from 'react'
-import { StyleSheet, View, Animated } from 'react-native'
+import { StyleSheet, View, Animated, TouchableWithoutFeedback } from 'react-native'
 
 import { Screen } from '../components/Layout'
 import { FileSystemComponent } from '../components/FileSystem'
 import { BottomMediaPlayer } from '../components/BottomMediaPlayer'
-import { SearchBar } from '../components/SearchBar'
+import { SearchBar, SearchBarRef } from '../components/SearchBar'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
 import { useFileManager } from '../contexts/FileManagerContext'
 import { getParentDirectoryPath } from '../utils/searchUtils'
@@ -20,6 +20,9 @@ export default function BrowseScreen() {
 
   // Animation for highlighting selected items
   const glowAnim = useRef(new Animated.Value(0)).current
+
+  // Ref for SearchBar to control dropdown dismissal
+  const searchBarRef = useRef<SearchBarRef>(null)
 
   const handleSearchResultSelect = useCallback(
     (type: 'audio' | 'folder', item: any) => {
@@ -75,6 +78,11 @@ export default function BrowseScreen() {
     [audioPlayer]
   )
 
+  const handleOutsideTouch = useCallback(() => {
+    // Dismiss search dropdown when touching outside
+    searchBarRef.current?.dismissDropdown()
+  }, [])
+
 
 
   return (
@@ -83,6 +91,7 @@ export default function BrowseScreen() {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <SearchBar
+            ref={searchBarRef}
             onResultSelect={handleSearchResultSelect}
             onAudioPlayPause={handleAudioPlayPause}
             currentPath={fileManager.currentPath}
@@ -91,8 +100,12 @@ export default function BrowseScreen() {
           />
         </View>
 
-        {/* File System Component */}
-        <FileSystemComponent />
+        {/* File System Component - Wrap in TouchableWithoutFeedback to detect outside touches */}
+        <TouchableWithoutFeedback onPress={handleOutsideTouch}>
+          <View style={styles.fileSystemContainer}>
+            <FileSystemComponent />
+          </View>
+        </TouchableWithoutFeedback>
 
         {/* Show media player if audio is playing */}
         {audioPlayer.currentClip && (
@@ -123,5 +136,8 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     backgroundColor: '#1F2124', // theme.colors.surface.primary
+  },
+  fileSystemContainer: {
+    flex: 1,
   },
 })

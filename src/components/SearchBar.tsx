@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react'
 import {
   View,
   TextInput,
@@ -25,11 +25,15 @@ export type SearchBarProps = {
   style?: any
 }
 
+export type SearchBarRef = {
+  dismissDropdown: () => void
+}
+
 /**
  * SearchBar Component
  * Provides search functionality with dropdown results and history
  */
-export function SearchBar({
+export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
   placeholder = 'Search audio files and folders...',
   autoFocus = false,
   onResultSelect,
@@ -38,7 +42,7 @@ export function SearchBar({
   currentPlayingId,
   isPlaying = false,
   style,
-}: SearchBarProps) {
+}, ref) => {
   const inputRef = useRef<TextInput>(null)
   const search = useSearch()
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -49,9 +53,24 @@ export function SearchBar({
     search.setCurrentPath(currentPath)
   }, [currentPath, search])
 
+  // Track if user is interacting with the dropdown to prevent dismissal during scrolling
+  const isInteractingWithDropdown = useRef(false)
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    dismissDropdown: () => {
+      search.setShowResults(false)
+    }
+  }), [search])
+
   // Listen for keyboard events to hide suggestions when keyboard is dismissed
   useEffect(() => {
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      // Don't hide if user is actively interacting with the dropdown (scrolling)
+      if (isInteractingWithDropdown.current) {
+        return
+      }
+
       // Only hide if there's no query (showing suggestions) or if input is not focused
       if (!search.query.trim() || !inputRef.current?.isFocused()) {
         search.setShowResults(false)
@@ -139,6 +158,17 @@ export function SearchBar({
     // Keep search results open when playing audio
   }
 
+  const handleScrollStart = () => {
+    isInteractingWithDropdown.current = true
+  }
+
+  const handleScrollEnd = () => {
+    // Delay resetting the flag to ensure keyboard dismissal doesn't interfere
+    setTimeout(() => {
+      isInteractingWithDropdown.current = false
+    }, 100)
+  }
+
   const handleFolderSelect = (folder: any) => {
     onResultSelect?.('folder', folder)
     search.setShowResults(false)
@@ -217,12 +247,14 @@ export function SearchBar({
             onAudioPlayPause={handleAudioPlayPause}
             currentPlayingId={currentPlayingId}
             isPlaying={isPlaying}
+            onScrollStart={handleScrollStart}
+            onScrollEnd={handleScrollEnd}
           />
         </Animated.View>
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {
@@ -270,3 +302,5 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 })
+
+SearchBar.displayName = 'SearchBar'
