@@ -29,7 +29,7 @@ import {
   showRestoreErrorToast,
   deleteFolderAndMoveAudioFiles,
 } from '../utils/recentlyDeletedUtils'
-import { SortOption, SORT_OPTIONS, DEFAULT_SORT_OPTION, sortAudioFiles, sortFolders } from '../utils/sortUtils'
+import { SortOption, DEFAULT_SORT_OPTION, sortAudioFiles, sortFolders } from '../utils/sortUtils'
 import { loadSortPreference, saveSortPreference } from '../utils/storageUtils'
 
 export type FolderData = {
