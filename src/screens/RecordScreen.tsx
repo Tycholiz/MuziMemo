@@ -119,7 +119,7 @@ export default function RecordScreen() {
     }, [selectedFolderPath])
   )
 
-  const loadFolders = async () => {
+  const loadFolders = useCallback(async () => {
     setLoading(true)
     try {
       await fileSystemService.initialize()
@@ -178,7 +178,7 @@ export default function RecordScreen() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   // Audio quality options (expo-audio only supports HIGH_QUALITY and LOW_QUALITY presets)
   const audioQualityOptions: DropdownOption[] = [
@@ -368,13 +368,16 @@ export default function RecordScreen() {
     }
   }
 
-  const handleFolderSelect = (folderId: string) => {
-    // Find the folder data and set the path directly
-    const selectedFolderData = folders.find(f => f.id === folderId)
-    if (selectedFolderData) {
-      setSelectedFolderPath(selectedFolderData.path || selectedFolderData.name) // Use full path if available
-    }
-  }
+  const handleFolderSelect = useCallback(
+    (folderId: string) => {
+      // Find the folder data and set the path directly
+      const selectedFolderData = folders.find(f => f.id === folderId)
+      if (selectedFolderData) {
+        setSelectedFolderPath(selectedFolderData.path || selectedFolderData.name) // Use full path if available
+      }
+    },
+    [folders]
+  )
 
   const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
     // For nested folders, we need to handle the path properly
@@ -421,6 +424,10 @@ export default function RecordScreen() {
   const handleAudioQualitySelect = (option: DropdownOption) => {
     setAudioQuality(option.value as AudioQuality)
   }
+
+  const handleOpenFileNavigator = useCallback(() => {
+    setShowFileNavigator(true)
+  }, [])
 
   const handleGoToFolder = useCallback(() => {
     // Use the stored folder path to preserve nested folder navigation
@@ -536,7 +543,7 @@ export default function RecordScreen() {
             folders={folders}
             loading={loading}
             onSelectFolder={handleFolderSelect}
-            onOpenFileNavigator={() => setShowFileNavigator(true)}
+            onOpenFileNavigator={handleOpenFileNavigator}
             onGoToFolder={handleGoToFolder}
           />
         </View>

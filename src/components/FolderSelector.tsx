@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
@@ -43,14 +43,8 @@ export function FolderSelector({
   const [validatedFolders, setValidatedFolders] = useState<Folder[]>([])
   const [isValidating, setIsValidating] = useState(false)
 
-  // Validate folder existence and apply intelligent ranking when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      validateAndRankFolders()
-    }
-  }, [isOpen, folders])
-
-  const validateAndRankFolders = async () => {
+  // Memoize the validation function to prevent infinite re-renders
+  const validateAndRankFolders = useCallback(async () => {
     setIsValidating(true)
     try {
       const validFolders: Folder[] = []
@@ -86,14 +80,24 @@ export function FolderSelector({
     } finally {
       setIsValidating(false)
     }
-  }
+  }, [folders])
 
-  const selectedFolderData = folders.find(folder => folder.id === selectedFolder)
+  // Validate folder existence and apply intelligent ranking when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      validateAndRankFolders()
+    }
+  }, [isOpen, validateAndRankFolders])
+
+  const selectedFolderData = useMemo(
+    () => folders.find(folder => folder.id === selectedFolder),
+    [folders, selectedFolder]
+  )
   const displayName = selectedFolderName || selectedFolderData?.name || 'Home'
   const displayPath = selectedFolderData?.path || displayName
 
   // Format selector display with house icon and "/" separators
-  const formatSelectorDisplay = (path: string) => {
+  const formatSelectorDisplay = useCallback((path: string) => {
     if (!path || path === 'Home') {
       return (
         <View style={styles.selectorPathDisplay}>
@@ -129,70 +133,76 @@ export function FolderSelector({
     })
 
     return <View style={styles.selectorPathDisplay}>{pathElements}</View>
-  }
+  }, [])
 
-  const handleSelectFolder = (folderId: string) => {
-    onSelectFolder(folderId)
-    setIsOpen(false)
-  }
+  const handleSelectFolder = useCallback(
+    (folderId: string) => {
+      onSelectFolder(folderId)
+      setIsOpen(false)
+    },
+    [onSelectFolder]
+  )
 
-  const handleFileNavigator = () => {
+  const handleFileNavigator = useCallback(() => {
     setIsOpen(false)
     onOpenFileNavigator()
-  }
+  }, [onOpenFileNavigator])
 
-  const renderFolder = ({ item }: { item: Folder }) => {
-    // Show full path for nested folders to help distinguish between folders with same names
-    const displayPath = item.path && item.path !== item.name ? item.path : item.name
-
-    // Format path with house icon and ">" separators like Breadcrumbs
-    const formatPathDisplay = (path: string) => {
-      if (!path || path === 'Home') {
-        return (
-          <View style={styles.pathDisplay}>
-            <Ionicons name="home" size={14} color={theme.colors.primary} testID="home-icon" />
-          </View>
-        )
-      }
-
-      const segments = path.split('/').filter(Boolean)
-      const pathElements = []
-
-      // Always start with house icon
-      pathElements.push(<Ionicons key="home" name="home" size={16} color={theme.colors.primary} testID="home-icon" />)
-
-      // Add separator and segments
-      segments.forEach((segment, index) => {
-        pathElements.push(
-          <Ionicons
-            key={`separator-${index}`}
-            name="chevron-forward"
-            size={16}
-            color={theme.colors.text.secondary}
-            style={styles.separator}
-          />
-        )
-        pathElements.push(
-          <Text key={`segment-${index}`} style={styles.pathSegment}>
-            {segment}
-          </Text>
-        )
-      })
-
-      return <View style={styles.pathDisplay}>{pathElements}</View>
+  // Memoize the path formatting function for folder items
+  const formatPathDisplay = useCallback((path: string) => {
+    if (!path || path === 'Home') {
+      return (
+        <View style={styles.pathDisplay}>
+          <Ionicons name="home" size={14} color={theme.colors.primary} testID="home-icon" />
+        </View>
+      )
     }
 
-    return (
-      <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
-        <View style={styles.folderContent}>
-          <View style={styles.folderText}>
-            {formatPathDisplay(displayPath)}
-            <Text style={styles.folderCount}>{item.itemCount} items</Text>
+    const segments = path.split('/').filter(Boolean)
+    const pathElements = []
+
+    // Always start with house icon
+    pathElements.push(<Ionicons key="home" name="home" size={16} color={theme.colors.primary} testID="home-icon" />)
+
+    // Add separator and segments
+    segments.forEach((segment, index) => {
+      pathElements.push(
+        <Ionicons
+          key={`separator-${index}`}
+          name="chevron-forward"
+          size={16}
+          color={theme.colors.text.secondary}
+          style={styles.separator}
+        />
+      )
+      pathElements.push(
+        <Text key={`segment-${index}`} style={styles.pathSegment}>
+          {segment}
+        </Text>
+      )
+    })
+
+    return <View style={styles.pathDisplay}>{pathElements}</View>
+  }, [])
+
+  const renderFolder = useCallback(
+    ({ item }: { item: Folder }) => {
+      // Show full path for nested folders to help distinguish between folders with same names
+      const displayPath = item.path && item.path !== item.name ? item.path : item.name
+
+      return (
+        <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
+          <View style={styles.folderContent}>
+            <View style={styles.folderText}>
+              {formatPathDisplay(displayPath)}
+              <Text style={styles.folderCount}>{item.itemCount} items</Text>
+            </View>
           </View>
-        </View>
-      </TouchableOpacity>
-    )
-  }
+        </TouchableOpacity>
+      )
+    },
+    [formatPathDisplay, handleSelectFolder]
+  )
 
   return (
     <View style={styles.container}>
