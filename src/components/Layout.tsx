@@ -36,12 +36,7 @@ export function Screen({
   scrollViewProps,
   padding = true,
 }: ScreenProps) {
-  const screenStyles = [
-    styles.screen,
-    { backgroundColor },
-    padding && styles.screenPadding,
-    style,
-  ]
+  const screenStyles = [styles.screen, { backgroundColor }, padding && styles.screenPadding, style]
 
   const content = scrollable ? (
     <ScrollView
@@ -111,12 +106,7 @@ export function Row({
   justify?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly'
   wrap?: boolean
 }) {
-  const rowStyles = [
-    styles.row,
-    { alignItems: align, justifyContent: justify },
-    wrap && styles.wrap,
-    style,
-  ]
+  const rowStyles = [styles.row, { alignItems: align, justifyContent: justify }, wrap && styles.wrap, style]
 
   return (
     <View style={rowStyles}>
@@ -145,11 +135,7 @@ export function Column({
   align?: 'flex-start' | 'center' | 'flex-end' | 'stretch'
   justify?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly'
 }) {
-  const columnStyles = [
-    styles.column,
-    { alignItems: align, justifyContent: justify },
-    style,
-  ]
+  const columnStyles = [styles.column, { alignItems: align, justifyContent: justify }, style]
 
   return (
     <View style={columnStyles}>
@@ -173,77 +159,69 @@ export function Spacer({
   horizontal?: boolean
 }) {
   const spacerSize = typeof size === 'number' ? size : theme.spacing[size]
-  
-  return (
-    <View
-      style={
-        horizontal
-          ? { width: spacerSize }
-          : { height: spacerSize }
-      }
-    />
-  )
+
+  return <View style={horizontal ? { width: spacerSize } : { height: spacerSize }} />
 }
 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  
+
   screenPadding: {
     padding: theme.spacing.lg,
   },
-  
+
   scrollView: {
     flex: 1,
   },
-  
+
   scrollContent: {
     flexGrow: 1,
     padding: theme.spacing.lg,
   },
-  
+
   flex: {
     flex: 1,
   },
-  
+
   padding: {
     padding: theme.spacing.md,
   },
-  
+
   paddingHorizontal: {
     paddingHorizontal: theme.spacing.md,
   },
-  
+
   paddingVertical: {
     paddingVertical: theme.spacing.md,
   },
-  
+
   margin: {
     margin: theme.spacing.md,
   },
-  
+
   marginHorizontal: {
     marginHorizontal: theme.spacing.md,
   },
-  
+
   marginVertical: {
     marginVertical: theme.spacing.md,
   },
-  
+
   centered: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  
+
   row: {
     flexDirection: 'row',
   },
-  
+
   column: {
     flexDirection: 'column',
   },
-  
+
   wrap: {
     flexWrap: 'wrap',
   },

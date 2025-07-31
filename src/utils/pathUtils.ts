@@ -118,7 +118,7 @@ export function generateBreadcrumbs(path: string): BreadcrumbItem[] {
 
   // Add root
   breadcrumbs.push({
-    name: 'Recordings',
+    name: 'Home',
     path: getRecordingsDirectory(),
     isLast: false,
   })
@@ -195,6 +195,60 @@ export function getParentDirectory(path: string): string {
 export function isValidRecordingPath(path: string): boolean {
   const recordingsDir = getRecordingsDirectory()
   return path.startsWith(recordingsDir)
+}
+
+/**
+ * Check if a folder path exists in the recordings directory
+ */
+export async function doesFolderPathExist(relativePath: string): Promise<boolean> {
+  try {
+    if (!relativePath || relativePath === '') {
+      // Empty path represents root directory, which always exists
+      return true
+    }
+
+    const recordingsDir = getRecordingsDirectory()
+    const fullPath = joinPath(recordingsDir, relativePath)
+
+    const pathInfo = await FileSystem.getInfoAsync(fullPath)
+    return pathInfo.exists && pathInfo.isDirectory
+  } catch (error) {
+    console.error('Error checking folder path existence:', error)
+    return false
+  }
+}
+
+/**
+ * Get hierarchical item count for a folder (includes all files in subfolders)
+ */
+export async function getHierarchicalItemCount(folderPath: string): Promise<number> {
+  try {
+    const pathInfo = await FileSystem.getInfoAsync(folderPath)
+    if (!pathInfo.exists || !pathInfo.isDirectory) {
+      return 0
+    }
+
+    let totalCount = 0
+    const items = await FileSystem.readDirectoryAsync(folderPath)
+
+    for (const item of items) {
+      const itemPath = joinPath(folderPath, item)
+      const itemInfo = await FileSystem.getInfoAsync(itemPath)
+
+      if (itemInfo.isDirectory) {
+        // Recursively count items in subdirectories
+        totalCount += await getHierarchicalItemCount(itemPath)
+      } else {
+        // Count files (audio files and any other files)
+        totalCount += 1
+      }
+    }
+
+    return totalCount
+  } catch (error) {
+    console.error('Error getting hierarchical item count:', error)
+    return 0
+  }
 }
 
 /**

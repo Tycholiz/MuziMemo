@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import * as FileSystem from 'expo-file-system'
 
-import { theme } from '@utils/theme'
+import { theme } from '../utils/theme'
 import { Button } from './Button'
 import { Breadcrumbs } from './Breadcrumbs'
-import { fileSystemService } from '@services/FileSystemService'
-import { generateBreadcrumbs, getRecordingsDirectory } from '@utils/pathUtils'
 
 export type FileNavigatorFolder = {
   id: string
@@ -19,7 +18,7 @@ export type FileNavigatorModalProps = {
   visible: boolean
   onClose: () => void
   onSelectFolder: (folder: FileNavigatorFolder) => void
-  currentPath?: string
+  initialDirectory?: string
   title?: string
   primaryButtonText?: string
   primaryButtonIcon?: keyof typeof Ionicons.glyphMap
@@ -32,11 +31,11 @@ export type FileNavigatorModalProps = {
  * FileNavigatorModal for browsing and creating folders
  * Matches the design from the mockup screenshots
  */
-export function FileNavigatorModal({
+export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   visible,
   onClose,
   onSelectFolder,
-  currentPath,
+  initialDirectory,
   title = 'Select Folder',
   primaryButtonText = 'Select',
   primaryButtonIcon,
@@ -44,61 +43,102 @@ export function FileNavigatorModal({
   disablePrimaryButton = false,
   excludePath,
 }: FileNavigatorModalProps) {
-  const [selectedFolder, setSelectedFolder] = useState<string | null>(null)
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
   const [loading, setLoading] = useState(false)
-  const [currentFolderPath, setCurrentFolderPath] = useState(currentPath || getRecordingsDirectory())
-  const [breadcrumbs, setBreadcrumbs] = useState(generateBreadcrumbs(currentFolderPath))
 
-  // Load folder contents when component mounts or path changes
+  // Memoize the recordings directory function
+  const getRecordingsDirectory = useMemo(() => {
+    const documentsDirectory = FileSystem.documentDirectory
+    if (!documentsDirectory) return ''
+    return `${documentsDirectory}recordings`
+  }, [])
+
+  const [currentFolderPath, setCurrentFolderPath] = useState(initialDirectory || getRecordingsDirectory)
+
+  // Update currentFolderPath when initialDirectory changes
   useEffect(() => {
-    if (visible) {
-      loadFolderContents()
+    if (initialDirectory && initialDirectory !== currentFolderPath) {
+      setCurrentFolderPath(initialDirectory)
     }
-  }, [visible, currentFolderPath])
+  }, [initialDirectory]) // Remove currentFolderPath to avoid circular dependency
 
-  const loadFolderContents = async () => {
+  const loadFolderContents = useCallback(async () => {
     setLoading(true)
     try {
-      await fileSystemService.initialize()
-      const contents = await fileSystemService.getFolderContents(currentFolderPath)
+      // Ensure the directory exists
+      const dirInfo = await FileSystem.getInfoAsync(currentFolderPath)
+      if (!dirInfo.exists) {
+        await FileSystem.makeDirectoryAsync(currentFolderPath, { intermediates: true })
+      }
 
-      // Filter to only show folders, but include the excluded folder for display purposes
-      const folderItems = contents
-        .filter(item => item.type === 'folder')
-        .map(item => ({
-          id: item.id,
-          name: item.name,
-          path: item.path,
-          isBeingMoved: excludePath === item.path,
-        }))
+      // Read directory contents
+      const items = await FileSystem.readDirectoryAsync(currentFolderPath)
 
+      const folderItems: FileNavigatorFolder[] = []
+
+      for (const item of items) {
+        const itemPath = `${currentFolderPath}/${item}`
+        const itemInfo = await FileSystem.getInfoAsync(itemPath)
+
+        if (itemInfo.isDirectory) {
+          folderItems.push({
+            id: `folder-${item}`,
+            name: item,
+            path: itemPath,
+            isBeingMoved: excludePath === itemPath,
+          })
+        }
+      }
+
+      // Sort folders alphabetically
+      folderItems.sort((a, b) => a.name.localeCompare(b.name))
       setFolders(folderItems)
-      setBreadcrumbs(generateBreadcrumbs(currentFolderPath))
     } catch (error) {
       console.error('Failed to load folder contents:', error)
       Alert.alert('Error', 'Failed to load folders')
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentFolderPath, excludePath])
 
-  const handleConfirmSelection = () => {
+  // Load folder contents when component mounts or path changes
+  useEffect(() => {
+    if (visible) {
+      loadFolderContents()
+    }
+  }, [visible, loadFolderContents])
+
+  const handleConfirmSelection = useCallback(() => {
     if (onPrimaryAction) {
       // Use custom primary action (e.g., "Move Here")
       onPrimaryAction(currentFolderPath)
       onClose()
     } else {
-      // Default behavior - select a specific folder
-      const folder = folders.find(f => f.id === selectedFolder)
-      if (folder) {
-        onSelectFolder(folder)
-        onClose()
-      }
-    }
-  }
+      // Default behavior - select the current directory being viewed
+      const recordingsDir = getRecordingsDirectory
+      const currentFolderName =
+        currentFolderPath === recordingsDir ? 'Home' : currentFolderPath.split('/').pop() || 'Home'
 
-  const handleNewFolder = () => {
+      const currentFolder: FileNavigatorFolder = {
+        id: `folder-${currentFolderName}`,
+        name: currentFolderName,
+        path: currentFolderPath,
+        isBeingMoved: false,
+      }
+
+      onSelectFolder(currentFolder)
+      onClose()
+    }
+  }, [onPrimaryAction, currentFolderPath, onClose, getRecordingsDirectory, onSelectFolder])
+
+  // Check if the current directory is invalid for move operations
+  const isCurrentDirectoryInvalid = useMemo(
+    () =>
+      Boolean(excludePath && (currentFolderPath === excludePath || currentFolderPath.startsWith(excludePath + '/'))),
+    [excludePath, currentFolderPath]
+  )
+
+  const handleNewFolder = useCallback(() => {
     Alert.prompt(
       'New Folder',
       'Enter folder name:',
@@ -109,11 +149,8 @@ export function FileNavigatorModal({
           onPress: async folderName => {
             if (folderName?.trim()) {
               try {
-                await fileSystemService.createFolder({
-                  name: folderName.trim(),
-                  parentPath: currentFolderPath,
-                })
-                Alert.alert('Success', `Folder "${folderName}" created successfully`)
+                const newFolderPath = `${currentFolderPath}/${folderName.trim()}`
+                await FileSystem.makeDirectoryAsync(newFolderPath)
                 loadFolderContents() // Refresh the list
               } catch (error: any) {
                 Alert.alert('Error', error.message || 'Failed to create folder')
@@ -124,48 +161,49 @@ export function FileNavigatorModal({
       ],
       'plain-text'
     )
-  }
+  }, [currentFolderPath, loadFolderContents])
 
-  const handleBreadcrumbPress = (path: string, _index: number) => {
+  const handleBreadcrumbPress = useCallback((path: string, _index: number) => {
     setCurrentFolderPath(path)
-    setSelectedFolder(null)
-  }
+  }, [])
 
-  const handleFolderDoublePress = (folder: FileNavigatorFolder) => {
+  const handleFolderDoublePress = useCallback((folder: FileNavigatorFolder) => {
     // Navigate into the folder
     setCurrentFolderPath(folder.path)
-    setSelectedFolder(null)
-  }
+  }, [])
 
-  const renderFolder = ({ item }: { item: FileNavigatorFolder }) => {
-    const handlePress = () => {
-      if (item.isBeingMoved) {
-        // Don't allow navigation into the folder being moved
-        return
+  const renderFolder = useCallback(
+    ({ item }: { item: FileNavigatorFolder }) => {
+      const handlePress = () => {
+        if (item.isBeingMoved) {
+          // Don't allow navigation into the folder being moved
+          return
+        }
+        // Single tap - navigate into folder
+        handleFolderDoublePress(item)
       }
-      // Single tap - navigate into folder
-      handleFolderDoublePress(item)
-    }
 
-    return (
-      <TouchableOpacity
-        style={[styles.folderItem, item.isBeingMoved && styles.folderBeingMoved]}
-        onPress={handlePress}
-        activeOpacity={item.isBeingMoved ? 1 : 0.7}
-      >
-        <Ionicons
-          name="folder-outline"
-          size={24}
-          color={item.isBeingMoved ? theme.colors.text.tertiary : theme.colors.primary}
-          style={styles.folderIcon}
-        />
-        <Text style={[styles.folderName, item.isBeingMoved && styles.folderBeingMovedText]}>
-          {item.name}
-          {item.isBeingMoved && ' (being moved)'}
-        </Text>
-      </TouchableOpacity>
-    )
-  }
+      return (
+        <TouchableOpacity
+          style={[styles.folderItem, item.isBeingMoved && styles.folderBeingMoved]}
+          onPress={handlePress}
+          activeOpacity={item.isBeingMoved ? 1 : 0.7}
+        >
+          <Ionicons
+            name="folder-outline"
+            size={24}
+            color={item.isBeingMoved ? theme.colors.text.tertiary : theme.colors.primary}
+            style={styles.folderIcon}
+          />
+          <Text style={[styles.folderName, item.isBeingMoved && styles.folderBeingMovedText]}>
+            {item.name}
+            {item.isBeingMoved && ' (being moved)'}
+          </Text>
+        </TouchableOpacity>
+      )
+    },
+    [handleFolderDoublePress]
+  )
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -176,10 +214,6 @@ export function FileNavigatorModal({
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={theme.colors.text.secondary} />
             </TouchableOpacity>
-          </View>
-
-          <View style={styles.pathContainer}>
-            <Breadcrumbs breadcrumbs={breadcrumbs} onBreadcrumbPress={handleBreadcrumbPress} variant="compact" />
           </View>
 
           {loading ? (
@@ -197,6 +231,15 @@ export function FileNavigatorModal({
             />
           )}
 
+          <View style={styles.pathContainer}>
+            <Breadcrumbs
+              variant="compact"
+              showHomeIcon={true}
+              directoryPath={currentFolderPath}
+              onBreadcrumbPress={handleBreadcrumbPress}
+            />
+          </View>
+
           <View style={styles.footer}>
             <Button
               title="New Folder"
@@ -210,7 +253,7 @@ export function FileNavigatorModal({
               title={primaryButtonText}
               variant="primary"
               onPress={handleConfirmSelection}
-              disabled={disablePrimaryButton || (!onPrimaryAction && !selectedFolder)}
+              disabled={disablePrimaryButton || isCurrentDirectoryInvalid}
               icon={primaryButtonIcon}
               style={styles.selectButton}
             />
@@ -219,7 +262,7 @@ export function FileNavigatorModal({
       </View>
     </Modal>
   )
-}
+})
 
 const styles = StyleSheet.create({
   overlay: {

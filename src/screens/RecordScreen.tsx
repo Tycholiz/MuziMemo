@@ -1,15 +1,31 @@
-import React, { useState, useEffect } from 'react'
-import { StyleSheet, Text, View, Alert, ActivityIndicator } from 'react-native'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { StyleSheet, Text, View, Alert } from 'react-native'
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 
-import { Screen, Container, Spacer } from '@components/Layout'
-import { RecordButton, Icon } from '@components/Icon'
-import { FolderSelector, Dropdown, FileNavigatorModal, Button, SoundWave } from '@components/index'
-import type { Folder, FileNavigatorFolder, DropdownOption } from '@components/index'
-import { useAudioRecording, type AudioQuality } from '@hooks/useAudioRecording'
-import { theme } from '@utils/theme'
-import { formatDurationFromSeconds } from '@utils/formatUtils'
-import { fileSystemService } from '@services/FileSystemService'
-import { getRecordingsDirectory, joinPath } from '@utils/pathUtils'
+import { Screen, Container, Spacer } from '../components/Layout'
+import { Icon } from '../components/Icon'
+import {
+  Dropdown,
+  FileNavigatorModal,
+  Button,
+  SoundWave,
+  RecordingStatusBadge,
+  RecordButton,
+  FolderSelectorWithGoTo,
+} from '../components/index'
+import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/index'
+import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
+import { useFileManager } from '../contexts/FileManagerContext'
+import { theme } from '../utils/theme'
+import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
+import {
+  joinPath,
+  getRecordingsDirectory,
+  doesFolderPathExist,
+  getHierarchicalItemCount,
+  getAbsolutePath,
+} from '../utils/pathUtils'
+import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
 
 /**
@@ -17,6 +33,12 @@ import * as FileSystem from 'expo-file-system'
  * Main screen for audio recording functionality
  */
 export default function RecordScreen() {
+  const router = useRouter()
+  const params = useLocalSearchParams<{ initialFolder?: string }>()
+  const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
+
+  const fileManager = useFileManager()
+
   // State for audio quality
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('high')
 
@@ -36,53 +58,120 @@ export default function RecordScreen() {
   } = useAudioRecording(audioQuality)
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
-  // State for folder selection
-  const [selectedFolder, setSelectedFolder] = useState('song-ideas')
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string>('') // Store the full path for nested folders
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Load folders on component mount
+  // Memoized computed values derived from path
+  const selectedFolderId = useMemo((): string => {
+    if (!selectedFolderPath || selectedFolderPath === '') {
+      return 'folder-root'
+    }
+    return `folder-${selectedFolderPath.replace(/\//g, '-')}`
+  }, [selectedFolderPath])
+
+  const selectedFolderDisplayName = useMemo((): string => {
+    if (!selectedFolderPath || selectedFolderPath === '') {
+      return 'Home'
+    }
+    // Show the full path for clarity
+    return selectedFolderPath
+  }, [selectedFolderPath])
+
+  // Load folders on component mount and when initialFolder changes
   useEffect(() => {
     loadFolders()
-  }, [])
+  }, [initialFolder])
+
+  // Update selectedFolderPath when initialFolder changes
+  useEffect(() => {
+    if (initialFolder && initialFolder !== 'root') {
+      console.log('🔧 Setting selectedFolderPath to:', initialFolder)
+      setSelectedFolderPath(initialFolder)
+    } else {
+      console.log('🔧 Setting selectedFolderPath to empty (Home)')
+      setSelectedFolderPath('')
+    }
+  }, [initialFolder])
+
+  // Validate selectedFolderPath when screen comes into focus
+  // This handles the case where a folder was renamed in BrowseScreen
+  useFocusEffect(
+    React.useCallback(() => {
+      const validateSelectedFolderPath = async () => {
+        // Only validate if we have a non-empty selectedFolderPath
+        if (selectedFolderPath && selectedFolderPath !== '') {
+          console.log('🔍 Validating selectedFolderPath:', selectedFolderPath)
+
+          const pathExists = await doesFolderPathExist(selectedFolderPath)
+
+          if (!pathExists) {
+            console.log('⚠️ Selected folder path no longer exists, resetting to root:', selectedFolderPath)
+            setSelectedFolderPath('')
+          } else {
+            console.log('✅ Selected folder path is valid:', selectedFolderPath)
+          }
+        }
+      }
+
+      validateSelectedFolderPath()
+    }, [selectedFolderPath])
+  )
 
   const loadFolders = async () => {
     setLoading(true)
     try {
       await fileSystemService.initialize()
-      const contents = await fileSystemService.getFolderContents(getRecordingsDirectory())
 
-      // Convert to Folder format and count items in each folder
+      // Recursively load all folders to handle nested folder paths
       const folderData: Folder[] = []
-      for (const item of contents) {
-        if (item.type === 'folder') {
-          try {
-            const folderContents = await fileSystemService.getFolderContents(item.path)
-            const fileCount = folderContents.filter(subItem => subItem.type === 'file').length
 
-            folderData.push({
-              id: item.id,
-              name: item.name,
-              itemCount: fileCount,
-            })
-          } catch (error) {
-            // If we can't read the folder, add it with 0 count
-            folderData.push({
-              id: item.id,
-              name: item.name,
-              itemCount: 0,
-            })
+      const loadFoldersRecursively = async (basePath: string, relativePath: string = '') => {
+        const contents = await fileSystemService.getFolderContents(basePath)
+
+        for (const item of contents) {
+          if (item.type === 'folder') {
+            try {
+              // Use hierarchical counting to get total items in entire folder tree
+              const hierarchicalCount = await getHierarchicalItemCount(item.path)
+
+              const fullRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name
+
+              // Generate unique ID based on full path to avoid conflicts with duplicate folder names
+              const uniqueId = `folder-${fullRelativePath.replace(/\//g, '-')}`
+
+              folderData.push({
+                id: uniqueId,
+                name: item.name,
+                itemCount: hierarchicalCount, // Now represents total items in folder tree
+                path: fullRelativePath, // Store the full relative path
+              })
+
+              // Recursively load subfolders
+              await loadFoldersRecursively(item.path, fullRelativePath)
+            } catch (error) {
+              // If we can't read the folder, add it with 0 count
+              const fullRelativePath = relativePath ? `${relativePath}/${item.name}` : item.name
+
+              // Generate unique ID based on full path to avoid conflicts with duplicate folder names
+              const uniqueId = `folder-${fullRelativePath.replace(/\//g, '-')}`
+
+              folderData.push({
+                id: uniqueId,
+                name: item.name,
+                itemCount: 0,
+                path: fullRelativePath,
+              })
+            }
           }
         }
       }
 
+      await loadFoldersRecursively(getRecordingsDirectory())
       setFolders(folderData)
 
-      // Set default selection to first folder if none selected
-      if (folderData.length > 0 && !selectedFolder) {
-        setSelectedFolder(folderData[0].id)
-      }
+      // Initial folder selection is now handled in useEffect above
     } catch (error) {
       console.error('Failed to load folders:', error)
       Alert.alert('Error', 'Failed to load folders')
@@ -161,24 +250,41 @@ export default function RecordScreen() {
         throw new Error(`Source recording file does not exist: ${recordingUri}`)
       }
 
-      // Generate a unique filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const fileName = `Recording_${timestamp}.m4a`
+      // Get the target folder path using selectedFolderPath for nested folders
+      let targetFolderPath: string
+      if (!selectedFolderPath || selectedFolderPath === '') {
+        // Root directory case
+        targetFolderPath = getRecordingsDirectory()
+      } else {
+        // Nested folder case - use the full selectedFolderPath to handle duplicate folder names correctly
+        targetFolderPath = joinPath(getRecordingsDirectory(), selectedFolderPath)
+      }
 
-      // Get the target folder path
-      const selectedFolderData = folders.find(f => f.id === selectedFolder)
-      const folderName = selectedFolderData?.name || 'song-ideas'
-      const targetFolderPath = joinPath(getRecordingsDirectory(), folderName)
-      const targetFilePath = joinPath(targetFolderPath, fileName)
-
-      console.log('Target folder path:', targetFolderPath)
-      console.log('Target file path:', targetFilePath)
-
-      // Ensure the target folder exists
+      // Ensure the target folder exists before scanning for existing files
       const folderInfo = await FileSystem.getInfoAsync(targetFolderPath)
       if (!folderInfo.exists) {
         await FileSystem.makeDirectoryAsync(targetFolderPath, { intermediates: true })
       }
+
+      // Scan existing files in the target directory to generate intelligent name
+      let existingFileNames: string[] = []
+      try {
+        existingFileNames = await FileSystem.readDirectoryAsync(targetFolderPath)
+      } catch (readError) {
+        console.warn('Could not read directory for intelligent naming, using fallback:', readError)
+        existingFileNames = []
+      }
+
+      // Generate intelligent filename with gap-filling logic
+      const fileName = generateRecordingFilename(existingFileNames)
+      const targetFilePath = joinPath(targetFolderPath, fileName)
+
+      console.log('🎵 saveRecordingToFolder:', {
+        selectedFolderPath,
+        targetFolderPath,
+        targetFilePath,
+        fileName,
+      })
 
       // Try to copy the recording file to the selected folder
       try {
@@ -186,14 +292,14 @@ export default function RecordScreen() {
           from: recordingUri,
           to: targetFilePath,
         })
-        Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
+        // Recording saved successfully - no dialog popup needed
       } catch (copyError) {
         // If copy fails, try moving the file instead
         await FileSystem.moveAsync({
           from: recordingUri,
           to: targetFilePath,
         })
-        Alert.alert('Recording Saved', `Your recording has been saved to ${folderName}!`)
+        // Recording saved successfully - no dialog popup needed
       }
     } catch (error) {
       console.error('Failed to save recording:', error)
@@ -233,51 +339,136 @@ export default function RecordScreen() {
     resetRecording()
   }
 
+  const handleCancelRecording = async () => {
+    try {
+      // Stop the recording without saving
+      const uri = await stopRecording()
+
+      // If a recording file was created, delete it
+      if (uri) {
+        try {
+          await FileSystem.deleteAsync(uri, { idempotent: true })
+        } catch (deleteError) {
+          console.warn('Failed to delete cancelled recording file:', deleteError)
+          // Continue with reset even if file deletion fails
+        }
+      }
+
+      // Reset the recording state to prepare for a new recording
+      resetRecording()
+
+      // Clear any recording URI state
+      setRecordingUri(null)
+    } catch (err) {
+      console.error('Cancel recording error:', err)
+      Alert.alert('Cancel Error', 'Failed to cancel recording properly, but recording has been stopped.')
+      // Still reset the state even if cancellation had issues
+      resetRecording()
+      setRecordingUri(null)
+    }
+  }
+
   const handleFolderSelect = (folderId: string) => {
-    setSelectedFolder(folderId)
+    // Find the folder data and set the path directly
+    const selectedFolderData = folders.find(f => f.id === folderId)
+    if (selectedFolderData) {
+      setSelectedFolderPath(selectedFolderData.path || selectedFolderData.name) // Use full path if available
+    }
   }
 
   const handleFileNavigatorSelect = (folder: FileNavigatorFolder) => {
-    // Update the selected folder and refresh the folder list
-    setSelectedFolder(folder.id)
+    // For nested folders, we need to handle the path properly
+    const recordingsDir = getRecordingsDirectory()
+
+    // Normalize both paths by removing trailing slashes for comparison
+    const normalizedRecordingsDir = recordingsDir.replace(/\/+$/, '')
+    const normalizedFolderPath = folder.path.replace(/\/+$/, '')
+
+    console.log('🔍 handleFileNavigatorSelect:', {
+      folderName: folder.name,
+      folderPath: folder.path,
+      recordingsDir,
+      normalizedRecordingsDir,
+      normalizedFolderPath,
+    })
+
+    // Check if we're at the root directory
+    const isRootDirectory = normalizedFolderPath === normalizedRecordingsDir
+
+    let relativePath = ''
+    if (!isRootDirectory) {
+      // For nested folders, calculate relative path
+      relativePath = folder.path.replace(recordingsDir, '').replace(/^\/+|\/+$/g, '')
+    }
+
+    console.log('🔍 Path calculation:', {
+      isRootDirectory,
+      relativePath,
+    })
+
+    // Update the selected folder path directly
+    if (isRootDirectory) {
+      setSelectedFolderPath('') // Empty string represents root for FileManagerContext
+    } else {
+      setSelectedFolderPath(relativePath) // Use relative path for nested folders
+    }
+
     setShowFileNavigator(false)
-    loadFolders() // Refresh the folder list to include any new folders
-    Alert.alert('Folder Selected', `Selected: ${folder.name}`)
+
+    // Don't call loadFolders() here - the folder list doesn't need to be refreshed just for selection
   }
 
   const handleAudioQualitySelect = (option: DropdownOption) => {
     setAudioQuality(option.value as AudioQuality)
   }
 
+  const handleGoToFolder = useCallback(() => {
+    // Use the stored folder path to preserve nested folder navigation
+    const folderPath = selectedFolderPath
+
+    console.log('🔍 RecordScreen handleGoToFolder:', {
+      selectedFolderPath,
+      initialFolder,
+      folderPath,
+    })
+
+    // Handle root directory case - empty string means root
+    if (!folderPath || folderPath === '') {
+      console.log('🔍 RecordScreen navigating to root directory')
+      // Navigate to root using FileManagerContext
+      fileManager.navigateToRoot()
+      router.push('/(tabs)/browse')
+      return
+    }
+
+    // Parse the folder path and navigate using FileManagerContext
+    const pathSegments = folderPath.split('/').filter(segment => segment.length > 0)
+    fileManager.navigateToPath(pathSegments)
+
+    // Navigate to browse screen
+    console.log('🔍 RecordScreen navigating to Browse with folderPath:', folderPath)
+    router.push('/(tabs)/browse')
+  }, [selectedFolderPath, initialFolder, fileManager, router])
+
+  // Memoized props for FileNavigatorModal to prevent unnecessary re-renders
+  const fileNavigatorOnClose = useCallback(() => setShowFileNavigator(false), [])
+  const fileNavigatorInitialDirectory = useMemo(() => getAbsolutePath(selectedFolderPath), [selectedFolderPath])
+
   return (
     <Screen backgroundColor={theme.colors.background.primary}>
       <Container flex>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>MuziMemo</Text>
+          <Text style={styles.title}>New Recording</Text>
           <Icon name="settings-outline" size="lg" color="secondary" />
         </View>
 
         <Spacer size="xl" />
 
         {/* Status Badge */}
-        <View style={styles.statusBadgeContainer}>
-          <View style={[styles.statusBadge, status === 'paused' && styles.statusBadgePaused]}>
-            <Text style={styles.statusBadgeText}>
-              {!isInitialized
-                ? 'Initializing...'
-                : !hasPermissions
-                  ? 'Microphone Permission Required'
-                  : status === 'recording'
-                    ? 'Recording'
-                    : status === 'paused'
-                      ? 'Paused'
-                      : 'Ready to Record'}
-            </Text>
-          </View>
-        </View>
+        <RecordingStatusBadge status={status} isInitialized={isInitialized} hasPermissions={hasPermissions} />
 
-        <Spacer size="2xl" />
+        <Spacer size="lg" />
 
         {/* Duration Display */}
         <View style={styles.durationContainer}>
@@ -294,6 +485,7 @@ export default function RecordScreen() {
         {/* Record Button */}
         <View style={styles.recordButtonContainer}>
           <RecordButton
+            testID="record-button"
             isRecording={status === 'recording'}
             isPaused={status === 'paused'}
             onPress={handleRecordPress}
@@ -306,11 +498,23 @@ export default function RecordScreen() {
           {status === 'recording' ? 'Tap to Pause' : status === 'paused' ? 'Tap to Resume' : 'Tap to Record'}
         </Text>
 
-        {/* Done Button - Show when recording or paused */}
+        {/* Action Buttons - Show when recording or paused */}
         {(status === 'recording' || status === 'paused') && (
           <>
             <Spacer size="lg" />
-            <View style={styles.doneButtonContainer}>
+            <View style={styles.actionButtonsContainer}>
+              {/* Cancel Button - Only show during active recording */}
+              {status === 'recording' && (
+                <Button
+                  title="Cancel"
+                  variant="secondary"
+                  onPress={handleCancelRecording}
+                  style={styles.cancelButton}
+                  icon="close"
+                />
+              )}
+
+              {/* Done Button */}
               <Button
                 title="Done"
                 variant="primary"
@@ -324,21 +528,18 @@ export default function RecordScreen() {
 
         <Spacer size="2xl" />
 
-        {/* Folder Selector */}
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>Loading folders...</Text>
-          </View>
-        ) : (
-          <FolderSelector
-            label="Saving to:"
-            selectedFolder={selectedFolder}
+        {/* Folder Selector with Go To Button */}
+        <View style={styles.folderSelectorContainer}>
+          <FolderSelectorWithGoTo
+            selectedFolderId={selectedFolderId}
+            selectedFolderDisplayName={selectedFolderDisplayName}
             folders={folders}
+            loading={loading}
             onSelectFolder={handleFolderSelect}
             onOpenFileNavigator={() => setShowFileNavigator(true)}
+            onGoToFolder={handleGoToFolder}
           />
-        )}
+        </View>
 
         <Spacer size="lg" />
 
@@ -368,8 +569,9 @@ export default function RecordScreen() {
       {/* File Navigator Modal */}
       <FileNavigatorModal
         visible={showFileNavigator}
-        onClose={() => setShowFileNavigator(false)}
+        onClose={fileNavigatorOnClose}
         onSelectFolder={handleFileNavigatorSelect}
+        initialDirectory={fileNavigatorInitialDirectory}
       />
     </Screen>
   )
@@ -381,32 +583,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
   },
   title: {
     fontSize: theme.typography.fontSize['2xl'],
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
   },
-  statusBadgeContainer: {
-    alignItems: 'center',
-    width: '100%',
-  },
-  statusBadge: {
-    backgroundColor: theme.colors.surface.secondary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-  },
-  statusBadgePaused: {
-    backgroundColor: theme.colors.secondary,
-  },
-  statusBadgeText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
+
   dottedLine: {
     height: 2,
     width: '80%',
@@ -439,14 +622,26 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '80%',
   },
-  doneButtonContainer: {
+  actionButtonsContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
+    gap: theme.spacing.md, // Space between buttons
   },
   doneButton: {
     backgroundColor: theme.colors.success,
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.md,
+    flex: 1,
+    maxWidth: 120, // Prevent buttons from getting too wide
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.error,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    flex: 1,
+    maxWidth: 120, // Prevent buttons from getting too wide
   },
   recordingIndicator: {
     flexDirection: 'row',
@@ -501,15 +696,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: theme.typography.fontSize.sm,
   },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.md,
-  },
-  loadingText: {
-    marginLeft: theme.spacing.sm,
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.secondary,
+  folderSelectorContainer: {
+    width: '100%',
   },
 })

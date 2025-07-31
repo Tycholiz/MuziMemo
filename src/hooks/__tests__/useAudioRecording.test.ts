@@ -83,6 +83,41 @@ describe('useAudioRecording types and constants', () => {
     expect(normalizeAudioLevel(1)).toBe(1)
   })
 
+  it('should convert dB metering values to normalized levels correctly', () => {
+    // Simulate the dB to normalized level conversion logic from the hook
+    const convertDbToNormalizedLevel = (dbValue: number): number => {
+      const minDb = -50 // Threshold for "silence"
+      const maxDb = -10 // Threshold for "loud" (but not clipping)
+      return Math.max(0, Math.min(1, (dbValue - minDb) / (maxDb - minDb)))
+    }
+
+    // Test silence threshold
+    expect(convertDbToNormalizedLevel(-60)).toBe(0) // Below threshold
+    expect(convertDbToNormalizedLevel(-50)).toBe(0) // At silence threshold
+
+    // Test mid-range
+    expect(convertDbToNormalizedLevel(-30)).toBe(0.5) // Middle of range
+
+    // Test loud threshold
+    expect(convertDbToNormalizedLevel(-10)).toBe(1) // At loud threshold
+    expect(convertDbToNormalizedLevel(-5)).toBe(1) // Above threshold (clamped)
+  })
+
+  it('should handle metering data validation', () => {
+    // Simulate metering data validation logic
+    const isValidMeteringData = (recorderState: any): boolean => {
+      return Boolean(recorderState && typeof recorderState.metering === 'number')
+    }
+
+    expect(isValidMeteringData({ metering: -30 })).toBe(true)
+    expect(isValidMeteringData({ metering: 0 })).toBe(true)
+    expect(isValidMeteringData({ metering: null })).toBe(false)
+    expect(isValidMeteringData({ metering: undefined })).toBe(false)
+    expect(isValidMeteringData({})).toBe(false)
+    expect(isValidMeteringData(null)).toBe(false)
+    expect(isValidMeteringData(undefined)).toBe(false)
+  })
+
   it('should validate file extension handling', () => {
     // Test that recording presets have correct extensions
     expect(mockRecordingPresets.HIGH_QUALITY.extension).toBe('.m4a')

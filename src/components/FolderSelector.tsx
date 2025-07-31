@@ -1,19 +1,25 @@
-import React, { useState } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 import { Button } from './Button'
+import { doesFolderPathExist } from '@utils/pathUtils'
+
+// Maximum number of commonly used folders to display
+const MAX_COMMONLY_USED_FOLDERS = 6
 
 export type Folder = {
   id: string
   name: string
   itemCount: number
+  path?: string // Full relative path from recordings directory (e.g., "hello/Song Ideas")
 }
 
 export type FolderSelectorProps = {
   label?: string
   selectedFolder: string
+  selectedFolderName?: string // Optional override for display name
   folders: Folder[]
   onSelectFolder: (folderId: string) => void
   onOpenFileNavigator: () => void
@@ -21,20 +27,104 @@ export type FolderSelectorProps = {
 }
 
 /**
- * Folder selector component that shows commonly used folders
- * and provides access to file navigator
+ * Save Destination Folder selector component that shows commonly used folders
+ * and provides access to file navigator to determine where the recording should be saved
  */
 export function FolderSelector({
   label,
   selectedFolder,
+  selectedFolderName,
   folders,
   onSelectFolder,
   onOpenFileNavigator,
   disabled = false,
 }: FolderSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [validatedFolders, setValidatedFolders] = useState<Folder[]>([])
+  const [isValidating, setIsValidating] = useState(false)
+
+  // Validate folder existence and apply intelligent ranking when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      validateAndRankFolders()
+    }
+  }, [isOpen, folders])
+
+  const validateAndRankFolders = async () => {
+    setIsValidating(true)
+    try {
+      const validFolders: Folder[] = []
+
+      // Validate each folder's existence
+      for (const folder of folders) {
+        try {
+          const exists = await doesFolderPathExist(folder.path || '')
+          if (exists) {
+            validFolders.push(folder)
+          } else {
+            console.log(`Folder no longer exists: ${folder.path || folder.name}`)
+          }
+        } catch (error) {
+          console.error(`Error validating folder ${folder.name}:`, error)
+          // On error, exclude the folder to be safe
+        }
+      }
+
+      // Sort by hierarchical item count (descending) and limit to top 6
+      const rankedFolders = validFolders.sort((a, b) => b.itemCount - a.itemCount).slice(0, MAX_COMMONLY_USED_FOLDERS)
+
+      setValidatedFolders(rankedFolders)
+    } catch (error) {
+      console.error('Error validating and ranking folders:', error)
+      // Fallback to original folders if validation fails
+      setValidatedFolders(folders.slice(0, MAX_COMMONLY_USED_FOLDERS))
+    } finally {
+      setIsValidating(false)
+    }
+  }
 
   const selectedFolderData = folders.find(folder => folder.id === selectedFolder)
+  const displayName = selectedFolderName || selectedFolderData?.name || 'Home'
+  const displayPath = selectedFolderData?.path || displayName
+
+  // Format selector display with house icon and "/" separators
+  const formatSelectorDisplay = (path: string) => {
+    if (!path || path === 'Home') {
+      return (
+        <View style={styles.selectorPathDisplay}>
+          <Ionicons name="home" size={20} color={theme.colors.text.secondary} testID="home-icon" />
+        </View>
+      )
+    }
+
+    const segments = path.split('/').filter(Boolean)
+    const pathElements = []
+
+    // Always start with house icon
+    pathElements.push(
+      <Ionicons key="home" name="home" size={20} color={theme.colors.text.secondary} testID="home-icon" />
+    )
+
+    // Add separator and segments
+    segments.forEach((segment, index) => {
+      pathElements.push(
+        <Ionicons
+          key={`separator-${index}`}
+          name="chevron-forward"
+          size={14}
+          color={theme.colors.text.secondary}
+          style={styles.separator}
+        />
+      )
+      pathElements.push(
+        <Text key={`segment-${index}`} style={styles.selectorPathSegment}>
+          {segment}
+        </Text>
+      )
+    })
+
+    return <View style={styles.selectorPathDisplay}>{pathElements}</View>
+  }
 
   const handleSelectFolder = (folderId: string) => {
     onSelectFolder(folderId)
@@ -46,17 +136,58 @@ export function FolderSelector({
     onOpenFileNavigator()
   }
 
-  const renderFolder = ({ item }: { item: Folder }) => (
-    <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
-      <View style={styles.folderContent}>
-        <Ionicons name="folder-outline" size={20} color={theme.colors.primary} style={styles.folderIcon} />
-        <View style={styles.folderText}>
-          <Text style={styles.folderName}>{item.name}</Text>
-          <Text style={styles.folderCount}>{item.itemCount} items</Text>
+  const renderFolder = ({ item }: { item: Folder }) => {
+    // Show full path for nested folders to help distinguish between folders with same names
+    const displayPath = item.path && item.path !== item.name ? item.path : item.name
+
+    // Format path with house icon and ">" separators like Breadcrumbs
+    const formatPathDisplay = (path: string) => {
+      if (!path || path === 'Home') {
+        return (
+          <View style={styles.pathDisplay}>
+            <Ionicons name="home" size={14} color={theme.colors.primary} testID="home-icon" />
+          </View>
+        )
+      }
+
+      const segments = path.split('/').filter(Boolean)
+      const pathElements = []
+
+      // Always start with house icon
+      pathElements.push(<Ionicons key="home" name="home" size={16} color={theme.colors.primary} testID="home-icon" />)
+
+      // Add separator and segments
+      segments.forEach((segment, index) => {
+        pathElements.push(
+          <Ionicons
+            key={`separator-${index}`}
+            name="chevron-forward"
+            size={16}
+            color={theme.colors.text.secondary}
+            style={styles.separator}
+          />
+        )
+        pathElements.push(
+          <Text key={`segment-${index}`} style={styles.pathSegment}>
+            {segment}
+          </Text>
+        )
+      })
+
+      return <View style={styles.pathDisplay}>{pathElements}</View>
+    }
+
+    return (
+      <TouchableOpacity style={styles.folderOption} onPress={() => handleSelectFolder(item.id)} activeOpacity={0.7}>
+        <View style={styles.folderContent}>
+          <View style={styles.folderText}>
+            {formatPathDisplay(displayPath)}
+            <Text style={styles.folderCount}>{item.itemCount} items</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  )
+      </TouchableOpacity>
+    )
+  }
 
   return (
     <View style={styles.container}>
@@ -66,11 +197,11 @@ export function FolderSelector({
         style={[styles.selector, disabled && styles.disabled]}
         onPress={() => !disabled && setIsOpen(true)}
         activeOpacity={0.7}
+        testID="folder-selector"
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
       >
-        <View style={styles.selectorContent}>
-          <Ionicons name="folder-outline" size={20} color={theme.colors.text.secondary} style={styles.selectorIcon} />
-          <Text style={styles.selectorText}>{selectedFolderData?.name || 'Select folder'}</Text>
-        </View>
+        <View style={styles.selectorContent}>{formatSelectorDisplay(displayPath)}</View>
         <Ionicons name="chevron-down" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
 
@@ -84,13 +215,20 @@ export function FolderSelector({
               </TouchableOpacity>
             </View>
 
-            <FlatList
-              data={folders}
-              renderItem={renderFolder}
-              keyExtractor={item => item.id}
-              style={styles.foldersList}
-              showsVerticalScrollIndicator={false}
-            />
+            {isValidating ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Validating folders...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={validatedFolders}
+                renderItem={renderFolder}
+                keyExtractor={item => item.id}
+                style={styles.foldersList}
+                showsVerticalScrollIndicator={false}
+              />
+            )}
 
             <View style={styles.modalFooter}>
               <Button
@@ -139,16 +277,6 @@ const styles = StyleSheet.create({
   selectorContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-  },
-
-  selectorIcon: {
-    marginRight: theme.spacing.sm,
-  },
-
-  selectorText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.text.primary,
     flex: 1,
   },
 
@@ -202,10 +330,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  folderIcon: {
-    marginRight: theme.spacing.md,
-  },
-
   folderText: {
     flex: 1,
   },
@@ -225,5 +349,57 @@ const styles = StyleSheet.create({
   modalFooter: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
+  },
+
+  pathDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+
+  pathSeparator: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginHorizontal: 4,
+  },
+
+  pathSegment: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+
+  selectorPathDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+
+  selectorPathSeparator: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginHorizontal: 4,
+  },
+
+  selectorPathSegment: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.primary,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+  },
+
+  loadingText: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.md,
+  },
+  separator: {
+    marginHorizontal: 4,
   },
 })

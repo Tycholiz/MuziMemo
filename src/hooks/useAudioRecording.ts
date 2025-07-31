@@ -5,6 +5,7 @@ import { RecordingStatus } from 'src/customTypes/Recording'
 
 // Import expo-audio conditionally
 let useAudioRecorder: any = null
+let useAudioRecorderState: any = null
 let AudioModule: any = null
 let setAudioModeAsync: any = null
 let RecordingPresets: any = null
@@ -13,6 +14,7 @@ if (Platform.OS !== 'web') {
   try {
     const expoAudio = require('expo-audio')
     useAudioRecorder = expoAudio.useAudioRecorder
+    useAudioRecorderState = expoAudio.useAudioRecorderState
     AudioModule = expoAudio.AudioModule
     setAudioModeAsync = expoAudio.setAudioModeAsync
     RecordingPresets = expoAudio.RecordingPresets
@@ -39,24 +41,58 @@ export function useAudioRecording(audioQuality: AudioQuality = 'high') {
   const durationInterval = useRef<number | null>(null)
   const audioLevelInterval = useRef<number | null>(null)
 
-  // Map audio quality to recording presets (only HIGH_QUALITY and LOW_QUALITY are available)
+  /**
+   * Convert decibel value to normalized 0-1 range for UI
+   * Typical microphone input ranges from -60dB (very quiet) to 0dB (loud)
+   */
+  const convertDecibelToLevel = useCallback((decibel: number): number => {
+    if (decibel === undefined || decibel === null || decibel === -Infinity) {
+      return 0 // Silence
+    }
+
+    // Clamp decibel value to reasonable range (-60dB to 0dB)
+    const clampedDb = Math.max(-60, Math.min(0, decibel))
+
+    // Convert to 0-1 range (0 = -60dB, 1 = 0dB)
+    const normalized = (clampedDb + 60) / 60
+
+    // Apply slight curve to make lower levels more visible
+    return Math.pow(normalized, 0.7)
+  }, [])
+
+  // Map audio quality to recording presets with metering enabled
   const recordingPreset = useMemo(() => {
     if (!RecordingPresets) return null
 
+    let basePreset
     switch (audioQuality) {
       case 'high':
       case 'medium': // Map medium to high since MEDIUM_QUALITY doesn't exist
-        return RecordingPresets.HIGH_QUALITY
+        basePreset = RecordingPresets.HIGH_QUALITY
+        break
       case 'low':
-        return RecordingPresets.LOW_QUALITY
+        basePreset = RecordingPresets.LOW_QUALITY
+        break
       default:
-        return RecordingPresets.HIGH_QUALITY
+        basePreset = RecordingPresets.HIGH_QUALITY
+    }
+
+    // Enable metering for real-time audio level detection
+    return {
+      ...basePreset,
+      isMeteringEnabled: true,
     }
   }, [audioQuality])
 
   // Create audio recorder instance using expo-audio hook
   const audioRecorder =
     Platform.OS !== 'web' && useAudioRecorder && recordingPreset ? useAudioRecorder(recordingPreset) : null
+
+  // Get real-time recorder state for metering data
+  const recorderState =
+    Platform.OS !== 'web' && useAudioRecorderState && audioRecorder
+      ? useAudioRecorderState(audioRecorder, 50) // Update every 50ms for smooth real-time feedback
+      : null
 
   // Initialize audio service on mount
   useEffect(() => {
@@ -105,6 +141,18 @@ export function useAudioRecording(audioQuality: AudioQuality = 'high') {
     }
   }, [])
 
+  // Effect to monitor real-time audio levels from recorder state
+  useEffect(() => {
+    if (recorderState && recorderState.isRecording && recorderState.metering !== undefined) {
+      // Convert decibel metering value to 0-1 range for UI
+      const normalizedLevel = convertDecibelToLevel(recorderState.metering)
+      setAudioLevel(normalizedLevel)
+    } else if (recorderState && !recorderState.isRecording) {
+      // Reset audio level when not recording
+      setAudioLevel(0)
+    }
+  }, [recorderState, convertDecibelToLevel])
+
   // Helper function to start duration tracking
   const startDurationTracking = useCallback(() => {
     recordingStartTime.current = Date.now()
@@ -129,12 +177,9 @@ export function useAudioRecording(audioQuality: AudioQuality = 'high') {
 
   // Helper function to start audio level monitoring
   const startAudioLevelMonitoring = useCallback(() => {
-    audioLevelInterval.current = setInterval(() => {
-      // Generate random audio level for visualization (0-1)
-      // In a real implementation, this would read from the actual audio input
-      const level = Math.random() * 0.8 + 0.1 // Random between 0.1 and 0.9
-      setAudioLevel(level)
-    }, 100) // Update every 100ms for smooth animation
+    // Note: Real-time audio level updates are now handled by the recorderState effect
+    // This function is kept for compatibility but doesn't need to do anything
+    // since we're using useAudioRecorderState for real-time metering data
   }, [])
 
   // Helper function to stop audio level monitoring
