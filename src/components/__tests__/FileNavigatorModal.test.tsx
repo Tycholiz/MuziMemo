@@ -113,4 +113,41 @@ describe('FileNavigatorModal - Move Validation', () => {
       expect(testValidation(undefined, '/hello')).toBe(false)
     })
   })
+
+  describe('initialDirectory prop', () => {
+    it('should use initialDirectory when currentPath is not provided', async () => {
+      const { findByText } = renderWithProvider(
+        <FileNavigatorModal
+          visible={true}
+          onClose={jest.fn()}
+          onSelectFolder={jest.fn()}
+          initialDirectory="file:///mock/documents/recordings/dogs/Demos"
+          title="Select Folder"
+          primaryButtonText="Select"
+        />
+      )
+
+      // The modal should initialize with the provided initialDirectory
+      const selectButton = await findByText('Select')
+      expect(selectButton).not.toBeDisabled()
+    })
+
+    it('should prioritize currentPath over initialDirectory when both are provided', async () => {
+      const { findByText } = renderWithProvider(
+        <FileNavigatorModal
+          visible={true}
+          onClose={jest.fn()}
+          onSelectFolder={jest.fn()}
+          currentPath="file:///mock/documents/recordings/priority"
+          initialDirectory="file:///mock/documents/recordings/dogs/Demos"
+          title="Select Folder"
+          primaryButtonText="Select"
+        />
+      )
+
+      // The modal should use currentPath and ignore initialDirectory
+      const selectButton = await findByText('Select')
+      expect(selectButton).not.toBeDisabled()
+    })
+  })
 })

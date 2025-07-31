@@ -19,6 +19,7 @@ export type FileNavigatorModalProps = {
   onClose: () => void
   onSelectFolder: (folder: FileNavigatorFolder) => void
   currentPath?: string
+  initialDirectory?: string // Alias for currentPath for better clarity when setting initial directory
   title?: string
   primaryButtonText?: string
   primaryButtonIcon?: keyof typeof Ionicons.glyphMap
@@ -36,6 +37,7 @@ export function FileNavigatorModal({
   onClose,
   onSelectFolder,
   currentPath,
+  initialDirectory,
   title = 'Select Folder',
   primaryButtonText = 'Select',
   primaryButtonIcon,
@@ -53,7 +55,21 @@ export function FileNavigatorModal({
     return `${documentsDirectory}recordings`
   }
 
-  const [currentFolderPath, setCurrentFolderPath] = useState(currentPath || getRecordingsDirectory())
+  const [currentFolderPath, setCurrentFolderPath] = useState(
+    currentPath || initialDirectory || getRecordingsDirectory()
+  )
+  console.log('currentPath: ', currentPath)
+  console.log('initialDirectory: ', initialDirectory)
+  console.log('getRecordingsDirectory(): ', getRecordingsDirectory())
+  console.log('currentFolderPath: ', currentFolderPath)
+
+  // Update currentFolderPath when currentPath or initialDirectory changes
+  useEffect(() => {
+    const newPath = currentPath || initialDirectory
+    if (newPath !== currentFolderPath) {
+      setCurrentFolderPath(newPath)
+    }
+  }, [currentPath, initialDirectory])
 
   // Load folder contents when component mounts or path changes
   useEffect(() => {

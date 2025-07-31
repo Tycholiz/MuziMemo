@@ -18,7 +18,13 @@ import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording
 import { useFileManager } from '../contexts/FileManagerContext'
 import { theme } from '../utils/theme'
 import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
-import { joinPath, getRecordingsDirectory, doesFolderPathExist, getHierarchicalItemCount } from '../utils/pathUtils'
+import {
+  joinPath,
+  getRecordingsDirectory,
+  doesFolderPathExist,
+  getHierarchicalItemCount,
+  getAbsolutePath,
+} from '../utils/pathUtils'
 import { fileSystemService } from '../services/FileSystemService'
 import * as FileSystem from 'expo-file-system'
 
@@ -521,6 +527,7 @@ export default function RecordScreen() {
         visible={showFileNavigator}
         onClose={() => setShowFileNavigator(false)}
         onSelectFolder={handleFileNavigatorSelect}
+        initialDirectory={getAbsolutePath(selectedFolderPath)}
       />
     </Screen>
   )
