@@ -21,8 +21,11 @@ const TestComponent = () => {
   const audioPlayer = useAudioPlayerContext()
   return (
     <>
+      {/* @ts-expect-error */}
       <div testID="currentClip">{audioPlayer.currentClip?.name || 'none'}</div>
+      {/* @ts-expect-error */}
       <div testID="isPlaying">{audioPlayer.isPlaying.toString()}</div>
+      {/* @ts-expect-error */}
       <div testID="isLoading">{audioPlayer.isLoading.toString()}</div>
     </>
   )
