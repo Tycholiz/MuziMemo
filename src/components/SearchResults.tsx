@@ -33,7 +33,9 @@ export type SearchResultsProps = {
   onClearHistory: () => void
   onAudioFileSelect: (audioFile: any) => void
   onFolderSelect: (folder: any) => void
-  onGoToFolder: (folderPath: string[]) => void
+  onAudioPlayPause: (audioFile: any) => void
+  currentPlayingId?: string
+  isPlaying?: boolean
 }
 
 /**
@@ -53,7 +55,9 @@ export function SearchResults({
   onClearHistory,
   onAudioFileSelect,
   onFolderSelect,
-  onGoToFolder,
+  onAudioPlayPause,
+  currentPlayingId,
+  isPlaying = false,
 }: SearchResultsProps) {
   const hasResults = results.audioFiles.length > 0 || results.folders.length > 0
   const showHistory = !query.trim() && searchHistory.length > 0
@@ -80,7 +84,7 @@ export function SearchResults({
   }
 
   const handleScroll = () => {
-    // Dismiss keyboard when user starts scrolling
+    // Dismiss keyboard when user starts scrolling, but keep results visible
     Keyboard.dismiss()
   }
 
@@ -141,44 +145,49 @@ export function SearchResults({
                 </Text>
               </View>
 
-              {displayedAudioFiles.map((audioFile) => (
-                <TouchableOpacity
-                  key={audioFile.id}
-                  style={styles.resultItem}
-                  onPress={() => onAudioFileSelect(audioFile)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.audioFileContent}>
-                    <View style={styles.audioFileIcon}>
-                      <Ionicons name="play-circle" size={24} color={theme.colors.primary} />
-                    </View>
+              {displayedAudioFiles.map((audioFile) => {
+                const isCurrentlyPlaying = currentPlayingId === audioFile.id && isPlaying
+                const isCurrentTrack = currentPlayingId === audioFile.id
 
-                    <View style={styles.audioFileInfo}>
-                      <Text style={styles.audioFileName} numberOfLines={1}>
-                        {audioFile.name}
-                      </Text>
-                      <Text style={styles.audioFileDetails}>
-                        {formatDate(audioFile.createdAt)} • {formatFileSize(audioFile.size)}
-                        {audioFile.duration && ` • ${audioFile.duration}`}
-                      </Text>
-                      <Text style={styles.audioFilePath} numberOfLines={1}>
-                        {formatFolderPath(getParentDirectoryPath(audioFile.relativePath).join('/'))}
-                      </Text>
-                    </View>
+                return (
+                  <TouchableOpacity
+                    key={audioFile.id}
+                    style={styles.resultItem}
+                    onPress={() => onAudioFileSelect(audioFile)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.audioFileContent}>
+                      <TouchableOpacity
+                        style={styles.audioFileIcon}
+                        onPress={(e) => {
+                          e.stopPropagation()
+                          onAudioPlayPause(audioFile)
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons
+                          name={isCurrentlyPlaying ? "pause-circle" : "play-circle"}
+                          size={24}
+                          color={isCurrentTrack ? theme.colors.primary : theme.colors.text.secondary}
+                        />
+                      </TouchableOpacity>
 
-                    <TouchableOpacity
-                      style={styles.goToButton}
-                      onPress={(e) => {
-                        e.stopPropagation()
-                        onGoToFolder(getParentDirectoryPath(audioFile.relativePath))
-                      }}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <Ionicons name="arrow-forward" size={16} color={theme.colors.text.tertiary} />
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                      <View style={styles.audioFileInfo}>
+                        <Text style={styles.audioFileName} numberOfLines={1}>
+                          {audioFile.name}
+                        </Text>
+                        <Text style={styles.audioFileDetails}>
+                          {formatDate(audioFile.createdAt)} • {formatFileSize(audioFile.size)}
+                          {audioFile.duration && ` • ${audioFile.duration}`}
+                        </Text>
+                        <Text style={styles.audioFilePath} numberOfLines={1}>
+                          {formatFolderPath(getParentDirectoryPath(audioFile.relativePath).join('/'))}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
           )}
 
@@ -334,10 +343,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     fontStyle: 'italic',
   },
-  goToButton: {
-    padding: theme.spacing.xs,
-    marginLeft: theme.spacing.sm,
-  },
+
   folderContent: {
     flexDirection: 'row',
     alignItems: 'center',

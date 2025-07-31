@@ -18,8 +18,10 @@ export type SearchBarProps = {
   placeholder?: string
   autoFocus?: boolean
   onResultSelect?: (type: 'audio' | 'folder', item: any) => void
-  onNavigateToFolder?: (folderPath: string[]) => void
+  onAudioPlayPause?: (audioFile: any) => void
   currentPath?: string[]
+  currentPlayingId?: string
+  isPlaying?: boolean
   style?: any
 }
 
@@ -31,8 +33,10 @@ export function SearchBar({
   placeholder = 'Search audio files and folders...',
   autoFocus = false,
   onResultSelect,
-  onNavigateToFolder,
+  onAudioPlayPause,
   currentPath = [],
+  currentPlayingId,
+  isPlaying = false,
   style,
 }: SearchBarProps) {
   const inputRef = useRef<TextInput>(null)
@@ -44,6 +48,20 @@ export function SearchBar({
   useEffect(() => {
     search.setCurrentPath(currentPath)
   }, [currentPath, search])
+
+  // Listen for keyboard events to hide suggestions when keyboard is dismissed
+  useEffect(() => {
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      // Only hide if there's no query (showing suggestions) or if input is not focused
+      if (!search.query.trim() || !inputRef.current?.isFocused()) {
+        search.setShowResults(false)
+      }
+    })
+
+    return () => {
+      keyboardDidHideListener.remove()
+    }
+  }, [search])
 
   // Auto-focus when component mounts
   useEffect(() => {
@@ -91,10 +109,13 @@ export function SearchBar({
   }
 
   const handleBlur = () => {
-    // Delay hiding results to allow for result selection
-    setTimeout(() => {
-      search.setShowResults(false)
-    }, 300)
+    // Only hide results if there's no query (showing suggestions)
+    // For search results, let the keyboard listener handle hiding
+    if (!search.query.trim()) {
+      setTimeout(() => {
+        search.setShowResults(false)
+      }, 300)
+    }
   }
 
   const handleClear = () => {
@@ -113,17 +134,18 @@ export function SearchBar({
     Keyboard.dismiss()
   }
 
+  const handleAudioPlayPause = (audioFile: any) => {
+    onAudioPlayPause?.(audioFile)
+    // Keep search results open when playing audio
+  }
+
   const handleFolderSelect = (folder: any) => {
     onResultSelect?.('folder', folder)
     search.setShowResults(false)
     Keyboard.dismiss()
   }
 
-  const handleGoToFolder = (folderPath: string[]) => {
-    onNavigateToFolder?.(folderPath)
-    search.setShowResults(false)
-    Keyboard.dismiss()
-  }
+
 
   const showDropdown = search.showResults || (search.query === '' && search.searchHistory.length > 0)
 
@@ -192,7 +214,9 @@ export function SearchBar({
             onClearHistory={search.clearHistory}
             onAudioFileSelect={handleAudioFileSelect}
             onFolderSelect={handleFolderSelect}
-            onGoToFolder={handleGoToFolder}
+            onAudioPlayPause={handleAudioPlayPause}
+            currentPlayingId={currentPlayingId}
+            isPlaying={isPlaying}
           />
         </Animated.View>
       )}

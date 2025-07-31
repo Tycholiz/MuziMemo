@@ -24,16 +24,8 @@ export default function BrowseScreen() {
   const handleSearchResultSelect = useCallback(
     (type: 'audio' | 'folder', item: any) => {
       if (type === 'audio') {
-        console.log('🎵 Playing audio from search results:', item)
-        // Play the selected audio file
-        audioPlayer.playClip({
-          id: item.id,
-          name: item.name,
-          uri: item.uri,
-          duration: item.duration,
-        })
-
-        // Navigate to the file's parent directory
+        console.log('🗂️ Navigating to audio file directory:', item)
+        // Navigate to the file's parent directory (no playback)
         const parentPath = getParentDirectoryPath(item.relativePath)
         if (parentPath.length > 0) {
           fileManager.navigateToPath(parentPath)
@@ -60,19 +52,30 @@ export default function BrowseScreen() {
         fileManager.navigateToPath(folderPath)
       }
     },
-    [audioPlayer, fileManager, glowAnim]
+    [fileManager, glowAnim]
   )
 
-  const handleNavigateToFolder = useCallback(
-    (folderPath: string[]) => {
-      if (folderPath.length > 0) {
-        fileManager.navigateToPath(folderPath)
+  const handleAudioPlayPause = useCallback(
+    (audioFile: any) => {
+      console.log('🎵 Play/Pause audio from search results:', audioFile)
+
+      // If this is the current clip and it's playing, pause it
+      if (audioPlayer.currentClip?.id === audioFile.id && audioPlayer.isPlaying) {
+        audioPlayer.pauseClip()
       } else {
-        fileManager.navigateToRoot()
+        // Play the selected audio file
+        audioPlayer.playClip({
+          id: audioFile.id,
+          name: audioFile.name,
+          uri: audioFile.uri,
+          duration: audioFile.duration,
+        })
       }
     },
-    [fileManager]
+    [audioPlayer]
   )
+
+
 
   return (
     <Screen padding={false}>
@@ -81,8 +84,10 @@ export default function BrowseScreen() {
         <View style={styles.searchContainer}>
           <SearchBar
             onResultSelect={handleSearchResultSelect}
-            onNavigateToFolder={handleNavigateToFolder}
+            onAudioPlayPause={handleAudioPlayPause}
             currentPath={fileManager.currentPath}
+            currentPlayingId={audioPlayer.currentClip?.id}
+            isPlaying={audioPlayer.isPlaying}
           />
         </View>
 
