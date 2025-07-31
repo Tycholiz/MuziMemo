@@ -446,6 +446,7 @@ export function FileSystemComponent() {
         primaryButtonText="Move Here"
         primaryButtonIcon="arrow-forward"
         onPrimaryAction={handleMoveConfirm}
+        initialDirectory={fileManager.getFullPath()}
         excludePath={selectedFolderForMove ? `${fileManager.getFullPath()}/${selectedFolderForMove.name}` : undefined}
       />
     </View>

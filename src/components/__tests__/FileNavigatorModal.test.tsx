@@ -33,7 +33,7 @@ describe('FileNavigatorModal - Move Validation', () => {
 
   it('should disable Move Here button when in the folder being moved', async () => {
     const { findByText } = renderWithProvider(
-      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/hello/test2" />
+      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" initialDirectory="/hello/test2" />
     )
 
     const moveButton = await findByText('Move Here')
@@ -42,7 +42,7 @@ describe('FileNavigatorModal - Move Validation', () => {
 
   it('should disable Move Here button when in a subdirectory of the folder being moved', async () => {
     const { findByText } = renderWithProvider(
-      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/hello/test2/subfolder" />
+      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" initialDirectory="/hello/test2/subfolder" />
     )
 
     const moveButton = await findByText('Move Here')
@@ -51,7 +51,7 @@ describe('FileNavigatorModal - Move Validation', () => {
 
   it('should enable Move Here button when in the parent directory of the folder being moved', async () => {
     const { findByText } = renderWithProvider(
-      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/hello" />
+      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" initialDirectory="/hello" />
     )
 
     const moveButton = await findByText('Move Here')
@@ -60,7 +60,7 @@ describe('FileNavigatorModal - Move Validation', () => {
 
   it('should enable Move Here button when in a completely different directory', async () => {
     const { findByText } = renderWithProvider(
-      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/Song Ideas" />
+      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" initialDirectory="/Song Ideas" />
     )
 
     const moveButton = await findByText('Move Here')
@@ -69,7 +69,7 @@ describe('FileNavigatorModal - Move Validation', () => {
 
   it('should enable Move Here button when in the root directory', async () => {
     const { findByText } = renderWithProvider(
-      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" currentPath="/recordings" />
+      <FileNavigatorModal {...mockProps} excludePath="/hello/test2" initialDirectory="/recordings" />
     )
 
     const moveButton = await findByText('Move Here')
@@ -78,7 +78,7 @@ describe('FileNavigatorModal - Move Validation', () => {
 
   it('should enable Move Here button when excludePath is not provided', async () => {
     const { findByText } = renderWithProvider(
-      <FileNavigatorModal {...mockProps} excludePath={undefined} currentPath="/hello" />
+      <FileNavigatorModal {...mockProps} excludePath={undefined} initialDirectory="/hello" />
     )
 
     const moveButton = await findByText('Move Here')
@@ -132,20 +132,19 @@ describe('FileNavigatorModal - Move Validation', () => {
       expect(selectButton).not.toBeDisabled()
     })
 
-    it('should prioritize currentPath over initialDirectory when both are provided', async () => {
+    it('should use initialDirectory when provided', async () => {
       const { findByText } = renderWithProvider(
         <FileNavigatorModal
           visible={true}
           onClose={jest.fn()}
           onSelectFolder={jest.fn()}
-          currentPath="file:///mock/documents/recordings/priority"
           initialDirectory="file:///mock/documents/recordings/dogs/Demos"
           title="Select Folder"
           primaryButtonText="Select"
         />
       )
 
-      // The modal should use currentPath and ignore initialDirectory
+      // The modal should use initialDirectory
       const selectButton = await findByText('Select')
       expect(selectButton).not.toBeDisabled()
     })

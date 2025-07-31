@@ -58,7 +58,6 @@ export default function RecordScreen() {
   } = useAudioRecording(audioQuality)
   const [recordingUri, setRecordingUri] = useState<string | null>(null)
 
-  // Simplified state - only store the folder path
   const [selectedFolderPath, setSelectedFolderPath] = useState<string>('') // Store the full path for nested folders
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
