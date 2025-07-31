@@ -20,7 +20,7 @@ const mockAudioFiles: SortableAudioFile[] = [
     createdAt: new Date('2024-01-01T10:00:00Z'),
   },
   {
-    id: '2', 
+    id: '2',
     name: 'Alpha Track.mp3',
     createdAt: new Date('2024-01-02T10:00:00Z'),
   },
@@ -42,36 +42,28 @@ describe('sortUtils', () => {
   describe('sortAudioFiles', () => {
     it('should sort files alphabetically A-Z', () => {
       const result = sortAudioFiles(mockAudioFiles, 'name-asc')
-      expect(result.map(f => f.name)).toEqual([
-        'Alpha Track.mp3',
-        'Beta Recording.mp3', 
-        'Zebra Song.mp3',
-      ])
+      expect(result.map(f => f.name)).toEqual(['Alpha Track.mp3', 'Beta Recording.mp3', 'Zebra Song.mp3'])
     })
 
     it('should sort files alphabetically Z-A', () => {
       const result = sortAudioFiles(mockAudioFiles, 'name-desc')
-      expect(result.map(f => f.name)).toEqual([
-        'Zebra Song.mp3',
-        'Beta Recording.mp3',
-        'Alpha Track.mp3',
-      ])
+      expect(result.map(f => f.name)).toEqual(['Zebra Song.mp3', 'Beta Recording.mp3', 'Alpha Track.mp3'])
     })
 
     it('should sort files by date newest first', () => {
       const result = sortAudioFiles(mockAudioFiles, 'date-newest')
       expect(result.map(f => f.name)).toEqual([
         'Beta Recording.mp3', // 2024-01-03
-        'Alpha Track.mp3',    // 2024-01-02
-        'Zebra Song.mp3',     // 2024-01-01
+        'Alpha Track.mp3', // 2024-01-02
+        'Zebra Song.mp3', // 2024-01-01
       ])
     })
 
     it('should sort files by date oldest first', () => {
       const result = sortAudioFiles(mockAudioFiles, 'date-oldest')
       expect(result.map(f => f.name)).toEqual([
-        'Zebra Song.mp3',     // 2024-01-01
-        'Alpha Track.mp3',    // 2024-01-02
+        'Zebra Song.mp3', // 2024-01-01
+        'Alpha Track.mp3', // 2024-01-02
         'Beta Recording.mp3', // 2024-01-03
       ])
     })
@@ -95,11 +87,7 @@ describe('sortUtils', () => {
   describe('sortFolders', () => {
     it('should sort folders alphabetically', () => {
       const result = sortFolders(mockFolders)
-      expect(result.map(f => f.name)).toEqual([
-        'Alpha Folder',
-        'Beta Folder', 
-        'Zebra Folder',
-      ])
+      expect(result.map(f => f.name)).toEqual(['Alpha Folder', 'Beta Folder', 'Zebra Folder'])
     })
 
     it('should not mutate original array', () => {
@@ -141,17 +129,12 @@ describe('sortUtils', () => {
 
   describe('constants', () => {
     it('should have correct default sort option', () => {
-      expect(DEFAULT_SORT_OPTION).toBe('name-asc')
+      expect(DEFAULT_SORT_OPTION).toBe('date-newest')
     })
 
     it('should have all required sort options', () => {
       expect(SORT_OPTIONS).toHaveLength(4)
-      expect(SORT_OPTIONS.map(o => o.value)).toEqual([
-        'name-asc',
-        'name-desc', 
-        'date-newest',
-        'date-oldest',
-      ])
+      expect(SORT_OPTIONS.map(o => o.value)).toEqual(['date-newest', 'date-oldest', 'name-asc', 'name-desc'])
     })
   })
 })
