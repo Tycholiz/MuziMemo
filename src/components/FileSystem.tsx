@@ -13,6 +13,7 @@ import { FolderContextMenuModal } from './FolderContextMenuModal'
 import { CreateFolderModal } from './CreateFolderModal'
 import { FileNavigatorModal } from './FileNavigatorModal'
 import { HomeScreenMenuModal } from './HomeScreenMenuModal'
+import { SortModal } from './SortModal'
 import { theme } from '../utils/theme'
 import {
   moveItem,
@@ -601,19 +602,14 @@ export function FileSystemComponent() {
           </View>
         )}
 
-        {/* Sort Button */}
-        <View style={styles.sortButtonContainer}>
-          <TouchableOpacity style={[styles.actionButton, styles.sortButton]} onPress={() => setShowSortDropdown(true)}>
-            <Ionicons name="funnel" size={20} color={theme.colors.text.primary} />
-            <Text style={[styles.actionButtonText, styles.sortButtonText]}>Sort</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Audio Files */}
-        <View>
-          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>
+        {/* Audio Files Header with Sort Button */}
+        <View style={styles.audioFilesHeader}>
+          <Text style={[styles.actionButtonText, styles.audioFilesText]}>
             {sortedAudioFiles.length} audio file{sortedAudioFiles.length !== 1 ? 's' : ''}
           </Text>
+          <TouchableOpacity style={styles.sortButton} onPress={() => setShowSortDropdown(true)} activeOpacity={0.7}>
+            <Ionicons name="funnel" size={20} color={theme.colors.text.primary} />
+          </TouchableOpacity>
         </View>
         {sortedAudioFiles.map(audioFile => {
           const handlePlay = () => audioPlayer.playClip(audioFile)
@@ -694,36 +690,12 @@ export function FileSystemComponent() {
       />
 
       {/* Sort Modal */}
-      {showSortDropdown && (
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSortDropdown(false)}>
-            <View style={styles.sortModal}>
-              <Text style={styles.sortModalTitle}>Sort by</Text>
-              {SORT_OPTIONS.map(option => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={styles.sortOption}
-                  onPress={() => handleSortChange(option.value)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.sortOptionContent}>
-                    <Ionicons
-                      name={option.icon}
-                      size={20}
-                      color={theme.colors.text.secondary}
-                      style={styles.sortOptionIcon}
-                    />
-                    <Text style={styles.sortOptionText}>{option.label}</Text>
-                    {sortOption === option.value && (
-                      <Ionicons name="checkmark" size={20} color={theme.colors.primary} style={styles.sortCheckmark} />
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </View>
-      )}
+      <SortModal
+        visible={showSortDropdown}
+        currentSortOption={sortOption}
+        onSelectSort={handleSortChange}
+        onClose={() => setShowSortDropdown(false)}
+      />
     </View>
   )
 }
@@ -806,69 +778,24 @@ const styles = StyleSheet.create({
   recordButtonText: {
     color: 'white',
   },
-  sortButtonContainer: {
-    paddingVertical: 8,
+  audioFilesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  audioFilesText: {
+    flex: 1,
   },
   sortButton: {
+    width: 40,
+    height: 40,
     backgroundColor: theme.colors.surface.primary,
     borderWidth: 1,
     borderColor: theme.colors.border.light,
-  },
-  sortButtonText: {
-    color: theme.colors.text.primary,
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: theme.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
-  },
-  modalBackdrop: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  sortModal: {
-    backgroundColor: theme.colors.surface.primary,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    width: '80%',
-    maxWidth: 300,
-    ...theme.shadows?.lg,
-  },
-  sortModalTitle: {
-    fontSize: theme.typography.fontSize.lg,
-    fontFamily: theme.typography.fontFamily.semiBold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
-    textAlign: 'center',
-  },
-  sortOption: {
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border.light,
-  },
-  sortOptionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sortOptionIcon: {
-    marginRight: theme.spacing.sm,
-  },
-  sortOptionText: {
-    flex: 1,
-    fontSize: theme.typography.fontSize.base,
-    fontFamily: theme.typography.fontFamily.regular,
-    color: theme.colors.text.primary,
-  },
-  sortCheckmark: {
-    marginLeft: theme.spacing.sm,
   },
   scrollView: {
     flex: 1,
