@@ -16,31 +16,31 @@ export type SortOptionData = {
  */
 export const SORT_OPTIONS: SortOptionData[] = [
   {
-    value: 'name-asc',
-    label: 'Name (A-Z)',
-    icon: 'arrow-up',
-  },
-  {
-    value: 'name-desc', 
-    label: 'Name (Z-A)',
-    icon: 'arrow-down',
-  },
-  {
     value: 'date-newest',
     label: 'Date (Newest)',
     icon: 'time',
   },
   {
     value: 'date-oldest',
-    label: 'Date (Oldest)', 
+    label: 'Date (Oldest)',
     icon: 'time-outline',
+  },
+  {
+    value: 'name-asc',
+    label: 'Name (A-Z)',
+    icon: 'arrow-up',
+  },
+  {
+    value: 'name-desc',
+    label: 'Name (Z-A)',
+    icon: 'arrow-down',
   },
 ]
 
 /**
  * Default sort option for new users
  */
-export const DEFAULT_SORT_OPTION: SortOption = 'name-asc'
+export const DEFAULT_SORT_OPTION: SortOption = 'date-newest'
 
 /**
  * Audio file data structure for sorting
@@ -56,38 +56,25 @@ export type SortableAudioFile = {
  * Sort audio files based on the selected sort option
  * Folders are always sorted alphabetically and remain at the top
  */
-export function sortAudioFiles<T extends SortableAudioFile>(
-  files: T[],
-  sortOption: SortOption
-): T[] {
+export function sortAudioFiles<T extends SortableAudioFile>(files: T[], sortOption: SortOption): T[] {
   const sortedFiles = [...files]
 
   switch (sortOption) {
     case 'name-asc':
-      return sortedFiles.sort((a, b) => 
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-      )
-    
+      return sortedFiles.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+
     case 'name-desc':
-      return sortedFiles.sort((a, b) => 
-        b.name.toLowerCase().localeCompare(a.name.toLowerCase())
-      )
-    
+      return sortedFiles.sort((a, b) => b.name.toLowerCase().localeCompare(a.name.toLowerCase()))
+
     case 'date-newest':
-      return sortedFiles.sort((a, b) => 
-        b.createdAt.getTime() - a.createdAt.getTime()
-      )
-    
+      return sortedFiles.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+
     case 'date-oldest':
-      return sortedFiles.sort((a, b) => 
-        a.createdAt.getTime() - b.createdAt.getTime()
-      )
-    
+      return sortedFiles.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+
     default:
       // Fallback to default sort
-      return sortedFiles.sort((a, b) => 
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-      )
+      return sortedFiles.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
   }
 }
 
