@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -46,6 +46,11 @@ export function FileSystemComponent() {
   const [showMoveModal, setShowMoveModal] = useState(false)
   const [selectedFolderForMove, setSelectedFolderForMove] = useState<FolderData | null>(null)
   const [selectedFileForMove, setSelectedFileForMove] = useState<AudioFileData | null>(null)
+
+  // Scroll position preservation
+  const scrollViewRef = useRef<ScrollView>(null)
+  const scrollPositionRef = useRef(0)
+  const shouldRestoreScrollRef = useRef(false)
 
   // Load folder contents when path changes
   useEffect(() => {
@@ -112,6 +117,22 @@ export function FileSystemComponent() {
       fileManager.setError('Failed to load folder contents')
     } finally {
       fileManager.setLoading(false)
+    }
+  }
+
+  // Scroll position tracking functions
+  const handleScroll = (event: any) => {
+    scrollPositionRef.current = event.nativeEvent.contentOffset.y
+  }
+
+  const handleContentSizeChange = () => {
+    if (shouldRestoreScrollRef.current && scrollViewRef.current) {
+      // Restore scroll position after content update
+      scrollViewRef.current.scrollTo({
+        y: scrollPositionRef.current,
+        animated: false,
+      })
+      shouldRestoreScrollRef.current = false
     }
   }
 
@@ -198,6 +219,7 @@ export function FileSystemComponent() {
             const folderPath = `${fullPath}/${folder.name}`
 
             await FileSystem.deleteAsync(folderPath)
+            shouldRestoreScrollRef.current = true
             await loadFolderContents() // Refresh the list
           } catch (error) {
             console.error('Failed to delete folder:', error)
@@ -263,6 +285,7 @@ export function FileSystemComponent() {
             }
 
             await FileSystem.deleteAsync(filePath)
+            shouldRestoreScrollRef.current = true
             await loadFolderContents() // Refresh the list
           } catch (error) {
             console.error('Failed to delete audio file:', error)
@@ -354,9 +377,13 @@ export function FileSystemComponent() {
 
       {/* Content */}
       <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        onContentSizeChange={handleContentSizeChange}
+        scrollEventThrottle={16}
       >
         {/* Folders Grid */}
         {folders.length > 0 && (
