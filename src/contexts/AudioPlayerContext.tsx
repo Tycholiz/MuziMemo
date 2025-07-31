@@ -37,6 +37,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const audioPlayer = useAudioPlayer()
   const [currentClip, setCurrentClip] = useState<AudioClip | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isPlayingOverride, setIsPlayingOverride] = useState(false)
 
   // Configure audio session for playback
   useEffect(() => {
@@ -65,6 +66,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const playClip = useCallback(
     async (clip: AudioClip) => {
       try {
+        console.log('🎵 AudioPlayerContext: playClip called for:', clip.name)
+
         // Ensure audio mode is set for main speakers before playing
         try {
           await setAudioModeAsync({
@@ -82,8 +85,11 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
           console.warn('⚠️ Failed to set audio mode for playback:', audioModeError)
         }
 
+        // Set state immediately for instant visual feedback
         setIsLoading(true)
         setCurrentClip(clip)
+        setIsPlayingOverride(true)
+        console.log('🎵 AudioPlayerContext: Set currentClip and isPlayingOverride to true')
 
         // Replace the source with the new clip
         audioPlayer.replace(clip.uri)
@@ -92,11 +98,13 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         await new Promise(resolve => setTimeout(resolve, 500))
 
         audioPlayer.play()
+        console.log('🎵 AudioPlayerContext: Called audioPlayer.play()')
       } catch (error) {
         console.error('❌ Failed to play audio clip:', error)
         // Reset state on error
         setCurrentClip(null)
         setIsLoading(false)
+        setIsPlayingOverride(false)
       } finally {
         setIsLoading(false)
       }
@@ -105,12 +113,16 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   )
 
   const pauseClip = useCallback(() => {
+    console.log('🎵 AudioPlayerContext: pauseClip called')
     audioPlayer.pause()
+    setIsPlayingOverride(false)
   }, [audioPlayer])
 
   const stopClip = useCallback(() => {
+    console.log('🎵 AudioPlayerContext: stopClip called')
     audioPlayer.pause()
     audioPlayer.seekTo(0)
+    setIsPlayingOverride(false)
   }, [audioPlayer])
 
   const seekTo = useCallback(
@@ -121,14 +133,27 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   )
 
   const cleanup = useCallback(() => {
+    console.log('🎵 AudioPlayerContext: cleanup called')
     audioPlayer.pause()
     setCurrentClip(null)
+    setIsPlayingOverride(false)
   }, [audioPlayer])
+
+  // Sync override state with actual audio player state
+  useEffect(() => {
+    if (isPlayingOverride && audioPlayer.playing) {
+      // Audio player has caught up, disable override
+      setIsPlayingOverride(false)
+    } else if (!audioPlayer.playing && !isPlayingOverride && currentClip) {
+      // Audio stopped but we still have a current clip, clear it
+      setCurrentClip(null)
+    }
+  }, [audioPlayer.playing, isPlayingOverride, currentClip])
 
   const value: AudioPlayerContextType = {
     // State
     currentClip,
-    isPlaying: audioPlayer.playing,
+    isPlaying: isPlayingOverride || audioPlayer.playing,
     isLoading,
     position: audioPlayer.currentTime,
     duration: audioPlayer.duration,

@@ -7,6 +7,7 @@ import {
   formatDurationFromSeconds,
   formatFileSize,
   formatDate,
+  formatDateSmart,
   generateRecordingFilename,
 } from '../formatUtils'
 
@@ -69,6 +70,35 @@ describe('formatUtils', () => {
       expect(formatted).toContain('Jan')
       expect(formatted).toContain('15')
       expect(formatted).toContain('2024')
+    })
+  })
+
+  describe('formatDateSmart', () => {
+    it('should return "Today" for today\'s date', () => {
+      const today = new Date()
+      expect(formatDateSmart(today)).toBe('Today')
+    })
+
+    it('should return "Yesterday" for yesterday\'s date', () => {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      expect(formatDateSmart(yesterday)).toBe('Yesterday')
+    })
+
+    it('should return formatted date for older dates', () => {
+      const oldDate = new Date('2023-01-15')
+      const result = formatDateSmart(oldDate)
+      expect(result).toMatch(/Jan 15, 2023/)
+    })
+
+    it('should handle different times on same day as today', () => {
+      const todayMorning = new Date()
+      todayMorning.setHours(8, 0, 0, 0)
+      expect(formatDateSmart(todayMorning)).toBe('Today')
+
+      const todayEvening = new Date()
+      todayEvening.setHours(20, 0, 0, 0)
+      expect(formatDateSmart(todayEvening)).toBe('Today')
     })
   })
 
