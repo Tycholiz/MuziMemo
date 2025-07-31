@@ -4,12 +4,8 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 
-export type FileContextMenuModalProps = {
-  onRename: () => void
-  onMove?: () => void
-  onRestore?: () => void
-  onDelete: () => void
-  isInRecentlyDeleted?: boolean
+export type HomeScreenMenuModalProps = {
+  onRecentlyDeleted: () => void
 }
 
 type MenuOption = {
@@ -21,54 +17,20 @@ type MenuOption = {
 }
 
 /**
- * FileContextMenuModal Component
- * Provides an ellipsis menu with file management options (rename, move/restore, delete)
+ * HomeScreenMenuModal Component
+ * Provides an ellipsis menu for the home screen with options like "Recently Deleted"
  */
-export function FileContextMenuModal({
-  onRename,
-  onMove,
-  onRestore,
-  onDelete,
-  isInRecentlyDeleted = false
-}: FileContextMenuModalProps) {
+export function HomeScreenMenuModal({ onRecentlyDeleted }: HomeScreenMenuModalProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   const menuOptions: MenuOption[] = [
     {
-      id: 'rename',
-      label: 'Rename',
-      icon: 'pencil-outline',
-      onPress: () => {
-        setIsVisible(false)
-        onRename()
-      },
-    },
-    // Show either Move or Restore based on context
-    ...(isInRecentlyDeleted && onRestore ? [{
-      id: 'restore',
-      label: 'Restore',
-      icon: 'refresh-outline',
-      onPress: () => {
-        setIsVisible(false)
-        onRestore()
-      },
-    }] : onMove ? [{
-      id: 'move',
-      label: 'Move',
-      icon: 'folder-outline',
-      onPress: () => {
-        setIsVisible(false)
-        onMove()
-      },
-    }] : []),
-    {
-      id: 'delete',
-      label: 'Delete',
+      id: 'recently-deleted',
+      label: 'Recently Deleted',
       icon: 'trash-outline',
-      variant: 'danger' as const,
       onPress: () => {
         setIsVisible(false)
-        onDelete()
+        onRecentlyDeleted()
       },
     },
   ]

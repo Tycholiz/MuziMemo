@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 import * as FileSystem from 'expo-file-system'
+import { getRecentlyDeletedDirectory } from '../utils/recentlyDeletedUtils'
 
 export type FileManagerState = {
   currentPath: string[]
   isLoading: boolean
   error: string | null
+  isInRecentlyDeleted: boolean
 }
 
 export type FileManagerActions = {
@@ -12,10 +14,12 @@ export type FileManagerActions = {
   navigateToPath: (path: string[]) => void
   navigateToRoot: () => void
   navigateToBreadcrumb: (index: number) => void
+  navigateToRecentlyDeleted: () => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
   getCurrentPathString: () => string
   getFullPath: () => string
+  getIsInRecentlyDeleted: () => boolean
 }
 
 export type FileManagerContextType = FileManagerState & FileManagerActions
@@ -30,17 +34,21 @@ export function FileManagerProvider({ children }: FileManagerProviderProps) {
   const [currentPath, setCurrentPath] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isInRecentlyDeleted, setIsInRecentlyDeleted] = useState(false)
 
   const navigateToFolder = useCallback((folderName: string) => {
     setCurrentPath(prev => [...prev, folderName])
+    setIsInRecentlyDeleted(false)
   }, [])
 
   const navigateToPath = useCallback((path: string[]) => {
     setCurrentPath(path)
+    setIsInRecentlyDeleted(false)
   }, [])
 
   const navigateToRoot = useCallback(() => {
     setCurrentPath([])
+    setIsInRecentlyDeleted(false)
   }, [])
 
   const navigateToBreadcrumb = useCallback((index: number) => {
@@ -49,6 +57,12 @@ export function FileManagerProvider({ children }: FileManagerProviderProps) {
     } else {
       setCurrentPath(prev => prev.slice(0, index))
     }
+    setIsInRecentlyDeleted(false)
+  }, [])
+
+  const navigateToRecentlyDeleted = useCallback(() => {
+    setCurrentPath([])
+    setIsInRecentlyDeleted(true)
   }, [])
 
   const setLoadingState = useCallback((loading: boolean) => {
@@ -66,30 +80,41 @@ export function FileManagerProvider({ children }: FileManagerProviderProps) {
   const getFullPath = useCallback(() => {
     const documentsDirectory = FileSystem.documentDirectory
     if (!documentsDirectory) return ''
-    
+
+    if (isInRecentlyDeleted) {
+      return getRecentlyDeletedDirectory()
+    }
+
     const recordingsPath = `${documentsDirectory}recordings`
     if (currentPath.length === 0) {
       return recordingsPath
     }
-    
+
     return `${recordingsPath}/${currentPath.join('/')}`
-  }, [currentPath])
+  }, [currentPath, isInRecentlyDeleted])
+
+  const getIsInRecentlyDeleted = useCallback(() => {
+    return isInRecentlyDeleted
+  }, [isInRecentlyDeleted])
 
   const value: FileManagerContextType = {
     // State
     currentPath,
     isLoading,
     error,
-    
+    isInRecentlyDeleted,
+
     // Actions
     navigateToFolder,
     navigateToPath,
     navigateToRoot,
     navigateToBreadcrumb,
+    navigateToRecentlyDeleted,
     setLoading: setLoadingState,
     setError: setErrorState,
     getCurrentPathString,
     getFullPath,
+    getIsInRecentlyDeleted,
   }
 
   return (
