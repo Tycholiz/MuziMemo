@@ -18,8 +18,7 @@ export type FileNavigatorModalProps = {
   visible: boolean
   onClose: () => void
   onSelectFolder: (folder: FileNavigatorFolder) => void
-  currentPath?: string
-  initialDirectory?: string // Alias for currentPath for better clarity when setting initial directory
+  initialDirectory?: string
   title?: string
   primaryButtonText?: string
   primaryButtonIcon?: keyof typeof Ionicons.glyphMap
@@ -36,7 +35,6 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   visible,
   onClose,
   onSelectFolder,
-  currentPath,
   initialDirectory,
   title = 'Select Folder',
   primaryButtonText = 'Select',
@@ -55,15 +53,14 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
     return `${documentsDirectory}recordings`
   }, [])
 
-  const [currentFolderPath, setCurrentFolderPath] = useState(currentPath || initialDirectory || getRecordingsDirectory)
+  const [currentFolderPath, setCurrentFolderPath] = useState(initialDirectory || getRecordingsDirectory)
 
-  // Update currentFolderPath when currentPath or initialDirectory changes
+  // Update currentFolderPath when initialDirectory changes
   useEffect(() => {
-    const newPath = currentPath || initialDirectory
-    if (newPath && newPath !== currentFolderPath) {
-      setCurrentFolderPath(newPath)
+    if (initialDirectory && initialDirectory !== currentFolderPath) {
+      setCurrentFolderPath(initialDirectory)
     }
-  }, [currentPath, initialDirectory]) // Remove currentFolderPath to avoid circular dependency
+  }, [initialDirectory]) // Remove currentFolderPath to avoid circular dependency
 
   const loadFolderContents = useCallback(async () => {
     setLoading(true)
