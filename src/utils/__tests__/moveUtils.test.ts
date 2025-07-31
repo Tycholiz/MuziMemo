@@ -77,10 +77,6 @@ describe('moveUtils', () => {
       expect(pathToNavigationArray('')).toEqual([])
     })
 
-    it('should return empty array for root path', () => {
-      expect(pathToNavigationArray('')).toEqual([])
-    })
-
     it('should split path into navigation array', () => {
       const result = pathToNavigationArray('folder1/subfolder/deepfolder')
       expect(result).toEqual(['folder1', 'subfolder', 'deepfolder'])

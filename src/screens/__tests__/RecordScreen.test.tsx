@@ -37,11 +37,6 @@ describe('RecordScreen Go To Button', () => {
 
     expect(folderName).toBe('root')
   })
-
-  it('should use correct curved arrow symbol', () => {
-    const curvedArrowSymbol = '↪'
-    expect(curvedArrowSymbol).toBe('↪')
-  })
 })
 
 describe('RecordScreen Initial Folder Handling', () => {
