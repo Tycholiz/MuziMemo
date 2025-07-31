@@ -548,7 +548,7 @@ export function FileSystemComponent() {
 
         {/* Audio Files */}
         <View>
-          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>13 audio files</Text>
+          <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>{sortedAudioFiles.length} audio files</Text>
         </View>
         {sortedAudioFiles.map(audioFile => {
           const handlePlay = () => audioPlayer.playClip(audioFile)
