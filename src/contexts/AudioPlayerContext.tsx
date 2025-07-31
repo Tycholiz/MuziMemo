@@ -65,14 +65,6 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const playClip = useCallback(
     async (clip: AudioClip) => {
       try {
-        console.log('🎵 AudioPlayerContext: Starting playClip for:', clip.name)
-        console.log('🎵 AudioPlayerContext: Audio URI:', clip.uri)
-        console.log('🎵 AudioPlayerContext: Current audioPlayer state:', {
-          playing: audioPlayer.playing,
-          currentTime: audioPlayer.currentTime,
-          duration: audioPlayer.duration,
-        })
-
         // Ensure audio mode is set for main speakers before playing
         try {
           await setAudioModeAsync({
@@ -86,7 +78,6 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
               iosCategoryOptions: ['defaultToSpeaker'],
             }),
           })
-          console.log('🎵 AudioPlayerContext: Audio mode set for main speakers')
         } catch (audioModeError) {
           console.warn('⚠️ Failed to set audio mode for playback:', audioModeError)
         }
@@ -95,21 +86,12 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         setCurrentClip(clip)
 
         // Replace the source with the new clip
-        console.log('🎵 AudioPlayerContext: Calling audioPlayer.replace...')
         audioPlayer.replace(clip.uri)
 
         // Wait a moment for the audio to load
-        console.log('🎵 AudioPlayerContext: Waiting for audio to load...')
         await new Promise(resolve => setTimeout(resolve, 500))
 
-        console.log('🎵 AudioPlayerContext: Calling audioPlayer.play...')
         audioPlayer.play()
-
-        console.log('🎵 AudioPlayerContext: After play() call:', {
-          playing: audioPlayer.playing,
-          currentTime: audioPlayer.currentTime,
-          duration: audioPlayer.duration,
-        })
       } catch (error) {
         console.error('❌ Failed to play audio clip:', error)
         // Reset state on error
