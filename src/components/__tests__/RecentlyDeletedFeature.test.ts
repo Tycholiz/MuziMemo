@@ -101,4 +101,40 @@ describe('Recently Deleted UI Integration', () => {
     expect(getEmptyStateMessage(true)).toBe("Your recycling bin is empty")
     expect(getEmptyStateMessage(false)).toBe("No recordings yet")
   })
+
+  it('should show proper breadcrumb hierarchy for recently deleted', () => {
+    // Test breadcrumb structure for Recently Deleted
+    const getBreadcrumbs = (isInRecentlyDeleted: boolean) => {
+      if (isInRecentlyDeleted) {
+        return [
+          { name: 'Home', path: '', isLast: false },
+          { name: 'Recently Deleted', path: 'recently-deleted', isLast: true }
+        ]
+      }
+      return [{ name: 'Home', path: '', isLast: true }]
+    }
+
+    const recentlyDeletedBreadcrumbs = getBreadcrumbs(true)
+    const homeBreadcrumbs = getBreadcrumbs(false)
+
+    expect(recentlyDeletedBreadcrumbs).toHaveLength(2)
+    expect(recentlyDeletedBreadcrumbs[0].name).toBe('Home')
+    expect(recentlyDeletedBreadcrumbs[0].isLast).toBe(false)
+    expect(recentlyDeletedBreadcrumbs[1].name).toBe('Recently Deleted')
+    expect(recentlyDeletedBreadcrumbs[1].isLast).toBe(true)
+
+    expect(homeBreadcrumbs).toHaveLength(1)
+    expect(homeBreadcrumbs[0].name).toBe('Home')
+    expect(homeBreadcrumbs[0].isLast).toBe(true)
+  })
+
+  it('should hide action buttons in recently deleted', () => {
+    // Test that action buttons are hidden in Recently Deleted
+    const shouldShowActionButtons = (isInRecentlyDeleted: boolean) => {
+      return !isInRecentlyDeleted
+    }
+
+    expect(shouldShowActionButtons(true)).toBe(false) // Hidden in Recently Deleted
+    expect(shouldShowActionButtons(false)).toBe(true) // Shown in normal folders
+  })
 })

@@ -535,21 +535,23 @@ export function FileSystemComponent() {
           </View>
         )}
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.newFolderButton]}
-            onPress={() => setShowCreateFolderModal(true)}
-          >
-            <Ionicons name="add" size={20} color="white" />
-            <Text style={[styles.actionButtonText, styles.newFolderButtonText]}>New Folder</Text>
-          </TouchableOpacity>
+        {/* Action Buttons - Hidden in Recently Deleted */}
+        {!fileManager.getIsInRecentlyDeleted() && (
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.newFolderButton]}
+              onPress={() => setShowCreateFolderModal(true)}
+            >
+              <Ionicons name="add" size={20} color="white" />
+              <Text style={[styles.actionButtonText, styles.newFolderButtonText]}>New Folder</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
-            <Ionicons name="mic" size={20} color="white" />
-            <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
+              <Ionicons name="mic" size={20} color="white" />
+              <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Audio Files */}
         <View>

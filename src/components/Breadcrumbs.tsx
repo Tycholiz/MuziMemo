@@ -76,8 +76,11 @@ export function Breadcrumbs({
     } else if (fileManager) {
       // Use FileManager context with Recently Deleted support
       if (fileManager.isInRecentlyDeleted) {
-        // Show "Recently Deleted" as root-level breadcrumb
-        return [{ name: 'Recently Deleted', path: 'recently-deleted', isLast: true }]
+        // Show "Home > Recently Deleted" breadcrumb hierarchy
+        return [
+          { name: 'Home', path: '', isLast: false },
+          { name: 'Recently Deleted', path: 'recently-deleted', isLast: true }
+        ]
       }
 
       return [
@@ -101,8 +104,14 @@ export function Breadcrumbs({
       onBreadcrumbPress(selectedPath, index)
     } else if (fileManager) {
       // Use FileManager context with Recently Deleted support
-      if (fileManager.isInRecentlyDeleted && index === 0) {
-        // Already in Recently Deleted, no navigation needed
+      if (fileManager.isInRecentlyDeleted) {
+        if (index === 0) {
+          // Navigate to home from Recently Deleted
+          fileManager.navigateToRoot()
+        } else if (index === 1) {
+          // Stay in Recently Deleted (already there)
+          return
+        }
         return
       }
 
