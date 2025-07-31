@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import * as FileSystem from 'expo-file-system'
@@ -18,7 +18,8 @@ export type FileNavigatorModalProps = {
   visible: boolean
   onClose: () => void
   onSelectFolder: (folder: FileNavigatorFolder) => void
-  initialDirectory?: string
+  currentPath?: string
+  initialDirectory?: string // Alias for currentPath for better clarity when setting initial directory
   title?: string
   primaryButtonText?: string
   primaryButtonIcon?: keyof typeof Ionicons.glyphMap
@@ -31,10 +32,11 @@ export type FileNavigatorModalProps = {
  * FileNavigatorModal for browsing and creating folders
  * Matches the design from the mockup screenshots
  */
-export function FileNavigatorModal({
+export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   visible,
   onClose,
   onSelectFolder,
+  currentPath,
   initialDirectory,
   title = 'Select Folder',
   primaryButtonText = 'Select',
@@ -46,30 +48,24 @@ export function FileNavigatorModal({
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Use FileManager's getFullPath
-  const getRecordingsDirectory = () => {
+  // Memoize the recordings directory function
+  const getRecordingsDirectory = useMemo(() => {
     const documentsDirectory = FileSystem.documentDirectory
     if (!documentsDirectory) return ''
     return `${documentsDirectory}recordings`
-  }
+  }, [])
 
-  const [currentFolderPath, setCurrentFolderPath] = useState(initialDirectory || getRecordingsDirectory())
+  const [currentFolderPath, setCurrentFolderPath] = useState(currentPath || initialDirectory || getRecordingsDirectory)
 
-  // Update currentFolderPath when initialDirectory changes
+  // Update currentFolderPath when currentPath or initialDirectory changes
   useEffect(() => {
-    if (initialDirectory && initialDirectory !== currentFolderPath) {
-      setCurrentFolderPath(initialDirectory)
+    const newPath = currentPath || initialDirectory
+    if (newPath && newPath !== currentFolderPath) {
+      setCurrentFolderPath(newPath)
     }
-  }, [initialDirectory, currentFolderPath])
+  }, [currentPath, initialDirectory]) // Remove currentFolderPath to avoid circular dependency
 
-  // Load folder contents when component mounts or path changes
-  useEffect(() => {
-    if (visible) {
-      loadFolderContents()
-    }
-  }, [visible, currentFolderPath])
-
-  const loadFolderContents = async () => {
+  const loadFolderContents = useCallback(async () => {
     setLoading(true)
     try {
       // Ensure the directory exists
@@ -106,16 +102,23 @@ export function FileNavigatorModal({
     } finally {
       setLoading(false)
     }
-  }
+  }, [currentFolderPath, excludePath])
 
-  const handleConfirmSelection = () => {
+  // Load folder contents when component mounts or path changes
+  useEffect(() => {
+    if (visible) {
+      loadFolderContents()
+    }
+  }, [visible, loadFolderContents])
+
+  const handleConfirmSelection = useCallback(() => {
     if (onPrimaryAction) {
       // Use custom primary action (e.g., "Move Here")
       onPrimaryAction(currentFolderPath)
       onClose()
     } else {
       // Default behavior - select the current directory being viewed
-      const recordingsDir = getRecordingsDirectory()
+      const recordingsDir = getRecordingsDirectory
       const currentFolderName =
         currentFolderPath === recordingsDir ? 'Home' : currentFolderPath.split('/').pop() || 'Home'
 
@@ -129,14 +132,16 @@ export function FileNavigatorModal({
       onSelectFolder(currentFolder)
       onClose()
     }
-  }
+  }, [onPrimaryAction, currentFolderPath, onClose, getRecordingsDirectory, onSelectFolder])
 
   // Check if the current directory is invalid for move operations
-  const isCurrentDirectoryInvalid = Boolean(
-    excludePath && (currentFolderPath === excludePath || currentFolderPath.startsWith(excludePath + '/'))
+  const isCurrentDirectoryInvalid = useMemo(
+    () =>
+      Boolean(excludePath && (currentFolderPath === excludePath || currentFolderPath.startsWith(excludePath + '/'))),
+    [excludePath, currentFolderPath]
   )
 
-  const handleNewFolder = () => {
+  const handleNewFolder = useCallback(() => {
     Alert.prompt(
       'New Folder',
       'Enter folder name:',
@@ -159,46 +164,49 @@ export function FileNavigatorModal({
       ],
       'plain-text'
     )
-  }
+  }, [currentFolderPath, loadFolderContents])
 
-  const handleBreadcrumbPress = (path: string, _index: number) => {
+  const handleBreadcrumbPress = useCallback((path: string, _index: number) => {
     setCurrentFolderPath(path)
-  }
+  }, [])
 
-  const handleFolderDoublePress = (folder: FileNavigatorFolder) => {
+  const handleFolderDoublePress = useCallback((folder: FileNavigatorFolder) => {
     // Navigate into the folder
     setCurrentFolderPath(folder.path)
-  }
+  }, [])
 
-  const renderFolder = ({ item }: { item: FileNavigatorFolder }) => {
-    const handlePress = () => {
-      if (item.isBeingMoved) {
-        // Don't allow navigation into the folder being moved
-        return
+  const renderFolder = useCallback(
+    ({ item }: { item: FileNavigatorFolder }) => {
+      const handlePress = () => {
+        if (item.isBeingMoved) {
+          // Don't allow navigation into the folder being moved
+          return
+        }
+        // Single tap - navigate into folder
+        handleFolderDoublePress(item)
       }
-      // Single tap - navigate into folder
-      handleFolderDoublePress(item)
-    }
 
-    return (
-      <TouchableOpacity
-        style={[styles.folderItem, item.isBeingMoved && styles.folderBeingMoved]}
-        onPress={handlePress}
-        activeOpacity={item.isBeingMoved ? 1 : 0.7}
-      >
-        <Ionicons
-          name="folder-outline"
-          size={24}
-          color={item.isBeingMoved ? theme.colors.text.tertiary : theme.colors.primary}
-          style={styles.folderIcon}
-        />
-        <Text style={[styles.folderName, item.isBeingMoved && styles.folderBeingMovedText]}>
-          {item.name}
-          {item.isBeingMoved && ' (being moved)'}
-        </Text>
-      </TouchableOpacity>
-    )
-  }
+      return (
+        <TouchableOpacity
+          style={[styles.folderItem, item.isBeingMoved && styles.folderBeingMoved]}
+          onPress={handlePress}
+          activeOpacity={item.isBeingMoved ? 1 : 0.7}
+        >
+          <Ionicons
+            name="folder-outline"
+            size={24}
+            color={item.isBeingMoved ? theme.colors.text.tertiary : theme.colors.primary}
+            style={styles.folderIcon}
+          />
+          <Text style={[styles.folderName, item.isBeingMoved && styles.folderBeingMovedText]}>
+            {item.name}
+            {item.isBeingMoved && ' (being moved)'}
+          </Text>
+        </TouchableOpacity>
+      )
+    },
+    [handleFolderDoublePress]
+  )
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -257,7 +265,7 @@ export function FileNavigatorModal({
       </View>
     </Modal>
   )
-}
+})
 
 const styles = StyleSheet.create({
   overlay: {

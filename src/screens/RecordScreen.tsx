@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { StyleSheet, Text, View, Alert } from 'react-native'
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 
@@ -423,7 +423,7 @@ export default function RecordScreen() {
     setAudioQuality(option.value as AudioQuality)
   }
 
-  const handleGoToFolder = () => {
+  const handleGoToFolder = useCallback(() => {
     // Use the stored folder path to preserve nested folder navigation
     const folderPath = selectedFolderPath
 
@@ -449,7 +449,11 @@ export default function RecordScreen() {
     // Navigate to browse screen
     console.log('🔍 RecordScreen navigating to Browse with folderPath:', folderPath)
     router.push('/(tabs)/browse')
-  }
+  }, [selectedFolderPath, initialFolder, fileManager, router])
+
+  // Memoized props for FileNavigatorModal to prevent unnecessary re-renders
+  const fileNavigatorOnClose = useCallback(() => setShowFileNavigator(false), [])
+  const fileNavigatorInitialDirectory = useMemo(() => getAbsolutePath(selectedFolderPath), [selectedFolderPath])
 
   return (
     <Screen backgroundColor={theme.colors.background.primary}>
@@ -566,9 +570,9 @@ export default function RecordScreen() {
       {/* File Navigator Modal */}
       <FileNavigatorModal
         visible={showFileNavigator}
-        onClose={() => setShowFileNavigator(false)}
+        onClose={fileNavigatorOnClose}
         onSelectFolder={handleFileNavigatorSelect}
-        initialDirectory={getAbsolutePath(selectedFolderPath)}
+        initialDirectory={fileNavigatorInitialDirectory}
       />
     </Screen>
   )
