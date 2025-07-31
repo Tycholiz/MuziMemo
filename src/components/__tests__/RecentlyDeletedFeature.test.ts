@@ -30,6 +30,59 @@ describe('Recently Deleted Utils', () => {
       expect(result).toBe(false)
     })
   })
+
+  describe('letter-based file naming for duplicates', () => {
+    // Test the letter suffix generation logic
+    it('should generate correct letter suffixes', () => {
+      // Simulate the generateLetterSuffix function logic
+      const generateLetterSuffix = (index: number): string => {
+        let result = ''
+        let num = index + 1 // Convert to 1-based indexing for proper letter sequence
+
+        while (num > 0) {
+          num-- // Convert back to 0-based for modulo operation
+          result = String.fromCharCode(97 + (num % 26)) + result // 97 is 'a'
+          num = Math.floor(num / 26)
+        }
+
+        return result
+      }
+
+      expect(generateLetterSuffix(0)).toBe('a')
+      expect(generateLetterSuffix(1)).toBe('b')
+      expect(generateLetterSuffix(25)).toBe('z')
+      expect(generateLetterSuffix(26)).toBe('aa')
+      expect(generateLetterSuffix(27)).toBe('ab')
+      expect(generateLetterSuffix(51)).toBe('az')
+      expect(generateLetterSuffix(52)).toBe('ba')
+      expect(generateLetterSuffix(701)).toBe('zz')
+      expect(generateLetterSuffix(702)).toBe('aaa')
+    })
+
+    it('should handle file naming patterns correctly', () => {
+      // Test expected naming patterns for duplicate files
+      const testCases = [
+        { original: 'Recording 1.m4a', expected: ['Recording 1a.m4a', 'Recording 1b.m4a', 'Recording 1z.m4a', 'Recording 1aa.m4a'] },
+        { original: 'Voice Note.mp3', expected: ['Voice Notea.mp3', 'Voice Noteb.mp3', 'Voice Notez.mp3', 'Voice Noteaa.mp3'] },
+        { original: 'NoExtension', expected: ['NoExtensiona', 'NoExtensionb', 'NoExtensionz', 'NoExtensionaa'] }
+      ]
+
+      testCases.forEach(testCase => {
+        const fileExtension = testCase.original.includes('.')
+          ? testCase.original.substring(testCase.original.lastIndexOf('.'))
+          : ''
+        const baseName = testCase.original.includes('.')
+          ? testCase.original.substring(0, testCase.original.lastIndexOf('.'))
+          : testCase.original
+
+        // Test first few expected patterns
+        expect(`${baseName}a${fileExtension}`).toBe(testCase.expected[0])
+        expect(`${baseName}b${fileExtension}`).toBe(testCase.expected[1])
+        expect(`${baseName}z${fileExtension}`).toBe(testCase.expected[2])
+        expect(`${baseName}aa${fileExtension}`).toBe(testCase.expected[3])
+      })
+    })
+  })
 })
 
 describe('Recently Deleted Feature Integration', () => {

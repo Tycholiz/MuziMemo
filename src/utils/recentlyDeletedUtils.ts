@@ -31,6 +31,54 @@ export async function ensureRecentlyDeletedDirectoryExists(): Promise<void> {
 }
 
 /**
+ * Generates a letter-based suffix for duplicate file names
+ * @param index - The index to convert to letters (0 = 'a', 1 = 'b', 25 = 'z', 26 = 'aa', etc.)
+ * @returns The letter suffix string
+ */
+function generateLetterSuffix(index: number): string {
+  let result = ''
+  let num = index + 1 // Convert to 1-based indexing for proper letter sequence
+
+  while (num > 0) {
+    num-- // Convert back to 0-based for modulo operation
+    result = String.fromCharCode(97 + (num % 26)) + result // 97 is 'a'
+    num = Math.floor(num / 26)
+  }
+
+  return result
+}
+
+/**
+ * Finds a unique filename by appending letter suffixes
+ * @param recentlyDeletedDir - The recently-deleted directory path
+ * @param baseName - The base name without extension
+ * @param fileExtension - The file extension (including the dot)
+ * @returns Promise that resolves to a unique filename
+ */
+async function findUniqueFileName(recentlyDeletedDir: string, baseName: string, fileExtension: string): Promise<string> {
+  let index = 0
+  let uniqueName: string
+  let uniquePath: string
+
+  do {
+    const suffix = generateLetterSuffix(index)
+    uniqueName = `${baseName}${suffix}${fileExtension}`
+    uniquePath = `${recentlyDeletedDir}/${uniqueName}`
+
+    const existingInfo = await FileSystem.getInfoAsync(uniquePath)
+    if (!existingInfo.exists) {
+      return uniqueName
+    }
+
+    index++
+  } while (index < 1000) // Safety limit to prevent infinite loops
+
+  // Fallback to timestamp if we somehow exhaust letter combinations
+  const timestamp = Date.now()
+  return `${baseName}_${timestamp}${fileExtension}`
+}
+
+/**
  * Moves a file to the recently-deleted directory instead of permanently deleting it
  * @param filePath - The current full path of the file
  * @param fileName - The name of the file
@@ -39,34 +87,33 @@ export async function ensureRecentlyDeletedDirectoryExists(): Promise<void> {
 export async function moveToRecentlyDeleted(filePath: string, fileName: string): Promise<string> {
   // Ensure recently-deleted directory exists
   await ensureRecentlyDeletedDirectoryExists()
-  
+
   const recentlyDeletedDir = getRecentlyDeletedDirectory()
   const newPath = `${recentlyDeletedDir}/${fileName}`
-  
+
   // Check if a file with the same name already exists in recently-deleted
   const existingInfo = await FileSystem.getInfoAsync(newPath)
   if (existingInfo.exists) {
-    // Generate a unique name by appending a timestamp
-    const timestamp = Date.now()
+    // Generate a unique name by appending letter suffixes
     const fileExtension = fileName.includes('.') ? fileName.substring(fileName.lastIndexOf('.')) : ''
     const baseName = fileName.includes('.') ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName
-    const uniqueName = `${baseName}_${timestamp}${fileExtension}`
+    const uniqueName = await findUniqueFileName(recentlyDeletedDir, baseName, fileExtension)
     const uniquePath = `${recentlyDeletedDir}/${uniqueName}`
-    
+
     await FileSystem.moveAsync({
       from: filePath,
       to: uniquePath,
     })
-    
+
     return uniquePath
   }
-  
+
   // Move the file to recently-deleted
   await FileSystem.moveAsync({
     from: filePath,
     to: newPath,
   })
-  
+
   return newPath
 }
 
