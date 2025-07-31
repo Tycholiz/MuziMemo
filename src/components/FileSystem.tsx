@@ -423,10 +423,9 @@ export function FileSystemComponent() {
 
   const handleRestoreConfirm = async (destinationPath: string) => {
     try {
-      const recordingsBasePath = fileManager
-        .getFullPath()
-        .replace(fileManager.getCurrentPathString(), '')
-        .replace(/\/$/, '')
+      // Get the recordings base path correctly (not from currently-deleted directory)
+      const documentsDirectory = FileSystem.documentDirectory
+      const recordingsBasePath = documentsDirectory ? `${documentsDirectory}recordings` : ''
 
       if (selectedFileForRestore) {
         // Restoring a file from recently-deleted

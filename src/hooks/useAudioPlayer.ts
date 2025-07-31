@@ -40,7 +40,7 @@ export function useAudioPlayerHook() {
   const [currentTrack, setCurrentTrack] = useState<string | null>(null)
 
   // Refs for tracking state
-  const timeUpdateInterval = useRef<number | null>(null)
+  const timeUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null)
   const webAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Create audio player instance using expo-audio hook (for native)
