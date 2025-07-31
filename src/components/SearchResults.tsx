@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
@@ -14,6 +15,10 @@ import { SearchFilters } from './SearchFilters'
 import { SearchHistory } from './SearchHistory'
 import { formatFolderPath, truncatePath, getParentDirectoryPath } from '../utils/searchUtils'
 import type { SearchResults as SearchResultsType, SearchFilters as SearchFiltersType } from '../utils/searchUtils'
+
+// Constants for limiting search results display
+const MAX_AUDIO_FILES_DISPLAY = 5
+const MAX_FOLDERS_DISPLAY = 5
 
 export type SearchResultsProps = {
   query: string
@@ -54,6 +59,10 @@ export function SearchResults({
   const showHistory = !query.trim() && searchHistory.length > 0
   const showFilters = query.trim().length > 0
 
+  // Limit displayed results
+  const displayedAudioFiles = results.audioFiles.slice(0, MAX_AUDIO_FILES_DISPLAY)
+  const displayedFolders = results.folders.slice(0, MAX_FOLDERS_DISPLAY)
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 B'
     const k = 1024
@@ -70,8 +79,18 @@ export function SearchResults({
     })
   }
 
+  const handleScroll = () => {
+    // Dismiss keyboard when user starts scrolling
+    Keyboard.dismiss()
+  }
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      onScrollBeginDrag={handleScroll}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Search Filters */}
       {showFilters && (
         <SearchFilters
@@ -117,10 +136,12 @@ export function SearchResults({
               <View style={styles.sectionHeader}>
                 <Ionicons name="musical-notes" size={16} color={theme.colors.text.secondary} />
                 <Text style={styles.sectionTitle}>Audio Files</Text>
-                <Text style={styles.sectionCount}>({results.audioFiles.length})</Text>
+                <Text style={styles.sectionCount}>
+                  ({displayedAudioFiles.length}{results.audioFiles.length > MAX_AUDIO_FILES_DISPLAY ? ` of ${results.audioFiles.length}` : ''})
+                </Text>
               </View>
 
-              {results.audioFiles.map((audioFile) => (
+              {displayedAudioFiles.map((audioFile) => (
                 <TouchableOpacity
                   key={audioFile.id}
                   style={styles.resultItem}
@@ -172,10 +193,12 @@ export function SearchResults({
               <View style={styles.sectionHeader}>
                 <Ionicons name="folder" size={16} color={theme.colors.text.secondary} />
                 <Text style={styles.sectionTitle}>Folders</Text>
-                <Text style={styles.sectionCount}>({results.folders.length})</Text>
+                <Text style={styles.sectionCount}>
+                  ({displayedFolders.length}{results.folders.length > MAX_FOLDERS_DISPLAY ? ` of ${results.folders.length}` : ''})
+                </Text>
               </View>
 
-              {results.folders.map((folder) => (
+              {displayedFolders.map((folder) => (
                 <TouchableOpacity
                   key={folder.id}
                   style={styles.resultItem}

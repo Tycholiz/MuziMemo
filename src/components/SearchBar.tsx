@@ -19,6 +19,7 @@ export type SearchBarProps = {
   autoFocus?: boolean
   onResultSelect?: (type: 'audio' | 'folder', item: any) => void
   onNavigateToFolder?: (folderPath: string[]) => void
+  currentPath?: string[]
   style?: any
 }
 
@@ -31,12 +32,18 @@ export function SearchBar({
   autoFocus = false,
   onResultSelect,
   onNavigateToFolder,
+  currentPath = [],
   style,
 }: SearchBarProps) {
   const inputRef = useRef<TextInput>(null)
   const search = useSearch()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.95)).current
+
+  // Update search hook with current path
+  useEffect(() => {
+    search.setCurrentPath(currentPath)
+  }, [currentPath, search])
 
   // Auto-focus when component mounts
   useEffect(() => {
@@ -87,7 +94,7 @@ export function SearchBar({
     // Delay hiding results to allow for result selection
     setTimeout(() => {
       search.setShowResults(false)
-    }, 200)
+    }, 300)
   }
 
   const handleClear = () => {

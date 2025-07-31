@@ -33,17 +33,20 @@ export type SearchFilters = {
   audio: boolean
   folders: boolean
   text: boolean // For future text content search
+  currentDirectoryOnly: boolean // Search only in current directory
 }
 
 /**
  * Recursively searches for audio files in all subdirectories
  * @param query - Search query string (case-insensitive)
  * @param filters - Search filters to apply
+ * @param currentPath - Current directory path for local search
  * @returns Promise<SearchResults>
  */
 export async function searchFileSystem(
   query: string,
-  filters: SearchFilters = { audio: true, folders: true, text: false }
+  filters: SearchFilters = { audio: true, folders: true, text: false, currentDirectoryOnly: false },
+  currentPath: string[] = []
 ): Promise<SearchResults> {
   const results: SearchResults = {
     audioFiles: [],
@@ -58,7 +61,15 @@ export async function searchFileSystem(
   const normalizedQuery = query.toLowerCase().trim()
 
   try {
-    await searchDirectory(recordingsDir, '', normalizedQuery, filters, results)
+    if (filters.currentDirectoryOnly) {
+      // Search only in current directory
+      const currentDirPath = currentPath.length > 0 ? `${recordingsDir}${currentPath.join('/')}` : recordingsDir
+      const currentRelativePath = currentPath.join('/')
+      await searchDirectory(currentDirPath, currentRelativePath, normalizedQuery, filters, results, true)
+    } else {
+      // Search all directories
+      await searchDirectory(recordingsDir, '', normalizedQuery, filters, results, false)
+    }
   } catch (error) {
     console.error('Search failed:', error)
   }
@@ -73,13 +84,15 @@ export async function searchFileSystem(
  * @param query - Normalized search query
  * @param filters - Search filters
  * @param results - Results object to populate
+ * @param localOnly - If true, search only current directory (no recursion)
  */
 async function searchDirectory(
   fullPath: string,
   relativePath: string,
   query: string,
   filters: SearchFilters,
-  results: SearchResults
+  results: SearchResults,
+  localOnly: boolean = false
 ): Promise<void> {
   try {
     const dirInfo = await FileSystem.getInfoAsync(fullPath)
@@ -110,8 +123,10 @@ async function searchDirectory(
             })
           }
 
-          // Recursively search subdirectory
-          await searchDirectory(itemPath, itemRelativePath, query, filters, results)
+          // Recursively search subdirectory (only if not local search)
+          if (!localOnly) {
+            await searchDirectory(itemPath, itemRelativePath, query, filters, results, false)
+          }
         } else if (filters.audio && isAudioFile(item)) {
           // Check if audio file name matches query
           if (item.toLowerCase().includes(query)) {

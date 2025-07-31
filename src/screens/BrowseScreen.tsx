@@ -24,6 +24,7 @@ export default function BrowseScreen() {
   const handleSearchResultSelect = useCallback(
     (type: 'audio' | 'folder', item: any) => {
       if (type === 'audio') {
+        console.log('🎵 Playing audio from search results:', item)
         // Play the selected audio file
         audioPlayer.playClip({
           id: item.id,
@@ -81,6 +82,7 @@ export default function BrowseScreen() {
           <SearchBar
             onResultSelect={handleSearchResultSelect}
             onNavigateToFolder={handleNavigateToFolder}
+            currentPath={fileManager.currentPath}
           />
         </View>
 

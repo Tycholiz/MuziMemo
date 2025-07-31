@@ -18,6 +18,7 @@ export type SearchState = {
   filters: SearchFilters
   showResults: boolean
   error: string | null
+  currentPath: string[]
 }
 
 export type SearchActions = {
@@ -28,6 +29,7 @@ export type SearchActions = {
   removeHistoryItem: (item: string) => void
   setShowResults: (show: boolean) => void
   executeSearch: (query: string) => Promise<void>
+  setCurrentPath: (path: string[]) => void
 }
 
 export type UseSearchReturn = SearchState & SearchActions
@@ -37,10 +39,12 @@ export function useSearch(): UseSearchReturn {
   const [results, setResults] = useState<SearchResults>({ audioFiles: [], folders: [] })
   const [isSearching, setIsSearching] = useState(false)
   const [searchHistory, setSearchHistory] = useState<string[]>([])
+  const [currentPath, setCurrentPath] = useState<string[]>([])
   const [filters, setFiltersState] = useState<SearchFilters>({
     audio: true,
     folders: true,
     text: false,
+    currentDirectoryOnly: false,
   })
   const [showResults, setShowResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +94,7 @@ export function useSearch(): UseSearchReturn {
         setError(null)
 
         try {
-          const searchResults = await searchFileSystem(trimmedQuery, filters)
+          const searchResults = await searchFileSystem(trimmedQuery, filters, currentPath)
 
           // Only update if this is still the current search
           if (currentSearchRef.current === trimmedQuery) {
@@ -176,8 +180,8 @@ export function useSearch(): UseSearchReturn {
       setError(null)
 
       try {
-        const searchResults = await searchFileSystem(trimmedQuery, filters)
-        
+        const searchResults = await searchFileSystem(trimmedQuery, filters, currentPath)
+
         // Only update if this is still the current search
         if (currentSearchRef.current === trimmedQuery) {
           setResults(searchResults)
@@ -196,7 +200,7 @@ export function useSearch(): UseSearchReturn {
         }
       }
     },
-    [filters, addToSearchHistory]
+    [filters, addToSearchHistory, currentPath]
   )
 
   const setQuery = useCallback((newQuery: string) => {
@@ -253,6 +257,7 @@ export function useSearch(): UseSearchReturn {
     filters,
     showResults,
     error,
+    currentPath,
 
     // Actions
     setQuery,
@@ -262,5 +267,6 @@ export function useSearch(): UseSearchReturn {
     removeHistoryItem,
     setShowResults,
     executeSearch,
+    setCurrentPath,
   }
 }

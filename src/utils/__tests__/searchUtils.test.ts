@@ -20,7 +20,6 @@ jest.mock('../pathUtils', () => ({
 }))
 
 const mockGetInfoAsync = FileSystem.getInfoAsync as jest.Mock
-const mockReadDirectoryAsync = FileSystem.readDirectoryAsync as jest.Mock
 
 describe('searchUtils', () => {
   beforeEach(() => {
@@ -29,7 +28,7 @@ describe('searchUtils', () => {
 
   describe('searchFileSystem', () => {
     it('returns empty results for empty query', async () => {
-      const results = await searchFileSystem('', { audio: true, folders: true, text: false })
+      const results = await searchFileSystem('', { audio: true, folders: true, text: false, currentDirectoryOnly: false })
 
       expect(results).toEqual({
         audioFiles: [],
@@ -40,7 +39,7 @@ describe('searchUtils', () => {
     it('handles search errors gracefully', async () => {
       mockGetInfoAsync.mockRejectedValue(new Error('File system error'))
 
-      const results = await searchFileSystem('test', { audio: true, folders: true, text: false })
+      const results = await searchFileSystem('test', { audio: true, folders: true, text: false, currentDirectoryOnly: false })
 
       expect(results).toEqual({
         audioFiles: [],

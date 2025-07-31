@@ -36,7 +36,10 @@ export function SearchFilters({ filters, onFiltersChange, style }: SearchFilters
   }) => (
     <TouchableOpacity
       style={[styles.filterToggle, isActive && styles.filterToggleActive]}
-      onPress={onPress}
+      onPress={(e) => {
+        e.stopPropagation()
+        onPress()
+      }}
       activeOpacity={0.7}
     >
       <Ionicons
@@ -81,6 +84,13 @@ export function SearchFilters({ filters, onFiltersChange, style }: SearchFilters
           icon="document-text"
           isActive={filters.text}
           onPress={() => toggleFilter('text')}
+        />
+
+        <FilterToggle
+          label="This directory only"
+          icon="location"
+          isActive={filters.currentDirectoryOnly}
+          onPress={() => toggleFilter('currentDirectoryOnly')}
         />
       </View>
     </View>
