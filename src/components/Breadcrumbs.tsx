@@ -199,6 +199,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamily.medium,
   },
   separator: {
-    marginHorizontal: 4,
+    marginHorizontal: 0,
+    marginLeft: 6,
   },
 })
