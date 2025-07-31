@@ -24,7 +24,15 @@ export type AudioClipCardProps = {
   onDelete?: () => void
 }
 
-export function AudioClipCard({ clip, isPlaying, onPlay, onPause, onRename, onMove, onDelete }: AudioClipCardProps) {
+export const AudioClipCard = React.memo(function AudioClipCard({
+  clip,
+  isPlaying,
+  onPlay,
+  onPause,
+  onRename,
+  onMove,
+  onDelete,
+}: AudioClipCardProps) {
   const handlePress = () => {
     console.log('🎵 AudioClipCard: handlePress called for:', clip.name)
     console.log('🎵 AudioClipCard: isPlaying:', isPlaying)
@@ -92,7 +100,7 @@ export function AudioClipCard({ clip, isPlaying, onPlay, onPause, onRename, onMo
       )}
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {

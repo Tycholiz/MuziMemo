@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
@@ -51,6 +51,15 @@ export function FileSystemComponent() {
   const scrollViewRef = useRef<ScrollView>(null)
   const scrollPositionRef = useRef(0)
   const shouldRestoreScrollRef = useRef(false)
+
+  // Memoized sorted arrays to prevent unnecessary re-renders
+  const sortedFolders = useMemo(() => {
+    return [...folders].sort((a, b) => a.name.localeCompare(b.name))
+  }, [folders])
+
+  const sortedAudioFiles = useMemo(() => {
+    return [...audioFiles].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  }, [audioFiles])
 
   // Load folder contents when path changes
   useEffect(() => {
@@ -106,10 +115,7 @@ export function FileSystemComponent() {
         }
       }
 
-      // Sort folders and files alphabetically
-      folderList.sort((a, b) => a.name.localeCompare(b.name))
-      audioFileList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-
+      // Set state without sorting (sorting is handled by useMemo)
       setFolders(folderList)
       setAudioFiles(audioFileList)
     } catch (error) {
@@ -121,11 +127,11 @@ export function FileSystemComponent() {
   }
 
   // Scroll position tracking functions
-  const handleScroll = (event: any) => {
+  const handleScroll = useCallback((event: any) => {
     scrollPositionRef.current = event.nativeEvent.contentOffset.y
-  }
+  }, [])
 
-  const handleContentSizeChange = () => {
+  const handleContentSizeChange = useCallback(() => {
     if (shouldRestoreScrollRef.current && scrollViewRef.current) {
       // Restore scroll position after content update
       scrollViewRef.current.scrollTo({
@@ -134,17 +140,20 @@ export function FileSystemComponent() {
       })
       shouldRestoreScrollRef.current = false
     }
-  }
+  }, [])
 
-  const handleFolderPress = (folder: FolderData) => {
-    // Stop current playback when navigating to a different folder
-    audioPlayer.cleanup()
+  const handleFolderPress = useCallback(
+    (folder: FolderData) => {
+      // Stop current playback when navigating to a different folder
+      audioPlayer.cleanup()
 
-    // Navigate into the folder
-    fileManager.navigateToFolder(folder.name)
-  }
+      // Navigate into the folder
+      fileManager.navigateToFolder(folder.name)
+    },
+    [audioPlayer, fileManager]
+  )
 
-  const handleRecordButtonPress = () => {
+  const handleRecordButtonPress = useCallback(() => {
     const currentPathString = fileManager.getCurrentPathString()
     const folderName = currentPathString || 'root'
     console.log('folderName: ', folderName)
@@ -157,20 +166,33 @@ export function FileSystemComponent() {
         intentional: 'true',
       },
     })
-  }
+  }, [fileManager, router])
 
-  const handleCreateFolder = async (folderName: string) => {
-    try {
-      const fullPath = fileManager.getFullPath()
-      const newFolderPath = `${fullPath}/${folderName}`
+  const handleCreateFolder = useCallback(
+    async (folderName: string) => {
+      const newFolder: FolderData = {
+        id: `folder-${folderName}`,
+        name: folderName,
+        itemCount: 0,
+      }
 
-      await FileSystem.makeDirectoryAsync(newFolderPath)
-      await loadFolderContents() // Refresh the list
-    } catch (error) {
-      console.error('Failed to create folder:', error)
-      Alert.alert('Error', 'Failed to create folder')
-    }
-  }
+      // Optimistic update: add to state immediately
+      setFolders(prev => [...prev, newFolder])
+
+      try {
+        const fullPath = fileManager.getFullPath()
+        const newFolderPath = `${fullPath}/${folderName}`
+        await FileSystem.makeDirectoryAsync(newFolderPath)
+        // Success - folder already added to state
+      } catch (error) {
+        console.error('Failed to create folder:', error)
+        // Rollback: remove the folder from state
+        setFolders(prev => prev.filter(f => f.id !== newFolder.id))
+        Alert.alert('Error', 'Failed to create folder')
+      }
+    },
+    [fileManager]
+  )
 
   const handleRenameFolder = async (folder: FolderData) => {
     Alert.prompt(
@@ -202,105 +224,120 @@ export function FileSystemComponent() {
     )
   }
 
-  const handleDeleteFolder = async (folder: FolderData) => {
-    const message =
-      folder.itemCount > 0
-        ? `Delete "${folder.name}" and all ${folder.itemCount} items inside?`
-        : `Delete "${folder.name}"?`
+  const handleDeleteFolder = useCallback(
+    async (folder: FolderData) => {
+      const message =
+        folder.itemCount > 0
+          ? `Delete "${folder.name}" and all ${folder.itemCount} items inside?`
+          : `Delete "${folder.name}"?`
 
-    Alert.alert('Delete Folder', message, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const fullPath = fileManager.getFullPath()
-            const folderPath = `${fullPath}/${folder.name}`
-
-            await FileSystem.deleteAsync(folderPath)
-            shouldRestoreScrollRef.current = true
-            await loadFolderContents() // Refresh the list
-          } catch (error) {
-            console.error('Failed to delete folder:', error)
-            Alert.alert('Error', 'Failed to delete folder')
-          }
-        },
-      },
-    ])
-  }
-
-  const handleMoveFolder = async (folder: FolderData) => {
-    setSelectedFolderForMove(folder)
-    setShowMoveModal(true)
-  }
-
-  const handleRenameAudioFile = async (audioFile: AudioFileData) => {
-    const fileExtension = audioFile.name.split('.').pop()
-    const nameWithoutExtension = audioFile.name.replace(`.${fileExtension}`, '')
-
-    Alert.prompt(
-      'Rename Audio File',
-      'Enter new file name:',
-      [
+      Alert.alert('Delete Folder', message, [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Rename',
-          onPress: async newName => {
-            if (newName?.trim() && newName.trim() !== nameWithoutExtension) {
-              try {
-                const fullPath = fileManager.getFullPath()
-                const oldPath = `${fullPath}/${audioFile.name}`
-                const newPath = `${fullPath}/${newName.trim()}.${fileExtension}`
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            // Optimistic update: remove from state immediately
+            setFolders(prev => prev.filter(f => f.id !== folder.id))
 
-                await FileSystem.moveAsync({ from: oldPath, to: newPath })
-                await loadFolderContents() // Refresh the list
-              } catch (error) {
-                console.error('Failed to rename audio file:', error)
-                Alert.alert('Error', 'Failed to rename audio file')
-              }
+            try {
+              const fullPath = fileManager.getFullPath()
+              const folderPath = `${fullPath}/${folder.name}`
+              await FileSystem.deleteAsync(folderPath)
+              // Success - folder already removed from state
+            } catch (error) {
+              console.error('Failed to delete folder:', error)
+              // Rollback: add the folder back to state
+              setFolders(prev => [...prev, folder])
+              Alert.alert('Error', 'Failed to delete folder')
             }
           },
         },
-      ],
-      'plain-text',
-      nameWithoutExtension
-    )
-  }
+      ])
+    },
+    [fileManager]
+  )
 
-  const handleDeleteAudioFile = async (audioFile: AudioFileData) => {
-    Alert.alert('Delete Audio File', `Delete "${audioFile.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const fullPath = fileManager.getFullPath()
-            const filePath = `${fullPath}/${audioFile.name}`
+  const handleMoveFolder = useCallback(async (folder: FolderData) => {
+    setSelectedFolderForMove(folder)
+    setShowMoveModal(true)
+  }, [])
 
+  const handleRenameAudioFile = useCallback(
+    async (audioFile: AudioFileData) => {
+      const fileExtension = audioFile.name.split('.').pop()
+      const nameWithoutExtension = audioFile.name.replace(`.${fileExtension}`, '')
+
+      Alert.prompt(
+        'Rename Audio File',
+        'Enter new file name:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Rename',
+            onPress: async newName => {
+              if (newName?.trim() && newName.trim() !== nameWithoutExtension) {
+                try {
+                  const fullPath = fileManager.getFullPath()
+                  const oldPath = `${fullPath}/${audioFile.name}`
+                  const newPath = `${fullPath}/${newName.trim()}.${fileExtension}`
+
+                  await FileSystem.moveAsync({ from: oldPath, to: newPath })
+                  await loadFolderContents() // Refresh the list
+                } catch (error) {
+                  console.error('Failed to rename audio file:', error)
+                  Alert.alert('Error', 'Failed to rename audio file')
+                }
+              }
+            },
+          },
+        ],
+        'plain-text',
+        nameWithoutExtension
+      )
+    },
+    [fileManager]
+  )
+
+  const handleDeleteAudioFile = useCallback(
+    async (audioFile: AudioFileData) => {
+      Alert.alert('Delete Audio File', `Delete "${audioFile.name}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
             // Stop playback if this file is currently playing
             if (audioPlayer.currentClip?.id === audioFile.id) {
               audioPlayer.cleanup()
             }
 
-            await FileSystem.deleteAsync(filePath)
-            shouldRestoreScrollRef.current = true
-            await loadFolderContents() // Refresh the list
-          } catch (error) {
-            console.error('Failed to delete audio file:', error)
-            Alert.alert('Error', 'Failed to delete audio file')
-          }
-        },
-      },
-    ])
-  }
+            // Optimistic update: remove from state immediately
+            setAudioFiles(prev => prev.filter(file => file.id !== audioFile.id))
 
-  const handleMoveAudioFile = async (audioFile: AudioFileData) => {
+            try {
+              const fullPath = fileManager.getFullPath()
+              const filePath = `${fullPath}/${audioFile.name}`
+              await FileSystem.deleteAsync(filePath)
+              // Success - item already removed from state
+            } catch (error) {
+              console.error('Failed to delete audio file:', error)
+              // Rollback: add the file back to state
+              setAudioFiles(prev => [...prev, audioFile])
+              Alert.alert('Error', 'Failed to delete audio file')
+            }
+          },
+        },
+      ])
+    },
+    [audioPlayer, fileManager]
+  )
+
+  const handleMoveAudioFile = useCallback(async (audioFile: AudioFileData) => {
     setSelectedFileForMove(audioFile)
     setSelectedFolderForMove(null)
     setShowMoveModal(true)
-  }
+  }, [])
 
   const handleMoveConfirm = async (destinationPath: string) => {
     try {
@@ -386,9 +423,9 @@ export function FileSystemComponent() {
         scrollEventThrottle={16}
       >
         {/* Folders Grid */}
-        {folders.length > 0 && (
+        {sortedFolders.length > 0 && (
           <View style={styles.foldersGrid}>
-            {folders.map(folder => (
+            {sortedFolders.map(folder => (
               <View key={folder.id} style={styles.folderCard}>
                 <TouchableOpacity
                   style={styles.folderContent}
@@ -436,21 +473,29 @@ export function FileSystemComponent() {
         <View>
           <Text style={[styles.actionButtonText, { marginVertical: 12 }]}>13 audio files</Text>
         </View>
-        {audioFiles.map(audioFile => (
-          <AudioClipCard
-            key={audioFile.id}
-            clip={audioFile}
-            isPlaying={audioPlayer.currentClip?.id === audioFile.id && audioPlayer.isPlaying}
-            onPlay={() => audioPlayer.playClip(audioFile)}
-            onPause={() => audioPlayer.pauseClip()}
-            onRename={() => handleRenameAudioFile(audioFile)}
-            onMove={() => handleMoveAudioFile(audioFile)}
-            onDelete={() => handleDeleteAudioFile(audioFile)}
-          />
-        ))}
+        {sortedAudioFiles.map(audioFile => {
+          const handlePlay = () => audioPlayer.playClip(audioFile)
+          const handlePause = () => audioPlayer.pauseClip()
+          const handleRename = () => handleRenameAudioFile(audioFile)
+          const handleMove = () => handleMoveAudioFile(audioFile)
+          const handleDelete = () => handleDeleteAudioFile(audioFile)
+
+          return (
+            <AudioClipCard
+              key={audioFile.id}
+              clip={audioFile}
+              isPlaying={audioPlayer.currentClip?.id === audioFile.id && audioPlayer.isPlaying}
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onRename={handleRename}
+              onMove={handleMove}
+              onDelete={handleDelete}
+            />
+          )
+        })}
 
         {/* Empty State */}
-        {folders.length === 0 && audioFiles.length === 0 && (
+        {sortedFolders.length === 0 && sortedAudioFiles.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="folder-open-outline" size={64} color={theme.colors.text.secondary} />
             <Text style={styles.emptyStateText}>No recordings yet</Text>
