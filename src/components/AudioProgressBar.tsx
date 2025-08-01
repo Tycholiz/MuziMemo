@@ -64,8 +64,7 @@ export function AudioProgressBar({
   const safePosition = Math.max(position || 0, 0)
   const safeContainerWidth = Math.max(containerWidth, 0)
 
-  // Calculate progress percentage with immediate initial value
-  const progress = safeDuration > 0 ? Math.min(Math.max(safePosition / safeDuration, 0), 1) : 0
+
 
   // Handle container layout to get width
   const handleLayout = useCallback((event: any) => {
@@ -100,16 +99,22 @@ export function AudioProgressBar({
 
   const handleScrubbingEnd = useCallback((finalPosition: number) => {
     setIsScrubbing(false)
-    if (onSeek && finalPosition >= 0) {
-      onSeek(Math.min(Math.max(finalPosition, 0), safeDuration))
+    if (onSeek && finalPosition >= 0 && finalPosition <= safeDuration) {
+      // Ensure we only seek to valid positions
+      const clampedPosition = Math.min(Math.max(finalPosition, 0), safeDuration)
+      onSeek(clampedPosition)
     }
   }, [onSeek, safeDuration])
+
+  // Store initial scrubber position when gesture starts
+  const gestureStartX = useSharedValue(0)
 
   // Gesture handler for scrubbing
   const panGesture = Gesture.Pan()
     .onStart(() => {
       'worklet'
       isScrubbingShared.value = true
+      gestureStartX.value = scrubberX.value // Store current position
       runOnJS(handleScrubbingStart)()
       scrubberScale.value = withSpring(1.2)
     })
@@ -117,11 +122,8 @@ export function AudioProgressBar({
       'worklet'
       if (safeContainerWidth === 0 || safeDuration === 0) return
 
-      // Calculate new position based on gesture
-      const currentProgress = safePosition / safeDuration
-      const startX = currentProgress * safeContainerWidth
-      const newX = Math.min(Math.max(startX + event.translationX, 0), safeContainerWidth)
-
+      // Calculate new position based on gesture from the starting position
+      const newX = Math.min(Math.max(gestureStartX.value + event.translationX, 0), safeContainerWidth)
       scrubberX.value = newX
     })
     .onEnd(() => {
@@ -132,29 +134,33 @@ export function AudioProgressBar({
       scrubberScale.value = withSpring(1)
     })
 
-  // Update scrubber position when not scrubbing - with immediate initial render
+  // Initialize scrubber position to 0 when a new clip starts
+  useEffect(() => {
+    if (safeContainerWidth > 0) {
+      // Always start at position 0 for new clips
+      if (safePosition === 0 || safeDuration === 0) {
+        scrubberX.value = 0
+      }
+    }
+  }, [safeContainerWidth, safeDuration]) // Reset when duration changes (new clip)
+
+  // Update scrubber position during playback when not scrubbing
   useEffect(() => {
     if (!isScrubbing && safeContainerWidth > 0 && safeDuration > 0) {
       const targetX = (safePosition / safeDuration) * safeContainerWidth
-      scrubberX.value = withTiming(targetX, { duration: 100 })
+      // Use smooth animation for real-time updates
+      scrubberX.value = withTiming(targetX, { duration: 50 })
     }
   }, [safePosition, safeContainerWidth, isScrubbing, safeDuration])
-
-  // Initialize scrubber position immediately when component mounts
-  useEffect(() => {
-    if (safeContainerWidth > 0 && safeDuration > 0) {
-      const initialX = (safePosition / safeDuration) * safeContainerWidth
-      scrubberX.value = initialX
-    }
-  }, [safeContainerWidth, safeDuration]) // Only run when container width or duration changes
 
   // Derived value for progress width that updates in real-time
   const progressWidthDerived = useDerivedValue(() => {
     if (isScrubbingShared.value) {
       return scrubberX.value
     }
-    return progress * safeContainerWidth
-  }, [progress, safeContainerWidth])
+    // Use scrubberX.value for consistent real-time updates
+    return scrubberX.value
+  })
 
   // Animated styles
   const scrubberAnimatedStyle = useAnimatedStyle(() => {

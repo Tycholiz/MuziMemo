@@ -122,6 +122,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     console.log('🎵 AudioPlayerContext: stopClip called')
     audioPlayer.pause()
     audioPlayer.seekTo(0)
+    setCurrentClip(null) // Clear current clip when explicitly stopped
     setIsPlayingOverride(false)
   }, [audioPlayer])
 
@@ -144,11 +145,10 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     if (isPlayingOverride && audioPlayer.playing) {
       // Audio player has caught up, disable override
       setIsPlayingOverride(false)
-    } else if (!audioPlayer.playing && !isPlayingOverride && currentClip) {
-      // Audio stopped but we still have a current clip, clear it
-      setCurrentClip(null)
     }
-  }, [audioPlayer.playing, isPlayingOverride, currentClip])
+    // Note: Don't clear currentClip when audio stops playing - only clear it when explicitly stopped or new clip loaded
+    // This allows the media player to remain visible when paused
+  }, [audioPlayer.playing, isPlayingOverride])
 
   const value: AudioPlayerContextType = {
     // State
