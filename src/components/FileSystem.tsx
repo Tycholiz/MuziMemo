@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message'
 
 import { useFileManager } from '../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
+import { useMediaPlayerSpacing } from '../hooks/useMediaPlayerSpacing'
 import { Breadcrumbs } from './Breadcrumbs'
 import { AudioClipCard } from './AudioClipCard'
 import { FolderContextMenuModal } from './FolderContextMenuModal'
@@ -51,6 +52,7 @@ export function FileSystemComponent() {
   const router = useRouter()
   const fileManager = useFileManager()
   const audioPlayer = useAudioPlayerContext()
+  const { bottomPadding } = useMediaPlayerSpacing()
 
   const [folders, setFolders] = useState<FolderData[]>([])
   const [audioFiles, setAudioFiles] = useState<AudioFileData[]>([])
@@ -563,7 +565,7 @@ export function FileSystemComponent() {
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
