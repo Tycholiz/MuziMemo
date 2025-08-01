@@ -95,7 +95,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
 
   // Animate dropdown appearance
   useEffect(() => {
-    if (search.showResults || (search.query === '' && search.searchHistory.length > 0)) {
+    if (search.showResults) {
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -122,7 +122,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
         }),
       ]).start()
     }
-  }, [search.showResults, search.query, search.searchHistory.length, fadeAnim, scaleAnim])
+  }, [search.showResults, fadeAnim, scaleAnim])
 
   const handleFocus = () => {
     search.setShowResults(true)
@@ -180,7 +180,7 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
 
 
 
-  const showDropdown = search.showResults || (search.query === '' && search.searchHistory.length > 0)
+  const showDropdown = search.showResults
 
   return (
     <View style={[styles.container, style]}>
