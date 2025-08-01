@@ -313,10 +313,10 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: 'absolute',
-    top: -1000, // Extend far above
+    top: '100%', // Start below the search bar
     left: -1000, // Extend far to the left
     width: Dimensions.get('window').width + 2000, // Cover entire screen width + extra
-    height: Dimensions.get('window').height + 2000, // Cover entire screen height + extra
+    height: Dimensions.get('window').height + 1000, // Cover screen height + extra below
     backgroundColor: 'transparent',
     zIndex: 1000, // Below dropdown but above main content
     elevation: 9,
