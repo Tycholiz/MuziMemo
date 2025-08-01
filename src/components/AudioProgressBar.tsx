@@ -54,12 +54,7 @@ const formatTime = (seconds: number): string => {
  * - Real-time position updates during playback
  * - Adequate touch target for mobile interaction
  */
-export function AudioProgressBar({
-  position,
-  duration,
-  onSeek,
-  style,
-}: AudioProgressBarProps) {
+export function AudioProgressBar({ position, duration, onSeek, style }: AudioProgressBarProps) {
   const [isScrubbing, setIsScrubbing] = useState(false)
   const containerRef = useRef<View>(null)
   const [containerWidth, setContainerWidth] = useState(0)
@@ -74,24 +69,23 @@ export function AudioProgressBar({
   const safePosition = Math.max(position || 0, 0)
   const safeContainerWidth = Math.max(containerWidth, 0)
 
-
-
   // Handle container layout to get width
-  const handleLayout = useCallback((event: any) => {
-    const { width } = event.nativeEvent.layout
-    // Calculate track width: full width minus scrubber margins on both sides
-    const trackWidth = width - SCRUBBER_SIZE
-    setContainerWidth(trackWidth)
+  const handleLayout = useCallback(
+    (event: any) => {
+      const { width } = event.nativeEvent.layout
+      // Calculate track width: full width minus scrubber margins on both sides
+      const trackWidth = width - SCRUBBER_SIZE
+      setContainerWidth(trackWidth)
 
-    // Initialize scrubber position immediately when container width is available
-    if (trackWidth > 0 && safeDuration > 0) {
-      const progress = safePosition / safeDuration
-      const initialX = progress * trackWidth
-      scrubberX.value = initialX
-    }
-  }, [safePosition, safeDuration])
-
-
+      // Initialize scrubber position immediately when container width is available
+      if (trackWidth > 0 && safeDuration > 0) {
+        const progress = safePosition / safeDuration
+        const initialX = progress * trackWidth
+        scrubberX.value = initialX
+      }
+    },
+    [safePosition, safeDuration]
+  )
 
   // Convert x coordinate to position (worklet-safe)
   const xToPosition = useCallback(
@@ -109,14 +103,17 @@ export function AudioProgressBar({
     setIsScrubbing(true)
   }, [])
 
-  const handleScrubbingEnd = useCallback((finalPosition: number) => {
-    setIsScrubbing(false)
-    if (onSeek && finalPosition >= 0 && finalPosition <= safeDuration) {
-      // Ensure we only seek to valid positions
-      const clampedPosition = Math.min(Math.max(finalPosition, 0), safeDuration)
-      onSeek(clampedPosition)
-    }
-  }, [onSeek, safeDuration])
+  const handleScrubbingEnd = useCallback(
+    (finalPosition: number) => {
+      setIsScrubbing(false)
+      if (onSeek && finalPosition >= 0 && finalPosition <= safeDuration) {
+        // Ensure we only seek to valid positions
+        const clampedPosition = Math.min(Math.max(finalPosition, 0), safeDuration)
+        onSeek(clampedPosition)
+      }
+    },
+    [onSeek, safeDuration]
+  )
 
   // Store initial scrubber position when gesture starts
   const gestureStartX = useSharedValue(0)
@@ -130,7 +127,7 @@ export function AudioProgressBar({
       runOnJS(handleScrubbingStart)()
       scrubberScale.value = withSpring(1.2)
     })
-    .onUpdate((event) => {
+    .onUpdate(event => {
       'worklet'
       if (safeContainerWidth === 0 || safeDuration === 0) return
 
@@ -181,56 +178,46 @@ export function AudioProgressBar({
     return {
       transform: [
         { translateX: scrubberX.value }, // Direct translation without offset
-        { scale: scrubberScale.value }
-      ]
+        { scale: scrubberScale.value },
+      ],
     }
   })
 
   const progressAnimatedStyle = useAnimatedStyle(() => {
     return {
-      width: Math.max(progressWidthDerived.value, 0)
+      width: Math.max(progressWidthDerived.value, 0),
     }
   })
 
   return (
     <View style={[styles.wrapper, style]}>
-      {/* Current time timestamp */}
-      <Text style={styles.timestamp}>
-        {formatTime(safePosition)}
-      </Text>
+      <View style={styles.container}>
+        {/* Progress bar container */}
+        <View style={styles.progressBarContainer} onLayout={handleLayout} ref={containerRef}>
+          {/* Background track (remaining portion) */}
+          <View style={styles.track} />
 
-      {/* Progress bar container */}
-      <View style={styles.container} onLayout={handleLayout} ref={containerRef}>
-        {/* Background track (remaining portion) */}
-        <View style={styles.track} />
+          {/* Progress track (played portion) */}
+          <Animated.View style={[styles.progressTrack, progressAnimatedStyle]} />
 
-        {/* Progress track (played portion) */}
-        <Animated.View
-          style={[
-            styles.progressTrack,
-            progressAnimatedStyle
-          ]}
-        />
+          {/* Scrubber with touch target */}
+          <GestureDetector gesture={panGesture}>
+            <Animated.View style={[styles.scrubberContainer, scrubberAnimatedStyle]}>
+              <View style={styles.touchTarget}>
+                <View style={[styles.scrubber, isScrubbing && styles.scrubberActive]} />
+              </View>
+            </Animated.View>
+          </GestureDetector>
+        </View>
 
-        {/* Scrubber with touch target */}
-        <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={[
-              styles.scrubberContainer,
-              scrubberAnimatedStyle
-            ]}
-          >
-            <View style={styles.touchTarget}>
-              <View style={[styles.scrubber, isScrubbing && styles.scrubberActive]} />
-            </View>
-          </Animated.View>
-        </GestureDetector>
+        <View style={styles.timestampContainer}>
+          {/* Current time timestamp */}
+          <Text style={styles.timestamp}>{formatTime(safePosition)}</Text>
+
+          {/* Total duration timestamp */}
+          <Text style={styles.timestamp}>{formatTime(safeDuration)}</Text>
+        </View>
       </View>
-
-      {/* Total duration timestamp */}
-      <Text style={styles.timestamp}>
-        {formatTime(safeDuration)}
-      </Text>
     </View>
   )
 }
@@ -242,10 +229,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   container: {
+    width: '100%',
+  },
+  progressBarContainer: {
     flex: 1,
     height: TOUCH_TARGET_SIZE,
     justifyContent: 'center',
     paddingHorizontal: SCRUBBER_SIZE / 2,
+  },
+  timestampContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   track: {
     position: 'absolute',
