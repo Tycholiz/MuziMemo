@@ -73,13 +73,7 @@ export function SearchResults({
   const displayedAudioFiles = results.audioFiles.slice(0, MAX_AUDIO_FILES_DISPLAY)
   const displayedFolders = results.folders.slice(0, MAX_FOLDERS_DISPLAY)
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-  }
+
 
   const formatDate = (date: Date): string => {
     return date.toLocaleDateString('en-US', {
@@ -205,7 +199,7 @@ export function SearchResults({
                           {audioFile.name}
                         </Text>
                         <Text style={styles.audioFileDetails}>
-                          {formatDate(audioFile.modificationTime ? new Date(audioFile.modificationTime) : audioFile.createdAt)} • {formatFileSize(audioFile.size)}
+                          {formatDate(audioFile.modificationTime && audioFile.modificationTime > 0 ? new Date(audioFile.modificationTime) : audioFile.createdAt)}
                           {audioFile.duration && ` • ${audioFile.duration}`}
                         </Text>
                         <PathDisplay

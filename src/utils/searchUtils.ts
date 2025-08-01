@@ -131,13 +131,14 @@ async function searchDirectory(
         } else if (filters.audio && isAudioFile(item)) {
           // Check if audio file name matches query
           if (item.toLowerCase().includes(query)) {
+            const modTime = (itemInfo as any).modificationTime
             results.audioFiles.push({
               id: `audio-${itemRelativePath}`,
               name: item,
               uri: itemPath,
               size: (itemInfo as any).size || 0,
-              createdAt: new Date((itemInfo as any).modificationTime || Date.now()),
-              modificationTime: (itemInfo as any).modificationTime,
+              createdAt: new Date(modTime && modTime > 0 ? modTime : Date.now()),
+              modificationTime: modTime && modTime > 0 ? modTime : undefined,
               relativePath: itemRelativePath,
               parentPath: fullPath,
             })
