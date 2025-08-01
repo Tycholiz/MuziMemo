@@ -69,12 +69,14 @@ export function AudioProgressBar({
   // Handle container layout to get width
   const handleLayout = useCallback((event: any) => {
     const { width } = event.nativeEvent.layout
-    const newWidth = Math.max(width - SCRUBBER_SIZE, 0) // Account for scrubber size
-    setContainerWidth(newWidth)
+    // Calculate usable width: total width minus padding on both sides
+    const usableWidth = width - SCRUBBER_SIZE // Account for padding
+    setContainerWidth(usableWidth)
 
     // Initialize scrubber position immediately when container width is available
-    if (newWidth > 0 && safeDuration > 0) {
-      const initialX = (safePosition / safeDuration) * newWidth
+    if (usableWidth > 0 && safeDuration > 0) {
+      const progress = safePosition / safeDuration
+      const initialX = progress * usableWidth
       scrubberX.value = initialX
     }
   }, [safePosition, safeDuration])
@@ -123,6 +125,7 @@ export function AudioProgressBar({
       if (safeContainerWidth === 0 || safeDuration === 0) return
 
       // Calculate new position based on gesture from the starting position
+      // Ensure scrubber stays within bounds (0 to containerWidth)
       const newX = Math.min(Math.max(gestureStartX.value + event.translationX, 0), safeContainerWidth)
       scrubberX.value = newX
     })
@@ -147,9 +150,10 @@ export function AudioProgressBar({
   // Update scrubber position during playback when not scrubbing
   useEffect(() => {
     if (!isScrubbing && safeContainerWidth > 0 && safeDuration > 0) {
-      const targetX = (safePosition / safeDuration) * safeContainerWidth
-      // Use smooth animation for real-time updates
-      scrubberX.value = withTiming(targetX, { duration: 50 })
+      const progress = safePosition / safeDuration
+      const targetX = progress * safeContainerWidth
+      // Use smooth animation with longer duration for fluid movement
+      scrubberX.value = withTiming(targetX, { duration: 200 })
     }
   }, [safePosition, safeContainerWidth, isScrubbing, safeDuration])
 
@@ -166,7 +170,7 @@ export function AudioProgressBar({
   const scrubberAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { translateX: scrubberX.value },
+        { translateX: scrubberX.value + SCRUBBER_SIZE / 2 }, // Offset to align with track start
         { scale: scrubberScale.value }
       ]
     }
@@ -174,7 +178,7 @@ export function AudioProgressBar({
 
   const progressAnimatedStyle = useAnimatedStyle(() => {
     return {
-      width: Math.max(progressWidthDerived.value, 0)
+      width: Math.max(progressWidthDerived.value + SCRUBBER_SIZE / 2, 0)
     }
   })
 
