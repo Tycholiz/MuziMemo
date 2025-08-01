@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons'
 import { theme } from '../utils/theme'
 import { FileContextMenuModal } from './FileContextMenuModal'
 import { formatDateSmart, formatFileSize } from '../utils/formatUtils'
+import { DraggableWrapper } from './DraggableWrapper'
+import { createAudioFileDragItem } from '../utils/dragDropUtils'
 
 export type AudioClipData = {
   id: string
@@ -25,6 +27,8 @@ export type AudioClipCardProps = {
   onRestore?: () => void
   onDelete?: () => void
   isInRecentlyDeleted?: boolean
+  enableDragDrop?: boolean
+  currentPath?: string
 }
 
 export const AudioClipCard = React.memo(function AudioClipCard({
@@ -37,6 +41,8 @@ export const AudioClipCard = React.memo(function AudioClipCard({
   onRestore,
   onDelete,
   isInRecentlyDeleted = false,
+  enableDragDrop = false,
+  currentPath = '',
 }: AudioClipCardProps) {
   const handlePress = () => {
     console.log('🎵 AudioClipCard: handlePress called for:', clip.name)
@@ -50,7 +56,7 @@ export const AudioClipCard = React.memo(function AudioClipCard({
     }
   }
 
-  return (
+  const cardContent = (
     <View style={[styles.container, isPlaying && styles.containerPlaying]}>
       <TouchableOpacity style={styles.content} onPress={handlePress} activeOpacity={0.7}>
         <View style={styles.playButton}>
@@ -91,6 +97,18 @@ export const AudioClipCard = React.memo(function AudioClipCard({
       )}
     </View>
   )
+
+  // Wrap with DraggableWrapper if drag and drop is enabled
+  if (enableDragDrop && !isInRecentlyDeleted && currentPath) {
+    const dragItem = createAudioFileDragItem(clip, currentPath)
+    return (
+      <DraggableWrapper dragItem={dragItem}>
+        {cardContent}
+      </DraggableWrapper>
+    )
+  }
+
+  return cardContent
 })
 
 const styles = StyleSheet.create({
