@@ -72,11 +72,13 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 0,
     paddingBottom: 0,
-    opacity: 0.9,
+    opacity: 0.97,
   },
   mediaCard: {
     borderRadius: 0, // Remove border radius for seamless integration
     marginBottom: 0, // Remove bottom margin
-    backgroundColor: theme.colors.tabBar.background, // Match tab bar background for seamless integration
+    backgroundColor: theme.colors.background.secondary, // Match tab bar background for seamless integration
+    borderTopLeftRadius: theme.borderRadius.md,
+    borderTopRightRadius: theme.borderRadius.md,
   },
 })
