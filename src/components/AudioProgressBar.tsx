@@ -73,14 +73,14 @@ export function AudioProgressBar({ position, duration, onSeek, style }: AudioPro
   const handleLayout = useCallback(
     (event: any) => {
       const { width } = event.nativeEvent.layout
-      // Calculate track width: full width minus scrubber margins on both sides
-      const trackWidth = width - SCRUBBER_SIZE
-      setContainerWidth(trackWidth)
+      // Use the layout width directly - it's already the content width excluding padding
+      // The track spans the full content width, and scrubber positioning is relative to this
+      setContainerWidth(width)
 
       // Initialize scrubber position immediately when container width is available
-      if (trackWidth > 0 && safeDuration > 0) {
+      if (width > 0 && safeDuration > 0) {
         const progress = safePosition / safeDuration
-        const initialX = progress * trackWidth
+        const initialX = progress * width
         scrubberX.value = initialX
       }
     },
@@ -147,20 +147,22 @@ export function AudioProgressBar({ position, duration, onSeek, style }: AudioPro
   // Initialize scrubber position to 0 when a new clip starts
   useEffect(() => {
     if (safeContainerWidth > 0) {
-      // Always start at position 0 for new clips
-      if (safePosition === 0 || safeDuration === 0) {
+      // Always start at position 0 for new clips or when position is 0
+      if (safePosition === 0) {
         scrubberX.value = 0
       }
     }
-  }, [safeContainerWidth, safeDuration]) // Reset when duration changes (new clip)
+  }, [safeContainerWidth, safeDuration, safePosition]) // Reset when duration changes (new clip) or position is 0
 
   // Update scrubber position during playback when not scrubbing
   useEffect(() => {
     if (!isScrubbing && safeContainerWidth > 0 && safeDuration > 0) {
-      const progress = safePosition / safeDuration
+      const progress = Math.min(Math.max(safePosition / safeDuration, 0), 1) // Clamp progress between 0 and 1
       const targetX = progress * safeContainerWidth
+      // Ensure targetX is within bounds (0 to containerWidth)
+      const clampedTargetX = Math.min(Math.max(targetX, 0), safeContainerWidth)
       // Use smooth animation with longer duration for fluid movement
-      scrubberX.value = withTiming(targetX, { duration: 200 })
+      scrubberX.value = withTiming(clampedTargetX, { duration: 200 })
     }
   }, [safePosition, safeContainerWidth, isScrubbing, safeDuration])
 
