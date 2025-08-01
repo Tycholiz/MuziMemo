@@ -7,6 +7,8 @@ import {
   Animated,
   Keyboard,
   Platform,
+  TouchableWithoutFeedback,
+  Dimensions,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
@@ -178,7 +180,11 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
     Keyboard.dismiss()
   }
 
-
+  const handleOverlayPress = () => {
+    // Dismiss dropdown when overlay (background) is touched
+    search.setShowResults(false)
+    inputRef.current?.blur()
+  }
 
   const showDropdown = search.showResults
 
@@ -222,6 +228,13 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Full-screen overlay to block touch events when dropdown is open */}
+      {showDropdown && (
+        <TouchableWithoutFeedback onPress={handleOverlayPress}>
+          <View style={styles.overlay} />
+        </TouchableWithoutFeedback>
+      )}
 
       {/* Search Results Dropdown */}
       {showDropdown && (
@@ -287,6 +300,16 @@ const styles = StyleSheet.create({
   clearButton: {
     marginLeft: theme.spacing.sm,
     padding: 2,
+  },
+  overlay: {
+    position: 'absolute',
+    top: -1000, // Extend far above
+    left: -1000, // Extend far to the left
+    width: Dimensions.get('window').width + 2000, // Cover entire screen width + extra
+    height: Dimensions.get('window').height + 2000, // Cover entire screen height + extra
+    backgroundColor: 'transparent',
+    zIndex: 1000, // Below dropdown but above main content
+    elevation: 9,
   },
   dropdown: {
     position: 'absolute',
