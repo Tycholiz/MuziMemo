@@ -1,13 +1,5 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Keyboard,
-} from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Keyboard } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
@@ -73,8 +65,6 @@ export function SearchResults({
   const displayedAudioFiles = results.audioFiles.slice(0, MAX_AUDIO_FILES_DISPLAY)
   const displayedFolders = results.folders.slice(0, MAX_FOLDERS_DISPLAY)
 
-
-
   const formatDate = (date: Date): string => {
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -119,11 +109,7 @@ export function SearchResults({
     >
       {/* Search Filters */}
       {showFilters && (
-        <SearchFilters
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-          style={styles.filtersSection}
-        />
+        <SearchFilters filters={filters} onFiltersChange={onFiltersChange} style={styles.filtersSection} />
       )}
 
       {/* Recent Searches */}
@@ -163,11 +149,12 @@ export function SearchResults({
                 <Ionicons name="musical-notes" size={16} color={theme.colors.text.secondary} />
                 <Text style={styles.sectionTitle}>Audio Files</Text>
                 <Text style={styles.sectionCount}>
-                  ({displayedAudioFiles.length}{results.audioFiles.length > MAX_AUDIO_FILES_DISPLAY ? ` of ${results.audioFiles.length}` : ''})
+                  ({displayedAudioFiles.length}
+                  {results.audioFiles.length > MAX_AUDIO_FILES_DISPLAY ? ` of ${results.audioFiles.length}` : ''})
                 </Text>
               </View>
 
-              {displayedAudioFiles.map((audioFile) => {
+              {displayedAudioFiles.map(audioFile => {
                 const isCurrentlyPlaying = currentPlayingId === audioFile.id && isPlaying
                 const isCurrentTrack = currentPlayingId === audioFile.id
 
@@ -181,14 +168,14 @@ export function SearchResults({
                     <View style={styles.audioFileContent}>
                       <TouchableOpacity
                         style={styles.audioFileIcon}
-                        onPress={(e) => {
+                        onPress={e => {
                           e.stopPropagation()
                           onAudioPlayPause(audioFile)
                         }}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
                         <Ionicons
-                          name={isCurrentlyPlaying ? "pause-circle" : "play-circle"}
+                          name={isCurrentlyPlaying ? 'pause-circle' : 'play-circle'}
                           size={24}
                           color={isCurrentTrack ? theme.colors.primary : theme.colors.text.secondary}
                         />
@@ -197,10 +184,6 @@ export function SearchResults({
                       <View style={styles.audioFileInfo}>
                         <Text style={styles.audioFileName} numberOfLines={1}>
                           {audioFile.name}
-                        </Text>
-                        <Text style={styles.audioFileDetails}>
-                          {formatDate(audioFile.modificationTime && audioFile.modificationTime > 0 ? new Date(audioFile.modificationTime) : audioFile.createdAt)}
-                          {audioFile.duration && ` • ${audioFile.duration}`}
                         </Text>
                         <PathDisplay
                           path={truncatePathSmart(formatFilePath(audioFile.relativePath), 45)}
@@ -229,11 +212,12 @@ export function SearchResults({
                 <Ionicons name="folder" size={16} color={theme.colors.text.secondary} />
                 <Text style={styles.sectionTitle}>Folders</Text>
                 <Text style={styles.sectionCount}>
-                  ({displayedFolders.length}{results.folders.length > MAX_FOLDERS_DISPLAY ? ` of ${results.folders.length}` : ''})
+                  ({displayedFolders.length}
+                  {results.folders.length > MAX_FOLDERS_DISPLAY ? ` of ${results.folders.length}` : ''})
                 </Text>
               </View>
 
-              {displayedFolders.map((folder) => (
+              {displayedFolders.map(folder => (
                 <TouchableOpacity
                   key={folder.id}
                   style={styles.resultItem}
@@ -271,9 +255,7 @@ export function SearchResults({
             <View style={styles.noResultsContainer}>
               <Ionicons name="search" size={32} color={theme.colors.text.tertiary} />
               <Text style={styles.noResultsTitle}>No results found</Text>
-              <Text style={styles.noResultsText}>
-                Try adjusting your search terms or filters
-              </Text>
+              <Text style={styles.noResultsText}>Try adjusting your search terms or filters</Text>
             </View>
           )}
         </>
