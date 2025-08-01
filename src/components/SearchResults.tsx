@@ -1,20 +1,14 @@
 import React from 'react'
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Keyboard,
-} from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Keyboard } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
 import { SearchFilters } from './SearchFilters'
-import { SearchHistory } from './SearchHistory'
-import { formatFolderPath, truncatePath, getParentDirectoryPath } from '../utils/searchUtils'
+import { RecentSearches } from './RecentSearches'
+import { PathDisplay } from './PathDisplay'
+import { formatFolderPath, formatFilePath, truncatePathSmart } from '../utils/searchUtils'
 import type { SearchResults as SearchResultsType, SearchFilters as SearchFiltersType } from '../utils/searchUtils'
+import type { RecentSearchItem } from '../hooks/useSearch'
 
 // Constants for limiting search results display
 const MAX_AUDIO_FILES_DISPLAY = 5
@@ -23,14 +17,14 @@ const MAX_FOLDERS_DISPLAY = 5
 export type SearchResultsProps = {
   query: string
   results: SearchResultsType
-  searchHistory: string[]
+  recentSearches: RecentSearchItem[]
   filters: SearchFiltersType
   isSearching: boolean
   error: string | null
   onFiltersChange: (filters: SearchFiltersType) => void
-  onHistorySelect: (item: string) => void
-  onHistoryRemove: (item: string) => void
-  onClearHistory: () => void
+  onRecentSearchSelect: (item: RecentSearchItem) => void
+  onRecentSearchRemove: (item: RecentSearchItem) => void
+  onClearRecentSearches: () => void
   onAudioFileSelect: (audioFile: any) => void
   onFolderSelect: (folder: any) => void
   onAudioPlayPause: (audioFile: any) => void
@@ -47,14 +41,14 @@ export type SearchResultsProps = {
 export function SearchResults({
   query,
   results,
-  searchHistory,
+  recentSearches,
   filters,
   isSearching,
   error,
   onFiltersChange,
-  onHistorySelect,
-  onHistoryRemove,
-  onClearHistory,
+  onRecentSearchSelect,
+  onRecentSearchRemove,
+  onClearRecentSearches,
   onAudioFileSelect,
   onFolderSelect,
   onAudioPlayPause,
@@ -64,28 +58,12 @@ export function SearchResults({
   onScrollEnd,
 }: SearchResultsProps) {
   const hasResults = results.audioFiles.length > 0 || results.folders.length > 0
-  const showHistory = !query.trim() && searchHistory.length > 0
+  const showRecentSearches = !query.trim() && recentSearches.length > 0
   const showFilters = query.trim().length > 0
 
   // Limit displayed results
   const displayedAudioFiles = results.audioFiles.slice(0, MAX_AUDIO_FILES_DISPLAY)
   const displayedFolders = results.folders.slice(0, MAX_FOLDERS_DISPLAY)
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-  }
-
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
 
   const handleScrollBegin = () => {
     // Notify parent that scrolling started (to prevent dismissal)
@@ -123,21 +101,17 @@ export function SearchResults({
     >
       {/* Search Filters */}
       {showFilters && (
-        <SearchFilters
-          filters={filters}
-          onFiltersChange={onFiltersChange}
-          style={styles.filtersSection}
-        />
+        <SearchFilters filters={filters} onFiltersChange={onFiltersChange} style={styles.filtersSection} />
       )}
 
-      {/* Search History */}
-      {showHistory && (
-        <SearchHistory
-          history={searchHistory}
-          onHistorySelect={onHistorySelect}
-          onHistoryRemove={onHistoryRemove}
-          onClearHistory={onClearHistory}
-          style={styles.historySection}
+      {/* Recent Searches */}
+      {showRecentSearches && (
+        <RecentSearches
+          recentSearches={recentSearches}
+          onRecentSearchSelect={onRecentSearchSelect}
+          onRecentSearchRemove={onRecentSearchRemove}
+          onClearRecentSearches={onClearRecentSearches}
+          style={styles.recentSearchesSection}
         />
       )}
 
@@ -167,11 +141,12 @@ export function SearchResults({
                 <Ionicons name="musical-notes" size={16} color={theme.colors.text.secondary} />
                 <Text style={styles.sectionTitle}>Audio Files</Text>
                 <Text style={styles.sectionCount}>
-                  ({displayedAudioFiles.length}{results.audioFiles.length > MAX_AUDIO_FILES_DISPLAY ? ` of ${results.audioFiles.length}` : ''})
+                  ({displayedAudioFiles.length}
+                  {results.audioFiles.length > MAX_AUDIO_FILES_DISPLAY ? ` of ${results.audioFiles.length}` : ''})
                 </Text>
               </View>
 
-              {displayedAudioFiles.map((audioFile) => {
+              {displayedAudioFiles.map(audioFile => {
                 const isCurrentlyPlaying = currentPlayingId === audioFile.id && isPlaying
                 const isCurrentTrack = currentPlayingId === audioFile.id
 
@@ -185,14 +160,14 @@ export function SearchResults({
                     <View style={styles.audioFileContent}>
                       <TouchableOpacity
                         style={styles.audioFileIcon}
-                        onPress={(e) => {
+                        onPress={e => {
                           e.stopPropagation()
                           onAudioPlayPause(audioFile)
                         }}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                       >
                         <Ionicons
-                          name={isCurrentlyPlaying ? "pause-circle" : "play-circle"}
+                          name={isCurrentlyPlaying ? 'pause-circle' : 'play-circle'}
                           size={24}
                           color={isCurrentTrack ? theme.colors.primary : theme.colors.text.secondary}
                         />
@@ -202,13 +177,13 @@ export function SearchResults({
                         <Text style={styles.audioFileName} numberOfLines={1}>
                           {audioFile.name}
                         </Text>
-                        <Text style={styles.audioFileDetails}>
-                          {formatDate(audioFile.createdAt)} • {formatFileSize(audioFile.size)}
-                          {audioFile.duration && ` • ${audioFile.duration}`}
-                        </Text>
-                        <Text style={styles.audioFilePath} numberOfLines={1}>
-                          {formatFolderPath(getParentDirectoryPath(audioFile.relativePath).join('/'))}
-                        </Text>
+                        <PathDisplay
+                          path={truncatePathSmart(formatFilePath(audioFile.relativePath), 45)}
+                          textStyle={styles.audioFilePath}
+                          iconSize={12}
+                          iconColor={theme.colors.text.secondary}
+                          numberOfLines={1}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -229,11 +204,12 @@ export function SearchResults({
                 <Ionicons name="folder" size={16} color={theme.colors.text.secondary} />
                 <Text style={styles.sectionTitle}>Folders</Text>
                 <Text style={styles.sectionCount}>
-                  ({displayedFolders.length}{results.folders.length > MAX_FOLDERS_DISPLAY ? ` of ${results.folders.length}` : ''})
+                  ({displayedFolders.length}
+                  {results.folders.length > MAX_FOLDERS_DISPLAY ? ` of ${results.folders.length}` : ''})
                 </Text>
               </View>
 
-              {displayedFolders.map((folder) => (
+              {displayedFolders.map(folder => (
                 <TouchableOpacity
                   key={folder.id}
                   style={styles.resultItem}
@@ -249,9 +225,13 @@ export function SearchResults({
                       <Text style={styles.folderName} numberOfLines={1}>
                         {folder.name}
                       </Text>
-                      <Text style={styles.folderPath} numberOfLines={1}>
-                        {truncatePath(formatFolderPath(folder.relativePath), 40)}
-                      </Text>
+                      <PathDisplay
+                        path={truncatePathSmart(formatFolderPath(folder.relativePath), 45)}
+                        textStyle={styles.folderPath}
+                        iconSize={12}
+                        iconColor={theme.colors.text.secondary}
+                        numberOfLines={1}
+                      />
                       <Text style={styles.folderItemCount}>
                         {folder.itemCount} {folder.itemCount === 1 ? 'item' : 'items'}
                       </Text>
@@ -267,9 +247,7 @@ export function SearchResults({
             <View style={styles.noResultsContainer}>
               <Ionicons name="search" size={32} color={theme.colors.text.tertiary} />
               <Text style={styles.noResultsTitle}>No results found</Text>
-              <Text style={styles.noResultsText}>
-                Try adjusting your search terms or filters
-              </Text>
+              <Text style={styles.noResultsText}>Try adjusting your search terms or filters</Text>
             </View>
           )}
         </>
@@ -287,7 +265,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.xs,
   },
-  historySection: {
+  recentSearchesSection: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
   },

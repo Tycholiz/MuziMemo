@@ -146,14 +146,40 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
     inputRef.current?.focus()
   }
 
-  const handleHistorySelect = (historyItem: string) => {
-    search.setQuery(historyItem)
-    inputRef.current?.blur()
+  const handleRecentSearchSelect = (recentItem: any) => {
+    // Navigate to the recent search item
+    if (recentItem.type === 'audio') {
+      onResultSelect?.('audio', {
+        id: recentItem.id,
+        name: recentItem.name,
+        relativePath: recentItem.relativePath
+      })
+    } else if (recentItem.type === 'folder') {
+      onResultSelect?.('folder', {
+        id: recentItem.id,
+        name: recentItem.name,
+        relativePath: recentItem.relativePath
+      })
+    }
+
+    // Clear search bar and dismiss dropdown after navigation
+    search.clearSearch()
+    Keyboard.dismiss()
   }
 
   const handleAudioFileSelect = (audioFile: any) => {
+    // Add to recent searches before navigation
+    search.addToRecentSearches({
+      type: 'audio',
+      name: audioFile.name,
+      relativePath: audioFile.relativePath,
+      id: audioFile.id
+    })
+
     onResultSelect?.('audio', audioFile)
-    search.setShowResults(false)
+
+    // Clear search bar and dismiss dropdown after navigation
+    search.clearSearch()
     Keyboard.dismiss()
   }
 
@@ -175,8 +201,18 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
   }
 
   const handleFolderSelect = (folder: any) => {
+    // Add to recent searches before navigation
+    search.addToRecentSearches({
+      type: 'folder',
+      name: folder.name,
+      relativePath: folder.relativePath,
+      id: folder.id
+    })
+
     onResultSelect?.('folder', folder)
-    search.setShowResults(false)
+
+    // Clear search bar and dismiss dropdown after navigation
+    search.clearSearch()
     Keyboard.dismiss()
   }
 
@@ -184,6 +220,14 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
     // Dismiss dropdown when overlay (background) is touched
     search.setShowResults(false)
     inputRef.current?.blur()
+  }
+
+  const handleSubmitEditing = () => {
+    // Handle keyboard "Search" button press
+    // For real-time search, we don't want to dismiss the results
+    // Just dismiss the keyboard but keep the search results visible
+    Keyboard.dismiss()
+    // Don't blur the input to prevent search results from being dismissed
   }
 
   const showDropdown = search.showResults
@@ -208,7 +252,8 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
           onChangeText={search.setQuery}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          returnKeyType="search"
+          returnKeyType="done"
+          onSubmitEditing={handleSubmitEditing}
           autoCapitalize="none"
           autoCorrect={false}
           selectionColor={theme.colors.primary}
@@ -250,14 +295,14 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
           <SearchResults
             query={search.query}
             results={search.results}
-            searchHistory={search.searchHistory}
+            recentSearches={search.recentSearches}
             filters={search.filters}
             isSearching={search.isSearching}
             error={search.error}
             onFiltersChange={search.setFilters}
-            onHistorySelect={handleHistorySelect}
-            onHistoryRemove={search.removeHistoryItem}
-            onClearHistory={search.clearHistory}
+            onRecentSearchSelect={handleRecentSearchSelect}
+            onRecentSearchRemove={search.removeRecentSearchItem}
+            onClearRecentSearches={search.clearRecentSearches}
             onAudioFileSelect={handleAudioFileSelect}
             onFolderSelect={handleFolderSelect}
             onAudioPlayPause={handleAudioPlayPause}
@@ -303,10 +348,10 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: 'absolute',
-    top: -1000, // Extend far above
+    top: '100%', // Start below the search bar
     left: -1000, // Extend far to the left
     width: Dimensions.get('window').width + 2000, // Cover entire screen width + extra
-    height: Dimensions.get('window').height + 2000, // Cover entire screen height + extra
+    height: Dimensions.get('window').height + 1000, // Cover screen height + extra below
     backgroundColor: 'transparent',
     zIndex: 1000, // Below dropdown but above main content
     elevation: 9,

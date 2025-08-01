@@ -32,9 +32,6 @@ export type { SearchResultsProps } from './SearchResults'
 export { SearchFilters } from './SearchFilters'
 export type { SearchFiltersProps } from './SearchFilters'
 
-export { SearchHistory } from './SearchHistory'
-export type { SearchHistoryProps } from './SearchHistory'
-
 export { Screen, Container, Row, Column, Spacer } from './Layout'
 export type { ScreenProps, ContainerProps } from './Layout'
 

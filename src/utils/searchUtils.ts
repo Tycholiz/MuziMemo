@@ -11,6 +11,7 @@ export type SearchableAudioFile = {
   uri: string
   size: number
   createdAt: Date
+  modificationTime?: number // From FileSystem.FileInfo
   duration?: number
   relativePath: string // Path relative to recordings directory
   parentPath: string // Full parent directory path
@@ -130,12 +131,14 @@ async function searchDirectory(
         } else if (filters.audio && isAudioFile(item)) {
           // Check if audio file name matches query
           if (item.toLowerCase().includes(query)) {
+            const modTime = (itemInfo as any).modificationTime
             results.audioFiles.push({
               id: `audio-${itemRelativePath}`,
               name: item,
               uri: itemPath,
               size: (itemInfo as any).size || 0,
-              createdAt: new Date((itemInfo as any).modificationTime || Date.now()),
+              createdAt: new Date(modTime && modTime > 0 ? modTime : Date.now()),
+              modificationTime: modTime && modTime > 0 ? modTime : undefined,
               relativePath: itemRelativePath,
               parentPath: fullPath,
             })
@@ -163,17 +166,86 @@ function isAudioFile(fileName: string): boolean {
 }
 
 /**
- * Formats a folder path for display using arrow separators
+ * Formats a folder path for display using arrow separators and house icon
  * @param relativePath - Path relative to recordings directory
- * @returns Formatted path string
+ * @returns Formatted path string with house icon placeholder
  */
 export function formatFolderPath(relativePath: string): string {
-  if (!relativePath) {
-    return 'Home'
+  if (!relativePath || relativePath === '/') {
+    return '[HOME]'
   }
-  
-  const parts = relativePath.split('/')
-  return parts.join(' > ')
+
+  const parts = relativePath.split('/').filter(part => part.length > 0)
+  return `[HOME] > ${parts.join(' > ')}`
+}
+
+/**
+ * Formats a file path for display, showing only the directory path with house icon
+ * @param relativePath - Full file path relative to recordings directory
+ * @returns Formatted directory path string with house icon placeholder
+ */
+export function formatFilePath(relativePath: string): string {
+  if (!relativePath) {
+    return '[HOME]'
+  }
+
+  // Get directory path by removing the filename
+  const parts = relativePath.split('/').filter(part => part.length > 0)
+  if (parts.length <= 1) {
+    return '[HOME]'
+  }
+
+  // Remove the last part (filename) to get directory path
+  const directoryParts = parts.slice(0, -1)
+  return `[HOME] > ${directoryParts.join(' > ')}`
+}
+
+/**
+ * Truncates a path string intelligently, preserving important information
+ * @param path - Path string to truncate
+ * @param maxLength - Maximum length of the truncated string
+ * @returns Truncated path string
+ */
+export function truncatePathSmart(path: string, maxLength: number = 40): string {
+  if (path.length <= maxLength) {
+    return path
+  }
+
+  // If it starts with house icon placeholder, preserve that
+  const hasHouseIcon = path.startsWith('[HOME]')
+  const prefix = hasHouseIcon ? '[HOME] > ' : ''
+  const pathWithoutPrefix = hasHouseIcon ? path.substring(9) : path
+
+  if (pathWithoutPrefix.length <= maxLength - prefix.length) {
+    return path
+  }
+
+  // Truncate from the beginning, keeping the end visible
+  const availableLength = maxLength - prefix.length - 3 // 3 for "..."
+  const truncatedPath = '...' + pathWithoutPrefix.slice(-availableLength)
+
+  return prefix + truncatedPath
+}
+
+/**
+ * Formats a folder path for Recent Searches, excluding the folder itself from the path
+ * @param relativePath - Path relative to recordings directory
+ * @returns Formatted parent directory path string
+ */
+export function formatFolderPathForRecent(relativePath: string): string {
+  if (!relativePath || relativePath === '/') {
+    return '[HOME]'
+  }
+
+  // Get parent directory path by removing the last folder
+  const parts = relativePath.split('/').filter(part => part.length > 0)
+  if (parts.length <= 1) {
+    return '[HOME]'
+  }
+
+  // Remove the last part (the folder itself) to get parent directory path
+  const parentParts = parts.slice(0, -1)
+  return `[HOME] > ${parentParts.join(' > ')}`
 }
 
 /**
