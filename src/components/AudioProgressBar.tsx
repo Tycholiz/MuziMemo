@@ -1,5 +1,13 @@
 import React, { useState, useCallback, useRef } from 'react'
-import { View, PanResponder, StyleSheet, Animated } from 'react-native'
+import { View, StyleSheet } from 'react-native'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+} from 'react-native-reanimated'
 
 import { theme } from '../utils/theme'
 
@@ -42,13 +50,13 @@ export function AudioProgressBar({
   style,
 }: AudioProgressBarProps) {
   const [isScrubbing, setIsScrubbing] = useState(false)
-  const [scrubbingPosition, setScrubbingPosition] = useState(0)
   const containerRef = useRef<View>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
-  // Animated values
-  const scrubberX = useRef(new Animated.Value(0)).current
-  const scrubberScale = useRef(new Animated.Value(1)).current
+  // Shared values for animations
+  const scrubberX = useSharedValue(0)
+  const scrubberScale = useSharedValue(1)
+  const progressWidth = useSharedValue(0)
 
   // Calculate progress percentage
   const progress = duration > 0 ? Math.min(Math.max(position / duration, 0), 1) : 0
@@ -78,62 +86,51 @@ export function AudioProgressBar({
     [containerWidth, duration]
   )
 
-  // Pan responder for scrubbing
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        setIsScrubbing(true)
-        // Scale up scrubber for visual feedback
-        Animated.spring(scrubberScale, {
-          toValue: 1.2,
-          useNativeDriver: true,
-        }).start()
-      },
-      onPanResponderMove: (_, gestureState) => {
-        // Get current value safely
-        let currentX = 0
-        scrubberX.addListener(({ value }) => { currentX = value })
-        scrubberX.removeAllListeners()
-
-        const newX = Math.min(Math.max(gestureState.dx, -currentX), containerWidth - currentX)
-        const targetX = currentX + newX
-        const clampedX = Math.min(Math.max(targetX, 0), containerWidth)
-
-        scrubberX.setValue(clampedX)
-        setScrubbingPosition(xToPosition(clampedX))
-      },
-      onPanResponderRelease: () => {
-        setIsScrubbing(false)
-        // Get current value safely
-        let currentX = 0
-        scrubberX.addListener(({ value }) => { currentX = value })
-        scrubberX.removeAllListeners()
-
-        const finalPosition = xToPosition(currentX)
-        onSeek(finalPosition)
-
-        // Scale back scrubber
-        Animated.spring(scrubberScale, {
-          toValue: 1,
-          useNativeDriver: true,
-        }).start()
-      },
+  // Gesture handler for scrubbing
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      runOnJS(setIsScrubbing)(true)
+      scrubberScale.value = withSpring(1.2)
     })
-  ).current
+    .onUpdate((event) => {
+      if (containerWidth === 0) return
+
+      const startX = positionToX(position)
+      const newX = Math.min(Math.max(startX + event.translationX, 0), containerWidth)
+      scrubberX.value = newX
+      progressWidth.value = newX
+    })
+    .onEnd(() => {
+      runOnJS(setIsScrubbing)(false)
+      const finalPosition = xToPosition(scrubberX.value)
+      runOnJS(onSeek)(finalPosition)
+      scrubberScale.value = withSpring(1)
+    })
 
   // Update scrubber position when not scrubbing
   React.useEffect(() => {
     if (!isScrubbing && containerWidth > 0) {
       const targetX = positionToX(position)
-      Animated.timing(scrubberX, {
-        toValue: targetX,
-        duration: 100,
-        useNativeDriver: false,
-      }).start()
+      scrubberX.value = withTiming(targetX, { duration: 100 })
+      progressWidth.value = withTiming(targetX, { duration: 100 })
     }
   }, [position, containerWidth, isScrubbing, positionToX])
+
+  // Animated styles
+  const scrubberAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        { translateX: scrubberX.value },
+        { scale: scrubberScale.value }
+      ]
+    }
+  })
+
+  const progressAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      width: isScrubbing ? progressWidth.value : progress * containerWidth
+    }
+  })
 
   return (
     <View style={[styles.container, style]} onLayout={handleLayout} ref={containerRef}>
@@ -144,31 +141,23 @@ export function AudioProgressBar({
       <Animated.View
         style={[
           styles.progressTrack,
-          {
-            width: isScrubbing
-              ? (scrubbingPosition / duration) * containerWidth
-              : (progress * containerWidth)
-          }
+          progressAnimatedStyle
         ]}
       />
 
       {/* Scrubber with touch target */}
-      <Animated.View
-        style={[
-          styles.scrubberContainer,
-          {
-            transform: [
-              { translateX: scrubberX },
-              { scale: scrubberScale }
-            ]
-          }
-        ]}
-        {...panResponder.panHandlers}
-      >
-        <View style={styles.touchTarget}>
-          <View style={[styles.scrubber, isScrubbing && styles.scrubberActive]} />
-        </View>
-      </Animated.View>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            styles.scrubberContainer,
+            scrubberAnimatedStyle
+          ]}
+        >
+          <View style={styles.touchTarget}>
+            <View style={[styles.scrubber, isScrubbing && styles.scrubberActive]} />
+          </View>
+        </Animated.View>
+      </GestureDetector>
     </View>
   )
 }
