@@ -74,20 +74,12 @@ export function AudioProgressBar({ position, duration, onSeek, style }: AudioPro
     (event: any) => {
       const { width } = event.nativeEvent.layout
       // In React Native, onLayout gives us the content width (excluding padding)
-      // The track spans the full content width minus scrubber margins
-      // Track goes from SCRUBBER_SIZE/2 to width - SCRUBBER_SIZE/2
-      // So the available width for scrubber movement is width - SCRUBBER_SIZE
+      // The track spans from SCRUBBER_SIZE/2 to width - SCRUBBER_SIZE/2
+      // The scrubber should move so its CENTER goes from trackStart to trackEnd
+      // But we need to ensure the scrubber EDGE doesn't go beyond container bounds
+      // So the available width for scrubber CENTER movement is width - SCRUBBER_SIZE
       const availableWidth = width - SCRUBBER_SIZE
       setContainerWidth(availableWidth)
-
-      // Debug logging to understand the layout
-      console.log('🎯 AudioProgressBar Layout:', {
-        layoutWidth: width,
-        availableWidth,
-        scrubberSize: SCRUBBER_SIZE,
-        trackStart: SCRUBBER_SIZE / 2,
-        trackEnd: width - SCRUBBER_SIZE / 2,
-      })
 
       // Initialize scrubber position immediately when container width is available
       if (availableWidth > 0 && safeDuration > 0) {
@@ -174,20 +166,6 @@ export function AudioProgressBar({ position, duration, onSeek, style }: AudioPro
       // Ensure targetX is within bounds (0 to containerWidth)
       const clampedTargetX = Math.min(Math.max(targetX, 0), safeContainerWidth)
 
-      // Debug logging for scrubber positioning
-      if (progress > 0.9) { // Log when near the end
-        console.log('🎯 Scrubber Position:', {
-          position: safePosition,
-          duration: safeDuration,
-          progress,
-          containerWidth: safeContainerWidth,
-          targetX,
-          clampedTargetX,
-          scrubberStart: SCRUBBER_SIZE / 2,
-          finalPosition: SCRUBBER_SIZE / 2 + clampedTargetX,
-        })
-      }
-
       // Use smooth animation with longer duration for fluid movement
       scrubberX.value = withTiming(clampedTargetX, { duration: 200 })
     }
@@ -195,11 +173,11 @@ export function AudioProgressBar({ position, duration, onSeek, style }: AudioPro
 
   // Derived value for progress width that updates in real-time
   const progressWidthDerived = useDerivedValue(() => {
-    if (isScrubbingShared.value) {
-      return scrubberX.value
-    }
-    // Use scrubberX.value for consistent real-time updates
-    return scrubberX.value
+    // The progress bar width should match the scrubber position
+    // but be clamped to prevent extending beyond the track bounds
+    const scrubberPos = scrubberX.value
+    const maxWidth = safeContainerWidth
+    return Math.min(Math.max(scrubberPos, 0), maxWidth)
   })
 
   // Animated styles
@@ -265,6 +243,7 @@ const styles = StyleSheet.create({
     height: TOUCH_TARGET_SIZE,
     justifyContent: 'center',
     paddingHorizontal: SCRUBBER_SIZE / 2,
+    overflow: 'hidden', // Prevent scrubber from visually extending beyond container
   },
   timestampContainer: {
     flexDirection: 'row',
