@@ -12,9 +12,10 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
 import { SearchFilters } from './SearchFilters'
-import { SearchHistory } from './SearchHistory'
+import { RecentSearches } from './RecentSearches'
 import { formatFolderPath, truncatePath, getParentDirectoryPath } from '../utils/searchUtils'
 import type { SearchResults as SearchResultsType, SearchFilters as SearchFiltersType } from '../utils/searchUtils'
+import type { RecentSearchItem } from '../hooks/useSearch'
 
 // Constants for limiting search results display
 const MAX_AUDIO_FILES_DISPLAY = 5
@@ -23,14 +24,14 @@ const MAX_FOLDERS_DISPLAY = 5
 export type SearchResultsProps = {
   query: string
   results: SearchResultsType
-  searchHistory: string[]
+  recentSearches: RecentSearchItem[]
   filters: SearchFiltersType
   isSearching: boolean
   error: string | null
   onFiltersChange: (filters: SearchFiltersType) => void
-  onHistorySelect: (item: string) => void
-  onHistoryRemove: (item: string) => void
-  onClearHistory: () => void
+  onRecentSearchSelect: (item: RecentSearchItem) => void
+  onRecentSearchRemove: (item: RecentSearchItem) => void
+  onClearRecentSearches: () => void
   onAudioFileSelect: (audioFile: any) => void
   onFolderSelect: (folder: any) => void
   onAudioPlayPause: (audioFile: any) => void
@@ -47,14 +48,14 @@ export type SearchResultsProps = {
 export function SearchResults({
   query,
   results,
-  searchHistory,
+  recentSearches,
   filters,
   isSearching,
   error,
   onFiltersChange,
-  onHistorySelect,
-  onHistoryRemove,
-  onClearHistory,
+  onRecentSearchSelect,
+  onRecentSearchRemove,
+  onClearRecentSearches,
   onAudioFileSelect,
   onFolderSelect,
   onAudioPlayPause,
@@ -64,7 +65,7 @@ export function SearchResults({
   onScrollEnd,
 }: SearchResultsProps) {
   const hasResults = results.audioFiles.length > 0 || results.folders.length > 0
-  const showHistory = !query.trim() && searchHistory.length > 0
+  const showRecentSearches = !query.trim() && recentSearches.length > 0
   const showFilters = query.trim().length > 0
 
   // Limit displayed results
@@ -130,14 +131,14 @@ export function SearchResults({
         />
       )}
 
-      {/* Search History */}
-      {showHistory && (
-        <SearchHistory
-          history={searchHistory}
-          onHistorySelect={onHistorySelect}
-          onHistoryRemove={onHistoryRemove}
-          onClearHistory={onClearHistory}
-          style={styles.historySection}
+      {/* Recent Searches */}
+      {showRecentSearches && (
+        <RecentSearches
+          recentSearches={recentSearches}
+          onRecentSearchSelect={onRecentSearchSelect}
+          onRecentSearchRemove={onRecentSearchRemove}
+          onClearRecentSearches={onClearRecentSearches}
+          style={styles.recentSearchesSection}
         />
       )}
 
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.xs,
   },
-  historySection: {
+  recentSearchesSection: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
   },

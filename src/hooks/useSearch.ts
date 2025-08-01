@@ -3,18 +3,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { searchFileSystem, type SearchResults, type SearchFilters } from '../utils/searchUtils'
 
 /**
- * Custom hook for search functionality with debouncing and history management
+ * Custom hook for search functionality with debouncing and recent searches management
  */
 
-const SEARCH_HISTORY_KEY = '@muzimemo_search_history'
+const RECENT_SEARCHES_KEY = '@muzimemo_recent_searches'
 const SEARCH_DEBOUNCE_MS = 300
-const MAX_SEARCH_HISTORY = 10
+const MAX_RECENT_SEARCHES = 5
+
+export type RecentSearchItem = {
+  type: 'audio' | 'folder'
+  name: string
+  relativePath: string
+  id: string
+  timestamp: number
+}
 
 export type SearchState = {
   query: string
   results: SearchResults
   isSearching: boolean
-  searchHistory: string[]
+  recentSearches: RecentSearchItem[]
   filters: SearchFilters
   showResults: boolean
   error: string | null
@@ -25,8 +33,9 @@ export type SearchActions = {
   setQuery: (query: string) => void
   setFilters: (filters: SearchFilters) => void
   clearSearch: () => void
-  clearHistory: () => void
-  removeHistoryItem: (item: string) => void
+  clearRecentSearches: () => void
+  removeRecentSearchItem: (item: RecentSearchItem) => void
+  addToRecentSearches: (item: Omit<RecentSearchItem, 'timestamp'>) => void
   setShowResults: (show: boolean) => void
   executeSearch: (query: string) => Promise<void>
   setCurrentPath: (path: string[]) => void
@@ -38,7 +47,7 @@ export function useSearch(): UseSearchReturn {
   const [query, setQueryState] = useState('')
   const [results, setResults] = useState<SearchResults>({ audioFiles: [], folders: [] })
   const [isSearching, setIsSearching] = useState(false)
-  const [searchHistory, setSearchHistory] = useState<string[]>([])
+  const [recentSearches, setRecentSearches] = useState<RecentSearchItem[]>([])
   const [currentPath, setCurrentPath] = useState<string[]>([])
   const [filters, setFiltersState] = useState<SearchFilters>({
     audio: true,
@@ -52,22 +61,22 @@ export function useSearch(): UseSearchReturn {
   const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const currentSearchRef = useRef<string>('')
 
-  const loadSearchHistory = useCallback(async () => {
+  const loadRecentSearches = useCallback(async () => {
     try {
-      const stored = await AsyncStorage.getItem(SEARCH_HISTORY_KEY)
+      const stored = await AsyncStorage.getItem(RECENT_SEARCHES_KEY)
       if (stored) {
-        const history = JSON.parse(stored)
-        setSearchHistory(Array.isArray(history) ? history : [])
+        const searches = JSON.parse(stored)
+        setRecentSearches(Array.isArray(searches) ? searches : [])
       }
     } catch (error) {
-      console.warn('Failed to load search history:', error)
+      console.warn('Failed to load recent searches:', error)
     }
   }, [])
 
-  // Load search history on mount
+  // Load recent searches on mount
   useEffect(() => {
-    loadSearchHistory()
-  }, [loadSearchHistory])
+    loadRecentSearches()
+  }, [loadRecentSearches])
 
   // Debounced search effect
   useEffect(() => {
@@ -100,16 +109,6 @@ export function useSearch(): UseSearchReturn {
           if (currentSearchRef.current === trimmedQuery) {
             setResults(searchResults)
             setShowResults(true)
-
-            // Add to search history
-            if (trimmedQuery.length >= 2) {
-              setSearchHistory(prev => {
-                const filtered = prev.filter(item => item !== trimmedQuery)
-                const newHistory = [trimmedQuery, ...filtered].slice(0, MAX_SEARCH_HISTORY)
-                saveSearchHistory(newHistory)
-                return newHistory
-              })
-            }
           }
         } catch (searchError) {
           console.error('Search failed:', searchError)
@@ -136,26 +135,30 @@ export function useSearch(): UseSearchReturn {
     }
   }, [query, filters])
 
-  const saveSearchHistory = async (history: string[]) => {
+  const saveRecentSearches = async (searches: RecentSearchItem[]) => {
     try {
-      await AsyncStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history))
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(searches))
     } catch (error) {
-      console.warn('Failed to save search history:', error)
+      console.warn('Failed to save recent searches:', error)
     }
   }
 
-  const addToSearchHistory = useCallback(
-    (searchQuery: string) => {
-      const trimmedQuery = searchQuery.trim()
-      if (!trimmedQuery || trimmedQuery.length < 2) return
+  const addToRecentSearches = useCallback(
+    (item: Omit<RecentSearchItem, 'timestamp'>) => {
+      const newItem: RecentSearchItem = {
+        ...item,
+        timestamp: Date.now()
+      }
 
-      setSearchHistory(prev => {
-        // Remove existing instance if present
-        const filtered = prev.filter(item => item !== trimmedQuery)
-        // Add to beginning
-        const newHistory = [trimmedQuery, ...filtered].slice(0, MAX_SEARCH_HISTORY)
-        saveSearchHistory(newHistory)
-        return newHistory
+      setRecentSearches(prev => {
+        // Remove existing instance if present (same id and type)
+        const filtered = prev.filter(existing =>
+          !(existing.id === newItem.id && existing.type === newItem.type)
+        )
+        // Add to beginning and limit to MAX_RECENT_SEARCHES
+        const newSearches = [newItem, ...filtered].slice(0, MAX_RECENT_SEARCHES)
+        saveRecentSearches(newSearches)
+        return newSearches
       })
     },
     []
@@ -186,7 +189,6 @@ export function useSearch(): UseSearchReturn {
         if (currentSearchRef.current === trimmedQuery) {
           setResults(searchResults)
           setShowResults(true)
-          addToSearchHistory(trimmedQuery)
         }
       } catch (searchError) {
         console.error('Search failed:', searchError)
@@ -200,7 +202,7 @@ export function useSearch(): UseSearchReturn {
         }
       }
     },
-    [filters, addToSearchHistory, currentPath]
+    [filters, currentPath]
   )
 
   const setQuery = useCallback((newQuery: string) => {
@@ -228,21 +230,23 @@ export function useSearch(): UseSearchReturn {
     }
   }, [])
 
-  const clearHistory = useCallback(async () => {
-    setSearchHistory([])
+  const clearRecentSearches = useCallback(async () => {
+    setRecentSearches([])
     try {
-      await AsyncStorage.removeItem(SEARCH_HISTORY_KEY)
+      await AsyncStorage.removeItem(RECENT_SEARCHES_KEY)
     } catch (error) {
-      console.warn('Failed to clear search history:', error)
+      console.warn('Failed to clear recent searches:', error)
     }
   }, [])
 
-  const removeHistoryItem = useCallback(
-    (item: string) => {
-      setSearchHistory(prev => {
-        const newHistory = prev.filter(historyItem => historyItem !== item)
-        saveSearchHistory(newHistory)
-        return newHistory
+  const removeRecentSearchItem = useCallback(
+    (item: RecentSearchItem) => {
+      setRecentSearches(prev => {
+        const newSearches = prev.filter(search =>
+          !(search.id === item.id && search.type === item.type)
+        )
+        saveRecentSearches(newSearches)
+        return newSearches
       })
     },
     []
@@ -253,7 +257,7 @@ export function useSearch(): UseSearchReturn {
     query,
     results,
     isSearching,
-    searchHistory,
+    recentSearches,
     filters,
     showResults,
     error,
@@ -263,8 +267,9 @@ export function useSearch(): UseSearchReturn {
     setQuery,
     setFilters,
     clearSearch,
-    clearHistory,
-    removeHistoryItem,
+    clearRecentSearches,
+    removeRecentSearchItem,
+    addToRecentSearches,
     setShowResults,
     executeSearch,
     setCurrentPath,

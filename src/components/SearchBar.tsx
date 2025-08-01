@@ -146,15 +146,40 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
     inputRef.current?.focus()
   }
 
-  const handleHistorySelect = (historyItem: string) => {
-    search.setQuery(historyItem)
-    // Keep the input focused and search results open to show filtered results
-    // Don't blur the input as that would dismiss the search results
+  const handleRecentSearchSelect = (recentItem: any) => {
+    // Navigate to the recent search item
+    if (recentItem.type === 'audio') {
+      onResultSelect?.('audio', {
+        id: recentItem.id,
+        name: recentItem.name,
+        relativePath: recentItem.relativePath
+      })
+    } else if (recentItem.type === 'folder') {
+      onResultSelect?.('folder', {
+        id: recentItem.id,
+        name: recentItem.name,
+        relativePath: recentItem.relativePath
+      })
+    }
+
+    // Clear search bar and dismiss dropdown after navigation
+    search.clearSearch()
+    Keyboard.dismiss()
   }
 
   const handleAudioFileSelect = (audioFile: any) => {
+    // Add to recent searches before navigation
+    search.addToRecentSearches({
+      type: 'audio',
+      name: audioFile.name,
+      relativePath: audioFile.relativePath,
+      id: audioFile.id
+    })
+
     onResultSelect?.('audio', audioFile)
-    search.setShowResults(false)
+
+    // Clear search bar and dismiss dropdown after navigation
+    search.clearSearch()
     Keyboard.dismiss()
   }
 
@@ -176,8 +201,18 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
   }
 
   const handleFolderSelect = (folder: any) => {
+    // Add to recent searches before navigation
+    search.addToRecentSearches({
+      type: 'folder',
+      name: folder.name,
+      relativePath: folder.relativePath,
+      id: folder.id
+    })
+
     onResultSelect?.('folder', folder)
-    search.setShowResults(false)
+
+    // Clear search bar and dismiss dropdown after navigation
+    search.clearSearch()
     Keyboard.dismiss()
   }
 
@@ -260,14 +295,14 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
           <SearchResults
             query={search.query}
             results={search.results}
-            searchHistory={search.searchHistory}
+            recentSearches={search.recentSearches}
             filters={search.filters}
             isSearching={search.isSearching}
             error={search.error}
             onFiltersChange={search.setFilters}
-            onHistorySelect={handleHistorySelect}
-            onHistoryRemove={search.removeHistoryItem}
-            onClearHistory={search.clearHistory}
+            onRecentSearchSelect={handleRecentSearchSelect}
+            onRecentSearchRemove={search.removeRecentSearchItem}
+            onClearRecentSearches={search.clearRecentSearches}
             onAudioFileSelect={handleAudioFileSelect}
             onFolderSelect={handleFolderSelect}
             onAudioPlayPause={handleAudioPlayPause}
