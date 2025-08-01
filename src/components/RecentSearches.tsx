@@ -80,11 +80,7 @@ export function RecentSearches({
               onPress={() => onRecentSearchRemove(item)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Ionicons
-                name="close"
-                size={14}
-                color={theme.colors.text.tertiary}
-              />
+              <Ionicons name="close" size={14} color={theme.colors.text.tertiary} />
             </TouchableOpacity>
           </View>
         ))}
