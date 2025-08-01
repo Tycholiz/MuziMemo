@@ -73,14 +73,26 @@ export function AudioProgressBar({ position, duration, onSeek, style }: AudioPro
   const handleLayout = useCallback(
     (event: any) => {
       const { width } = event.nativeEvent.layout
-      // Use the layout width directly - it's already the content width excluding padding
-      // The track spans the full content width, and scrubber positioning is relative to this
-      setContainerWidth(width)
+      // In React Native, onLayout gives us the content width (excluding padding)
+      // The track spans the full content width minus scrubber margins
+      // Track goes from SCRUBBER_SIZE/2 to width - SCRUBBER_SIZE/2
+      // So the available width for scrubber movement is width - SCRUBBER_SIZE
+      const availableWidth = width - SCRUBBER_SIZE
+      setContainerWidth(availableWidth)
+
+      // Debug logging to understand the layout
+      console.log('🎯 AudioProgressBar Layout:', {
+        layoutWidth: width,
+        availableWidth,
+        scrubberSize: SCRUBBER_SIZE,
+        trackStart: SCRUBBER_SIZE / 2,
+        trackEnd: width - SCRUBBER_SIZE / 2,
+      })
 
       // Initialize scrubber position immediately when container width is available
-      if (width > 0 && safeDuration > 0) {
+      if (availableWidth > 0 && safeDuration > 0) {
         const progress = safePosition / safeDuration
-        const initialX = progress * width
+        const initialX = progress * availableWidth
         scrubberX.value = initialX
       }
     },
@@ -161,6 +173,21 @@ export function AudioProgressBar({ position, duration, onSeek, style }: AudioPro
       const targetX = progress * safeContainerWidth
       // Ensure targetX is within bounds (0 to containerWidth)
       const clampedTargetX = Math.min(Math.max(targetX, 0), safeContainerWidth)
+
+      // Debug logging for scrubber positioning
+      if (progress > 0.9) { // Log when near the end
+        console.log('🎯 Scrubber Position:', {
+          position: safePosition,
+          duration: safeDuration,
+          progress,
+          containerWidth: safeContainerWidth,
+          targetX,
+          clampedTargetX,
+          scrubberStart: SCRUBBER_SIZE / 2,
+          finalPosition: SCRUBBER_SIZE / 2 + clampedTargetX,
+        })
+      }
+
       // Use smooth animation with longer duration for fluid movement
       scrubberX.value = withTiming(clampedTargetX, { duration: 200 })
     }
