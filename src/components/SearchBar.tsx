@@ -132,7 +132,10 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
     // Always hide dropdown when search field loses focus
     // Use timeout to allow for result selection before hiding
     setTimeout(() => {
-      search.setShowResults(false)
+      // Don't hide if user is actively interacting with the dropdown (scrolling)
+      if (!isInteractingWithDropdown.current) {
+        search.setShowResults(false)
+      }
     }, 300)
   }
 
