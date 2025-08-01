@@ -1,6 +1,8 @@
 import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import Toast from 'react-native-toast-message'
+import { StyleSheet } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { AppProviders } from '../contexts/AppProviders'
 import { toastConfig } from '../components/CustomToast'
@@ -11,10 +13,18 @@ import { toastConfig } from '../components/CustomToast'
  */
 export default function RootLayout() {
   return (
-    <AppProviders>
-      <StatusBar style="auto" />
-      <Slot />
-      <Toast config={toastConfig} />
-    </AppProviders>
+    <GestureHandlerRootView style={styles.container}>
+      <AppProviders>
+        <StatusBar style="auto" />
+        <Slot />
+        <Toast config={toastConfig} />
+      </AppProviders>
+    </GestureHandlerRootView>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+})
