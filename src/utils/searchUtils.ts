@@ -11,6 +11,7 @@ export type SearchableAudioFile = {
   uri: string
   size: number
   createdAt: Date
+  modificationTime?: number // From FileSystem.FileInfo
   duration?: number
   relativePath: string // Path relative to recordings directory
   parentPath: string // Full parent directory path
@@ -136,6 +137,7 @@ async function searchDirectory(
               uri: itemPath,
               size: (itemInfo as any).size || 0,
               createdAt: new Date((itemInfo as any).modificationTime || Date.now()),
+              modificationTime: (itemInfo as any).modificationTime,
               relativePath: itemRelativePath,
               parentPath: fullPath,
             })
@@ -163,17 +165,65 @@ function isAudioFile(fileName: string): boolean {
 }
 
 /**
- * Formats a folder path for display using arrow separators
+ * Formats a folder path for display using arrow separators and house icon
  * @param relativePath - Path relative to recordings directory
- * @returns Formatted path string
+ * @returns Formatted path string with house icon
  */
 export function formatFolderPath(relativePath: string): string {
-  if (!relativePath) {
-    return 'Home'
+  if (!relativePath || relativePath === '/') {
+    return '🏠'
   }
-  
-  const parts = relativePath.split('/')
-  return parts.join(' > ')
+
+  const parts = relativePath.split('/').filter(part => part.length > 0)
+  return `🏠 > ${parts.join(' > ')}`
+}
+
+/**
+ * Formats a file path for display, showing only the directory path with house icon
+ * @param relativePath - Full file path relative to recordings directory
+ * @returns Formatted directory path string with house icon
+ */
+export function formatFilePath(relativePath: string): string {
+  if (!relativePath) {
+    return '🏠'
+  }
+
+  // Get directory path by removing the filename
+  const parts = relativePath.split('/').filter(part => part.length > 0)
+  if (parts.length <= 1) {
+    return '🏠'
+  }
+
+  // Remove the last part (filename) to get directory path
+  const directoryParts = parts.slice(0, -1)
+  return `🏠 > ${directoryParts.join(' > ')}`
+}
+
+/**
+ * Truncates a path string intelligently, preserving important information
+ * @param path - Path string to truncate
+ * @param maxLength - Maximum length of the truncated string
+ * @returns Truncated path string
+ */
+export function truncatePathSmart(path: string, maxLength: number = 40): string {
+  if (path.length <= maxLength) {
+    return path
+  }
+
+  // If it starts with house icon, preserve that
+  const hasHouseIcon = path.startsWith('🏠')
+  const prefix = hasHouseIcon ? '🏠 > ' : ''
+  const pathWithoutPrefix = hasHouseIcon ? path.substring(5) : path
+
+  if (pathWithoutPrefix.length <= maxLength - prefix.length) {
+    return path
+  }
+
+  // Truncate from the beginning, keeping the end visible
+  const availableLength = maxLength - prefix.length - 3 // 3 for "..."
+  const truncatedPath = '...' + pathWithoutPrefix.slice(-availableLength)
+
+  return prefix + truncatedPath
 }
 
 /**

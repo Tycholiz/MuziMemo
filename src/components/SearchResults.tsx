@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { theme } from '../utils/theme'
 import { SearchFilters } from './SearchFilters'
 import { RecentSearches } from './RecentSearches'
-import { formatFolderPath, truncatePath, getParentDirectoryPath } from '../utils/searchUtils'
+import { formatFolderPath, formatFilePath, truncatePathSmart } from '../utils/searchUtils'
 import type { SearchResults as SearchResultsType, SearchFilters as SearchFiltersType } from '../utils/searchUtils'
 import type { RecentSearchItem } from '../hooks/useSearch'
 
@@ -204,11 +204,11 @@ export function SearchResults({
                           {audioFile.name}
                         </Text>
                         <Text style={styles.audioFileDetails}>
-                          {formatDate(audioFile.createdAt)} • {formatFileSize(audioFile.size)}
+                          {formatDate(audioFile.modificationTime ? new Date(audioFile.modificationTime) : audioFile.createdAt)} • {formatFileSize(audioFile.size)}
                           {audioFile.duration && ` • ${audioFile.duration}`}
                         </Text>
                         <Text style={styles.audioFilePath} numberOfLines={1}>
-                          {formatFolderPath(getParentDirectoryPath(audioFile.relativePath).join('/'))}
+                          {truncatePathSmart(formatFilePath(audioFile.relativePath), 45)}
                         </Text>
                       </View>
                     </View>
@@ -251,7 +251,7 @@ export function SearchResults({
                         {folder.name}
                       </Text>
                       <Text style={styles.folderPath} numberOfLines={1}>
-                        {truncatePath(formatFolderPath(folder.relativePath), 40)}
+                        {truncatePathSmart(formatFolderPath(folder.relativePath), 45)}
                       </Text>
                       <Text style={styles.folderItemCount}>
                         {folder.itemCount} {folder.itemCount === 1 ? 'item' : 'items'}

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
+import { formatFilePath, formatFolderPath, truncatePathSmart } from '../utils/searchUtils'
 import type { RecentSearchItem } from '../hooks/useSearch'
 
 export type RecentSearchesProps = {
@@ -32,10 +33,14 @@ export function RecentSearches({
     return type === 'audio' ? 'musical-notes' : 'folder'
   }
 
-  const formatPath = (relativePath: string) => {
-    // Remove leading slash and limit length
-    const cleanPath = relativePath.replace(/^\/+/, '')
-    return cleanPath.length > 30 ? `...${cleanPath.slice(-27)}` : cleanPath
+  const formatPath = (item: RecentSearchItem) => {
+    if (item.type === 'audio') {
+      // For audio files, show the directory path (not including the filename)
+      return truncatePathSmart(formatFilePath(item.relativePath), 35)
+    } else {
+      // For folders, show the full folder path
+      return truncatePathSmart(formatFolderPath(item.relativePath), 35)
+    }
   }
 
   return (
@@ -70,7 +75,7 @@ export function RecentSearches({
                   {item.name}
                 </Text>
                 <Text style={styles.recentPath} numberOfLines={1}>
-                  {formatPath(item.relativePath)}
+                  {formatPath(item)}
                 </Text>
               </View>
             </TouchableOpacity>

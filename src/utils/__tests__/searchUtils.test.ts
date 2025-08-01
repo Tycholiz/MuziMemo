@@ -3,6 +3,8 @@ import * as FileSystem from 'expo-file-system'
 import {
   searchFileSystem,
   formatFolderPath,
+  formatFilePath,
+  truncatePathSmart,
   getParentDirectoryPath,
   truncatePath,
 } from '../searchUtils'
@@ -49,16 +51,16 @@ describe('searchUtils', () => {
   })
 
   describe('formatFolderPath', () => {
-    it('formats empty path as Home', () => {
-      expect(formatFolderPath('')).toBe('Home')
+    it('formats empty path as house icon', () => {
+      expect(formatFolderPath('')).toBe('🏠')
     })
 
-    it('formats path with arrow separators', () => {
-      expect(formatFolderPath('Music/Song Ideas/Demos')).toBe('Music > Song Ideas > Demos')
+    it('formats path with house icon and arrow separators', () => {
+      expect(formatFolderPath('Music/Song Ideas/Demos')).toBe('🏠 > Music > Song Ideas > Demos')
     })
 
-    it('handles single folder', () => {
-      expect(formatFolderPath('Music')).toBe('Music')
+    it('handles single folder with house icon', () => {
+      expect(formatFolderPath('Music')).toBe('🏠 > Music')
     })
   })
 
@@ -93,9 +95,43 @@ describe('searchUtils', () => {
     it('uses default max length of 50', () => {
       const longPath = 'a'.repeat(60)
       const truncated = truncatePath(longPath)
-      
+
       expect(truncated).toHaveLength(50)
       expect(truncated.startsWith('...')).toBe(true)
+    })
+  })
+
+  describe('formatFilePath', () => {
+    it('formats file path showing only directory with house icon', () => {
+      expect(formatFilePath('Music/Song Ideas/demo.m4a')).toBe('🏠 > Music > Song Ideas')
+    })
+
+    it('handles root level files', () => {
+      expect(formatFilePath('demo.m4a')).toBe('🏠')
+    })
+
+    it('handles empty path', () => {
+      expect(formatFilePath('')).toBe('🏠')
+    })
+  })
+
+  describe('truncatePathSmart', () => {
+    it('returns path unchanged if within limit', () => {
+      expect(truncatePathSmart('🏠 > Music', 20)).toBe('🏠 > Music')
+    })
+
+    it('truncates long paths intelligently', () => {
+      const longPath = '🏠 > Very > Long > Path > With > Many > Folders > Here'
+      const result = truncatePathSmart(longPath, 30)
+      expect(result).toMatch(/^🏠 > \.\.\./)
+      expect(result.length).toBeLessThanOrEqual(30)
+    })
+
+    it('handles paths without house icon', () => {
+      const longPath = 'Very/Long/Path/With/Many/Folders/Here'
+      const result = truncatePathSmart(longPath, 20)
+      expect(result).toMatch(/^\.\.\./)
+      expect(result.length).toBeLessThanOrEqual(20)
     })
   })
 })
