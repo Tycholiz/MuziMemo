@@ -12,7 +12,8 @@ import { getParentDirectoryPath } from '../utils/searchUtils'
 /**
  * BrowseScreen Component
  * Main screen for browsing and managing recorded audio files
- * Uses FileManagerContext and AudioPlayerContext for state management
+ * Uses FileManagerContext for state management
+ * Media player is now handled at the tab layout level for persistence
  */
 export default function BrowseScreen() {
   const audioPlayer = useAudioPlayerContext()
@@ -82,8 +83,6 @@ export default function BrowseScreen() {
     // Dismiss search dropdown when touching outside
     searchBarRef.current?.dismissDropdown()
   }, [])
-
-
 
   return (
     <Screen padding={false}>

@@ -2,6 +2,7 @@ import React from 'react'
 import { View, StyleSheet, ViewStyle } from 'react-native'
 
 import { MediaCard } from './Card'
+import { AudioProgressBar } from './AudioProgressBar'
 import { theme } from '@utils/theme'
 
 export type BottomMediaPlayerProps = {
@@ -15,6 +16,9 @@ export type BottomMediaPlayerProps = {
   onNext?: () => void
   onPrevious?: () => void
   onMore?: () => void
+  onSeek?: (position: number) => void
+  position?: number
+  durationSeconds?: number
   style?: ViewStyle
 }
 
@@ -33,6 +37,9 @@ export function BottomMediaPlayer({
   onNext,
   onPrevious,
   onMore,
+  onSeek,
+  position = 0,
+  durationSeconds = 0,
   style,
 }: BottomMediaPlayerProps) {
   if (!isVisible) {
@@ -62,7 +69,18 @@ export function BottomMediaPlayer({
         onNext={onNext}
         onPrevious={onPrevious}
         onMore={onMore}
+        style={styles.mediaCard}
       />
+
+      {/* Spotify-style progress bar */}
+      {onSeek && durationSeconds > 0 && (
+        <AudioProgressBar
+          position={position}
+          duration={durationSeconds}
+          onSeek={onSeek}
+          style={styles.progressBar}
+        />
+      )}
     </View>
   )
 }
@@ -70,6 +88,19 @@ export function BottomMediaPlayer({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 0,
-    paddingBottom: theme.spacing.lg,
-  } as ViewStyle,
+    paddingBottom: 0,
+    opacity: 0.97,
+  },
+  mediaCard: {
+    borderRadius: 0, // Remove border radius for seamless integration
+    marginBottom: 0, // Remove bottom margin
+    backgroundColor: theme.colors.background.secondary, // Match tab bar background for seamless integration
+    borderTopLeftRadius: theme.borderRadius.md,
+    borderTopRightRadius: theme.borderRadius.md,
+  },
+  progressBar: {
+    backgroundColor: theme.colors.background.secondary,
+    paddingTop: 0,
+    paddingBottom: theme.spacing.xs,
+  },
 })

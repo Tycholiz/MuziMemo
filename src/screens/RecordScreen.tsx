@@ -16,6 +16,7 @@ import {
 import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/index'
 import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
 import { useFileManager } from '../contexts/FileManagerContext'
+import { useMediaPlayerSpacing } from '../hooks/useMediaPlayerSpacing'
 import { theme } from '../utils/theme'
 import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
 import {
@@ -38,6 +39,7 @@ export default function RecordScreen() {
   const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
 
   const fileManager = useFileManager()
+  const { bottomPadding } = useMediaPlayerSpacing()
 
   // State for audio quality
   const [audioQuality, setAudioQuality] = useState<AudioQuality>('high')
@@ -463,31 +465,31 @@ export default function RecordScreen() {
 
   return (
     <Screen backgroundColor={theme.colors.background.primary}>
-      <Container flex>
+      <Container flex style={{ paddingBottom: bottomPadding }}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>New Recording</Text>
           <Icon name="settings-outline" size="lg" color="secondary" />
         </View>
 
-        <Spacer size="xl" />
+        <Spacer size="md" />
 
         {/* Status Badge */}
         <RecordingStatusBadge status={status} isInitialized={isInitialized} hasPermissions={hasPermissions} />
 
-        <Spacer size="lg" />
+        <Spacer size="sm" />
 
         {/* Duration Display */}
         <View style={styles.durationContainer}>
           <Text style={styles.durationText}>{formatDurationFromSeconds(duration)}</Text>
         </View>
 
-        <Spacer size="lg" />
+        <Spacer size="sm" />
 
         {/* Sound Wave Visualization */}
         <SoundWave audioLevel={audioLevel} isActive={status === 'recording'} style={styles.soundWave} />
 
-        <Spacer size="lg" />
+        <Spacer size="md" />
 
         {/* Record Button */}
         <View style={styles.recordButtonContainer}>
@@ -508,7 +510,7 @@ export default function RecordScreen() {
         {/* Action Buttons - Show when recording or paused */}
         {(status === 'recording' || status === 'paused') && (
           <>
-            <Spacer size="lg" />
+            <Spacer size="md" />
             <View style={styles.actionButtonsContainer}>
               {/* Cancel Button - Only show during active recording */}
               {status === 'recording' && (
@@ -533,7 +535,8 @@ export default function RecordScreen() {
           </>
         )}
 
-        <Spacer size="2xl" />
+        {/* Flexible spacer to push bottom content down */}
+        <View style={styles.flexibleSpacer} />
 
         {/* Folder Selector with Go To Button */}
         <View style={styles.folderSelectorContainer}>
@@ -548,7 +551,7 @@ export default function RecordScreen() {
           />
         </View>
 
-        <Spacer size="lg" />
+        <Spacer size="sm" />
 
         {/* Audio Quality Dropdown */}
         <Dropdown
@@ -610,7 +613,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   durationText: {
-    fontSize: 48,
+    fontSize: 40, // Reduced from 48 to save vertical space
     fontWeight: theme.typography.fontWeight.bold,
     color: theme.colors.text.primary,
     fontFamily: 'monospace',
@@ -678,6 +681,10 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.primary,
     textAlign: 'center',
+  },
+  flexibleSpacer: {
+    flex: 1,
+    minHeight: theme.spacing.md,
   },
   errorContainer: {
     backgroundColor: theme.colors.error,

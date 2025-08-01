@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { ExpoRoot } from 'expo-router'
+import { Slot } from 'expo-router'
 
 /**
  * Main App component that wraps the Expo Router with GestureHandlerRootView
@@ -9,7 +9,7 @@ import { ExpoRoot } from 'expo-router'
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ExpoRoot context={require.context('./src/app')} />
+      <Slot />
     </GestureHandlerRootView>
   )
 }

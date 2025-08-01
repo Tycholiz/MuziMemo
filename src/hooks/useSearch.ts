@@ -49,7 +49,7 @@ export function useSearch(): UseSearchReturn {
   const [showResults, setShowResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const currentSearchRef = useRef<string>('')
 
   const loadSearchHistory = useCallback(async () => {
