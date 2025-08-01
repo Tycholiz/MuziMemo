@@ -148,7 +148,8 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
 
   const handleHistorySelect = (historyItem: string) => {
     search.setQuery(historyItem)
-    inputRef.current?.blur()
+    // Keep the input focused and search results open to show filtered results
+    // Don't blur the input as that would dismiss the search results
   }
 
   const handleAudioFileSelect = (audioFile: any) => {
@@ -186,6 +187,14 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
     inputRef.current?.blur()
   }
 
+  const handleSubmitEditing = () => {
+    // Handle keyboard "Search" button press
+    // For real-time search, we don't want to dismiss the results
+    // Just dismiss the keyboard but keep the search results visible
+    Keyboard.dismiss()
+    // Don't blur the input to prevent search results from being dismissed
+  }
+
   const showDropdown = search.showResults
 
   return (
@@ -208,7 +217,8 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
           onChangeText={search.setQuery}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          returnKeyType="search"
+          returnKeyType="done"
+          onSubmitEditing={handleSubmitEditing}
           autoCapitalize="none"
           autoCorrect={false}
           selectionColor={theme.colors.primary}
