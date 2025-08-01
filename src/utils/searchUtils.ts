@@ -167,36 +167,36 @@ function isAudioFile(fileName: string): boolean {
 /**
  * Formats a folder path for display using arrow separators and house icon
  * @param relativePath - Path relative to recordings directory
- * @returns Formatted path string with house icon
+ * @returns Formatted path string with house icon placeholder
  */
 export function formatFolderPath(relativePath: string): string {
   if (!relativePath || relativePath === '/') {
-    return '🏠'
+    return '[HOME]'
   }
 
   const parts = relativePath.split('/').filter(part => part.length > 0)
-  return `🏠 > ${parts.join(' > ')}`
+  return `[HOME] > ${parts.join(' > ')}`
 }
 
 /**
  * Formats a file path for display, showing only the directory path with house icon
  * @param relativePath - Full file path relative to recordings directory
- * @returns Formatted directory path string with house icon
+ * @returns Formatted directory path string with house icon placeholder
  */
 export function formatFilePath(relativePath: string): string {
   if (!relativePath) {
-    return '🏠'
+    return '[HOME]'
   }
 
   // Get directory path by removing the filename
   const parts = relativePath.split('/').filter(part => part.length > 0)
   if (parts.length <= 1) {
-    return '🏠'
+    return '[HOME]'
   }
 
   // Remove the last part (filename) to get directory path
   const directoryParts = parts.slice(0, -1)
-  return `🏠 > ${directoryParts.join(' > ')}`
+  return `[HOME] > ${directoryParts.join(' > ')}`
 }
 
 /**
@@ -210,10 +210,10 @@ export function truncatePathSmart(path: string, maxLength: number = 40): string 
     return path
   }
 
-  // If it starts with house icon, preserve that
-  const hasHouseIcon = path.startsWith('🏠')
-  const prefix = hasHouseIcon ? '🏠 > ' : ''
-  const pathWithoutPrefix = hasHouseIcon ? path.substring(5) : path
+  // If it starts with house icon placeholder, preserve that
+  const hasHouseIcon = path.startsWith('[HOME]')
+  const prefix = hasHouseIcon ? '[HOME] > ' : ''
+  const pathWithoutPrefix = hasHouseIcon ? path.substring(9) : path
 
   if (pathWithoutPrefix.length <= maxLength - prefix.length) {
     return path
@@ -224,6 +224,27 @@ export function truncatePathSmart(path: string, maxLength: number = 40): string 
   const truncatedPath = '...' + pathWithoutPrefix.slice(-availableLength)
 
   return prefix + truncatedPath
+}
+
+/**
+ * Formats a folder path for Recent Searches, excluding the folder itself from the path
+ * @param relativePath - Path relative to recordings directory
+ * @returns Formatted parent directory path string
+ */
+export function formatFolderPathForRecent(relativePath: string): string {
+  if (!relativePath || relativePath === '/') {
+    return '[HOME]'
+  }
+
+  // Get parent directory path by removing the last folder
+  const parts = relativePath.split('/').filter(part => part.length > 0)
+  if (parts.length <= 1) {
+    return '[HOME]'
+  }
+
+  // Remove the last part (the folder itself) to get parent directory path
+  const parentParts = parts.slice(0, -1)
+  return `[HOME] > ${parentParts.join(' > ')}`
 }
 
 /**

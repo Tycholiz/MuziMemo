@@ -133,7 +133,40 @@ export function useSearch(): UseSearchReturn {
         clearTimeout(debounceTimeoutRef.current)
       }
     }
-  }, [query, filters])
+  }, [query, filters, currentPath])
+
+  // Re-execute search when filters change (without debounce)
+  useEffect(() => {
+    if (query.trim() && showResults) {
+      // Re-execute search immediately when filters change
+      const trimmedQuery = query.trim()
+      if (trimmedQuery) {
+        currentSearchRef.current = trimmedQuery
+        setIsSearching(true)
+        setError(null)
+
+        searchFileSystem(trimmedQuery, filters, currentPath)
+          .then(searchResults => {
+            if (currentSearchRef.current === trimmedQuery) {
+              setResults(searchResults)
+              setShowResults(true)
+            }
+          })
+          .catch(searchError => {
+            console.error('Search failed:', searchError)
+            if (currentSearchRef.current === trimmedQuery) {
+              setError('Search failed. Please try again.')
+              setResults({ audioFiles: [], folders: [] })
+            }
+          })
+          .finally(() => {
+            if (currentSearchRef.current === trimmedQuery) {
+              setIsSearching(false)
+            }
+          })
+      }
+    }
+  }, [filters, currentPath])
 
   const saveRecentSearches = async (searches: RecentSearchItem[]) => {
     try {

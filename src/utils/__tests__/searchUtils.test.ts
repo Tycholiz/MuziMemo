@@ -4,6 +4,7 @@ import {
   searchFileSystem,
   formatFolderPath,
   formatFilePath,
+  formatFolderPathForRecent,
   truncatePathSmart,
   getParentDirectoryPath,
   truncatePath,
@@ -51,16 +52,16 @@ describe('searchUtils', () => {
   })
 
   describe('formatFolderPath', () => {
-    it('formats empty path as house icon', () => {
-      expect(formatFolderPath('')).toBe('🏠')
+    it('formats empty path as home placeholder', () => {
+      expect(formatFolderPath('')).toBe('[HOME]')
     })
 
-    it('formats path with house icon and arrow separators', () => {
-      expect(formatFolderPath('Music/Song Ideas/Demos')).toBe('🏠 > Music > Song Ideas > Demos')
+    it('formats path with home placeholder and arrow separators', () => {
+      expect(formatFolderPath('Music/Song Ideas/Demos')).toBe('[HOME] > Music > Song Ideas > Demos')
     })
 
-    it('handles single folder with house icon', () => {
-      expect(formatFolderPath('Music')).toBe('🏠 > Music')
+    it('handles single folder with home placeholder', () => {
+      expect(formatFolderPath('Music')).toBe('[HOME] > Music')
     })
   })
 
@@ -102,32 +103,46 @@ describe('searchUtils', () => {
   })
 
   describe('formatFilePath', () => {
-    it('formats file path showing only directory with house icon', () => {
-      expect(formatFilePath('Music/Song Ideas/demo.m4a')).toBe('🏠 > Music > Song Ideas')
+    it('formats file path showing only directory with home placeholder', () => {
+      expect(formatFilePath('Music/Song Ideas/demo.m4a')).toBe('[HOME] > Music > Song Ideas')
     })
 
     it('handles root level files', () => {
-      expect(formatFilePath('demo.m4a')).toBe('🏠')
+      expect(formatFilePath('demo.m4a')).toBe('[HOME]')
     })
 
     it('handles empty path', () => {
-      expect(formatFilePath('')).toBe('🏠')
+      expect(formatFilePath('')).toBe('[HOME]')
+    })
+  })
+
+  describe('formatFolderPathForRecent', () => {
+    it('formats folder path showing only parent directory', () => {
+      expect(formatFolderPathForRecent('Music/Song Ideas/Demos')).toBe('[HOME] > Music > Song Ideas')
+    })
+
+    it('handles root level folders', () => {
+      expect(formatFolderPathForRecent('Music')).toBe('[HOME]')
+    })
+
+    it('handles empty path', () => {
+      expect(formatFolderPathForRecent('')).toBe('[HOME]')
     })
   })
 
   describe('truncatePathSmart', () => {
     it('returns path unchanged if within limit', () => {
-      expect(truncatePathSmart('🏠 > Music', 20)).toBe('🏠 > Music')
+      expect(truncatePathSmart('[HOME] > Music', 20)).toBe('[HOME] > Music')
     })
 
     it('truncates long paths intelligently', () => {
-      const longPath = '🏠 > Very > Long > Path > With > Many > Folders > Here'
+      const longPath = '[HOME] > Very > Long > Path > With > Many > Folders > Here'
       const result = truncatePathSmart(longPath, 30)
-      expect(result).toMatch(/^🏠 > \.\.\./)
+      expect(result).toMatch(/^\[HOME\] > \.\.\./)
       expect(result.length).toBeLessThanOrEqual(30)
     })
 
-    it('handles paths without house icon', () => {
+    it('handles paths without home placeholder', () => {
       const longPath = 'Very/Long/Path/With/Many/Folders/Here'
       const result = truncatePathSmart(longPath, 20)
       expect(result).toMatch(/^\.\.\./)

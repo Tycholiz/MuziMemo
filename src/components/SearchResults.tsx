@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { theme } from '../utils/theme'
 import { SearchFilters } from './SearchFilters'
 import { RecentSearches } from './RecentSearches'
+import { PathDisplay } from './PathDisplay'
 import { formatFolderPath, formatFilePath, truncatePathSmart } from '../utils/searchUtils'
 import type { SearchResults as SearchResultsType, SearchFilters as SearchFiltersType } from '../utils/searchUtils'
 import type { RecentSearchItem } from '../hooks/useSearch'
@@ -207,9 +208,13 @@ export function SearchResults({
                           {formatDate(audioFile.modificationTime ? new Date(audioFile.modificationTime) : audioFile.createdAt)} • {formatFileSize(audioFile.size)}
                           {audioFile.duration && ` • ${audioFile.duration}`}
                         </Text>
-                        <Text style={styles.audioFilePath} numberOfLines={1}>
-                          {truncatePathSmart(formatFilePath(audioFile.relativePath), 45)}
-                        </Text>
+                        <PathDisplay
+                          path={truncatePathSmart(formatFilePath(audioFile.relativePath), 45)}
+                          textStyle={styles.audioFilePath}
+                          iconSize={12}
+                          iconColor={theme.colors.text.secondary}
+                          numberOfLines={1}
+                        />
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -250,9 +255,13 @@ export function SearchResults({
                       <Text style={styles.folderName} numberOfLines={1}>
                         {folder.name}
                       </Text>
-                      <Text style={styles.folderPath} numberOfLines={1}>
-                        {truncatePathSmart(formatFolderPath(folder.relativePath), 45)}
-                      </Text>
+                      <PathDisplay
+                        path={truncatePathSmart(formatFolderPath(folder.relativePath), 45)}
+                        textStyle={styles.folderPath}
+                        iconSize={12}
+                        iconColor={theme.colors.text.secondary}
+                        numberOfLines={1}
+                      />
                       <Text style={styles.folderItemCount}>
                         {folder.itemCount} {folder.itemCount === 1 ? 'item' : 'items'}
                       </Text>
