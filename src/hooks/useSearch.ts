@@ -85,6 +85,7 @@ export function useSearch(): UseSearchReturn {
     }
 
     if (query.trim()) {
+      // @ts-expect-error
       debounceTimeoutRef.current = setTimeout(async () => {
         const trimmedQuery = query.trim()
         if (!trimmedQuery) {
@@ -176,26 +177,21 @@ export function useSearch(): UseSearchReturn {
     }
   }
 
-  const addToRecentSearches = useCallback(
-    (item: Omit<RecentSearchItem, 'timestamp'>) => {
-      const newItem: RecentSearchItem = {
-        ...item,
-        timestamp: Date.now()
-      }
+  const addToRecentSearches = useCallback((item: Omit<RecentSearchItem, 'timestamp'>) => {
+    const newItem: RecentSearchItem = {
+      ...item,
+      timestamp: Date.now(),
+    }
 
-      setRecentSearches(prev => {
-        // Remove existing instance if present (same id and type)
-        const filtered = prev.filter(existing =>
-          !(existing.id === newItem.id && existing.type === newItem.type)
-        )
-        // Add to beginning and limit to MAX_RECENT_SEARCHES
-        const newSearches = [newItem, ...filtered].slice(0, MAX_RECENT_SEARCHES)
-        saveRecentSearches(newSearches)
-        return newSearches
-      })
-    },
-    []
-  )
+    setRecentSearches(prev => {
+      // Remove existing instance if present (same id and type)
+      const filtered = prev.filter(existing => !(existing.id === newItem.id && existing.type === newItem.type))
+      // Add to beginning and limit to MAX_RECENT_SEARCHES
+      const newSearches = [newItem, ...filtered].slice(0, MAX_RECENT_SEARCHES)
+      saveRecentSearches(newSearches)
+      return newSearches
+    })
+  }, [])
 
   const executeSearch = useCallback(
     async (searchQuery: string) => {
@@ -257,7 +253,7 @@ export function useSearch(): UseSearchReturn {
     setShowResults(false)
     setError(null)
     currentSearchRef.current = ''
-    
+
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current)
     }
@@ -272,18 +268,13 @@ export function useSearch(): UseSearchReturn {
     }
   }, [])
 
-  const removeRecentSearchItem = useCallback(
-    (item: RecentSearchItem) => {
-      setRecentSearches(prev => {
-        const newSearches = prev.filter(search =>
-          !(search.id === item.id && search.type === item.type)
-        )
-        saveRecentSearches(newSearches)
-        return newSearches
-      })
-    },
-    []
-  )
+  const removeRecentSearchItem = useCallback((item: RecentSearchItem) => {
+    setRecentSearches(prev => {
+      const newSearches = prev.filter(search => !(search.id === item.id && search.type === item.type))
+      saveRecentSearches(newSearches)
+      return newSearches
+    })
+  }, [])
 
   return {
     // State

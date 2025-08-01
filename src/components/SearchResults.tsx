@@ -65,14 +65,6 @@ export function SearchResults({
   const displayedAudioFiles = results.audioFiles.slice(0, MAX_AUDIO_FILES_DISPLAY)
   const displayedFolders = results.folders.slice(0, MAX_FOLDERS_DISPLAY)
 
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-  }
-
   const handleScrollBegin = () => {
     // Notify parent that scrolling started (to prevent dismissal)
     onScrollStart?.()

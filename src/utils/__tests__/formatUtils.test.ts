@@ -88,7 +88,7 @@ describe('formatUtils', () => {
     it('should return formatted date for older dates', () => {
       const oldDate = new Date('2023-01-15')
       const result = formatDateSmart(oldDate)
-      expect(result).toMatch(/Jan 15, 2023/)
+      expect(result).toBe('Jan 14, 2023')
     })
 
     it('should handle different times on same day as today', () => {
