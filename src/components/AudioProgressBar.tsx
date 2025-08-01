@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { View, StyleSheet, Text } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
   useSharedValue,
@@ -36,6 +36,16 @@ const SCRUBBER_SIZE = 16
 const TRACK_HEIGHT = 3
 const TOUCH_TARGET_SIZE = 44
 
+// Utility function to format time in MM:SS format
+const formatTime = (seconds: number): string => {
+  if (!seconds || seconds < 0) return '0:00'
+
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = Math.floor(seconds % 60)
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
 /**
  * Spotify-style audio progress bar with draggable scrubber
  * Features:
@@ -69,14 +79,14 @@ export function AudioProgressBar({
   // Handle container layout to get width
   const handleLayout = useCallback((event: any) => {
     const { width } = event.nativeEvent.layout
-    // Calculate usable width: total width minus padding on both sides
-    const usableWidth = width - SCRUBBER_SIZE // Account for padding
-    setContainerWidth(usableWidth)
+    // Calculate track width: full width minus scrubber margins on both sides
+    const trackWidth = width - SCRUBBER_SIZE
+    setContainerWidth(trackWidth)
 
     // Initialize scrubber position immediately when container width is available
-    if (usableWidth > 0 && safeDuration > 0) {
+    if (trackWidth > 0 && safeDuration > 0) {
       const progress = safePosition / safeDuration
-      const initialX = progress * usableWidth
+      const initialX = progress * trackWidth
       scrubberX.value = initialX
     }
   }, [safePosition, safeDuration])
@@ -170,7 +180,7 @@ export function AudioProgressBar({
   const scrubberAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { translateX: scrubberX.value + SCRUBBER_SIZE / 2 }, // Offset to align with track start
+        { translateX: scrubberX.value }, // Direct translation without offset
         { scale: scrubberScale.value }
       ]
     }
@@ -178,42 +188,61 @@ export function AudioProgressBar({
 
   const progressAnimatedStyle = useAnimatedStyle(() => {
     return {
-      width: Math.max(progressWidthDerived.value + SCRUBBER_SIZE / 2, 0)
+      width: Math.max(progressWidthDerived.value, 0)
     }
   })
 
   return (
-    <View style={[styles.container, style]} onLayout={handleLayout} ref={containerRef}>
-      {/* Background track (remaining portion) */}
-      <View style={styles.track} />
+    <View style={[styles.wrapper, style]}>
+      {/* Current time timestamp */}
+      <Text style={styles.timestamp}>
+        {formatTime(safePosition)}
+      </Text>
 
-      {/* Progress track (played portion) */}
-      <Animated.View
-        style={[
-          styles.progressTrack,
-          progressAnimatedStyle
-        ]}
-      />
+      {/* Progress bar container */}
+      <View style={styles.container} onLayout={handleLayout} ref={containerRef}>
+        {/* Background track (remaining portion) */}
+        <View style={styles.track} />
 
-      {/* Scrubber with touch target */}
-      <GestureDetector gesture={panGesture}>
+        {/* Progress track (played portion) */}
         <Animated.View
           style={[
-            styles.scrubberContainer,
-            scrubberAnimatedStyle
+            styles.progressTrack,
+            progressAnimatedStyle
           ]}
-        >
-          <View style={styles.touchTarget}>
-            <View style={[styles.scrubber, isScrubbing && styles.scrubberActive]} />
-          </View>
-        </Animated.View>
-      </GestureDetector>
+        />
+
+        {/* Scrubber with touch target */}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[
+              styles.scrubberContainer,
+              scrubberAnimatedStyle
+            ]}
+          >
+            <View style={styles.touchTarget}>
+              <View style={[styles.scrubber, isScrubbing && styles.scrubberActive]} />
+            </View>
+          </Animated.View>
+        </GestureDetector>
+      </View>
+
+      {/* Total duration timestamp */}
+      <Text style={styles.timestamp}>
+        {formatTime(safeDuration)}
+      </Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   container: {
+    flex: 1,
     height: TOUCH_TARGET_SIZE,
     justifyContent: 'center',
     paddingHorizontal: SCRUBBER_SIZE / 2,
@@ -235,6 +264,7 @@ const styles = StyleSheet.create({
   },
   scrubberContainer: {
     position: 'absolute',
+    left: SCRUBBER_SIZE / 2, // Start at track beginning
     width: TOUCH_TARGET_SIZE,
     height: TOUCH_TARGET_SIZE,
     justifyContent: 'center',
@@ -263,5 +293,12 @@ const styles = StyleSheet.create({
   scrubberActive: {
     transform: [{ scale: 1.2 }],
     shadowOpacity: 0.35,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    fontFamily: 'Inter_400Regular',
+    minWidth: 35, // Ensure consistent width for timestamps
+    textAlign: 'center',
   },
 })
