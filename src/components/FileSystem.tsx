@@ -646,21 +646,24 @@ function FileSystemContent() {
               const isInRecentlyDeleted = fileManager.getIsInRecentlyDeleted()
 
               const folderContent = (
-                <View style={styles.folderCard}>
-                  <TouchableOpacity
-                    style={styles.folderContent}
-                    onPress={() => handleFolderPress(folder)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.folderIcon}>
-                      <Ionicons name="folder" size={40} color="#FF4444" />
-                    </View>
-                    <Text style={styles.folderName} numberOfLines={1} ellipsizeMode="tail">
-                      {folder.name}
-                    </Text>
-                    <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
-                  </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.folderContent}
+                  onPress={() => handleFolderPress(folder)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.folderIcon}>
+                    <Ionicons name="folder" size={40} color="#FF4444" />
+                  </View>
+                  <Text style={styles.folderName} numberOfLines={1} ellipsizeMode="tail">
+                    {folder.name}
+                  </Text>
+                  <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
+                </TouchableOpacity>
+              )
 
+              const folderWithMenu = (
+                <View style={styles.folderCard}>
+                  {folderContent}
                   <View style={styles.folderMenuContainer}>
                     <FolderContextMenuModal
                       onRename={() => handleRenameFolder(folder)}
@@ -674,27 +677,31 @@ function FileSystemContent() {
               // Wrap with DropZoneWrapper for drop functionality
               const droppableFolder = (
                 <DropZoneWrapper
-                  key={folder.id}
                   dropTargetId={folder.id}
                   disabled={isInRecentlyDeleted}
                 >
-                  {folderContent}
+                  {folderWithMenu}
                 </DropZoneWrapper>
               )
 
               // Wrap with DraggableWrapper for drag functionality (if not in recently deleted)
               if (!isInRecentlyDeleted) {
                 return (
-                  <DraggableWrapper
-                    key={folder.id}
-                    dragItem={folderDragItem}
-                  >
-                    {droppableFolder}
-                  </DraggableWrapper>
+                  <View key={folder.id} style={styles.folderCardWrapper}>
+                    <DraggableWrapper
+                      dragItem={folderDragItem}
+                    >
+                      {droppableFolder}
+                    </DraggableWrapper>
+                  </View>
                 )
               }
 
-              return droppableFolder
+              return (
+                <View key={folder.id} style={styles.folderCardWrapper}>
+                  {droppableFolder}
+                </View>
+              )
             })}
           </View>
         )}
@@ -936,11 +943,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  folderCardWrapper: {
+    width: '31%', // 3 columns with small gaps
+    marginBottom: 12,
+  },
   folderCard: {
     backgroundColor: theme.colors.surface.primary,
     borderRadius: 12,
-    marginBottom: 12,
-    width: '31%', // 3 columns with small gaps
     minHeight: 100,
     borderWidth: 1,
     borderColor: theme.colors.border.light,

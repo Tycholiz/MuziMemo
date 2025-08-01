@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, fireEvent } from '@testing-library/react-native'
+import { render } from '@testing-library/react-native'
 import { View, Text } from 'react-native'
 
 import { DragDropProvider, useDragDrop } from '../../contexts/DragDropContext'
@@ -40,15 +40,13 @@ function TestDragDropContext() {
 }
 
 describe('DragDrop Components', () => {
-  const mockDropHandler = jest.fn()
-
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
   it('renders DragDropProvider with children', () => {
     const { getByTestId } = render(
-      <DragDropProvider onDropItem={mockDropHandler}>
+      <DragDropProvider>
         <TestDragDropContext />
       </DragDropProvider>
     )
@@ -63,7 +61,7 @@ describe('DragDrop Components', () => {
     const dragItem = createAudioFileDragItem(audioFile, '/recordings')
 
     const { getByTestId } = render(
-      <DragDropProvider onDropItem={mockDropHandler}>
+      <DragDropProvider>
         <TestDraggable dragItem={dragItem} />
       </DragDropProvider>
     )
@@ -73,7 +71,7 @@ describe('DragDrop Components', () => {
 
   it('renders DropZoneWrapper with children', () => {
     const { getByTestId } = render(
-      <DragDropProvider onDropItem={mockDropHandler}>
+      <DragDropProvider>
         <TestDropZone dropTargetId="folder-1" />
       </DragDropProvider>
     )

@@ -38,6 +38,8 @@ export function DraggableWrapper({
 
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => !disabled && !dragDrop.isDragging,
+      onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: () => isDraggingRef.current,
       onMoveShouldSetPanResponderCapture: () => isDraggingRef.current,
       onPanResponderGrant: (evt: GestureResponderEvent) => {
@@ -173,6 +175,6 @@ export function DraggableWrapper({
 
 const styles = StyleSheet.create({
   container: {
-    // No additional styling needed - wrapper should be transparent
+    // No additional styling - let children maintain their layout
   },
 })
