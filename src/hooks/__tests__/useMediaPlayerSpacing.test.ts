@@ -86,7 +86,7 @@ describe('useMediaPlayerSpacing', () => {
       cleanup: jest.fn(),
     })
 
-    rerender()
+    rerender({})
     expect(result.current.bottomPadding).toBe(16)
     expect(result.current.isMediaPlayerVisible).toBe(false)
 
@@ -108,7 +108,7 @@ describe('useMediaPlayerSpacing', () => {
       cleanup: jest.fn(),
     })
 
-    rerender()
+    rerender({})
     expect(result.current.bottomPadding).toBe(92)
     expect(result.current.isMediaPlayerVisible).toBe(true)
   })
