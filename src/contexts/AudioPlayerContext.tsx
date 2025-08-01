@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
@@ -38,6 +38,11 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const [currentClip, setCurrentClip] = useState<AudioClip | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPlayingOverride, setIsPlayingOverride] = useState(false)
+  const [currentPosition, setCurrentPosition] = useState(0)
+  const [currentDuration, setCurrentDuration] = useState(0)
+
+  // Timer ref for position updates
+  const positionUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Configure audio session for playback
   useEffect(() => {
@@ -62,6 +67,36 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
     configureAudio()
   }, [])
+
+  // Set up real-time position tracking
+  useEffect(() => {
+    if (audioPlayer.playing || isPlayingOverride) {
+      // Start position tracking when playing
+      positionUpdateInterval.current = setInterval(() => {
+        const position = audioPlayer.currentTime || 0
+        const duration = audioPlayer.duration || 0
+
+        setCurrentPosition(position)
+        if (duration > 0) {
+          setCurrentDuration(duration)
+        }
+      }, 50) // Update every 50ms for smooth progress
+    } else {
+      // Clear interval when not playing
+      if (positionUpdateInterval.current) {
+        clearInterval(positionUpdateInterval.current)
+        positionUpdateInterval.current = null
+      }
+    }
+
+    // Cleanup on unmount or when playing state changes
+    return () => {
+      if (positionUpdateInterval.current) {
+        clearInterval(positionUpdateInterval.current)
+        positionUpdateInterval.current = null
+      }
+    }
+  }, [audioPlayer.playing, isPlayingOverride, audioPlayer])
 
   const playClip = useCallback(
     async (clip: AudioClip) => {
@@ -89,6 +124,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         setIsLoading(true)
         setCurrentClip(clip)
         setIsPlayingOverride(true)
+        setCurrentPosition(0) // Reset position for new clip
+        setCurrentDuration(0) // Reset duration for new clip
         console.log('🎵 AudioPlayerContext: Set currentClip and isPlayingOverride to true')
 
         // Replace the source with the new clip
@@ -96,6 +133,12 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
         // Wait a moment for the audio to load
         await new Promise(resolve => setTimeout(resolve, 500))
+
+        // Update duration after loading
+        const duration = audioPlayer.duration || 0
+        if (duration > 0) {
+          setCurrentDuration(duration)
+        }
 
         audioPlayer.play()
         console.log('🎵 AudioPlayerContext: Called audioPlayer.play()')
@@ -123,12 +166,15 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     audioPlayer.pause()
     audioPlayer.seekTo(0)
     setCurrentClip(null) // Clear current clip when explicitly stopped
+    setCurrentPosition(0) // Reset position
+    setCurrentDuration(0) // Reset duration
     setIsPlayingOverride(false)
   }, [audioPlayer])
 
   const seekTo = useCallback(
     (position: number) => {
       audioPlayer.seekTo(position)
+      setCurrentPosition(position) // Update reactive position immediately
     },
     [audioPlayer]
   )
@@ -155,8 +201,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     currentClip,
     isPlaying: isPlayingOverride || audioPlayer.playing,
     isLoading,
-    position: audioPlayer.currentTime,
-    duration: audioPlayer.duration,
+    position: currentPosition, // Use reactive position
+    duration: currentDuration, // Use reactive duration
 
     // Actions
     playClip,
