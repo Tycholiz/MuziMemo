@@ -60,12 +60,17 @@ export function TabsWithMediaPlayer() {
             title={audioPlayer.currentClip.name}
             isPlaying={audioPlayer.isPlaying}
             isVisible={true}
+            position={audioPlayer.position}
+            durationSeconds={audioPlayer.duration}
             onPlayPause={() => {
               if (audioPlayer.isPlaying) {
                 audioPlayer.pauseClip()
               } else {
                 audioPlayer.playClip(audioPlayer.currentClip!)
               }
+            }}
+            onSeek={(position) => {
+              audioPlayer.seekTo(position)
             }}
             style={styles.seamlessMediaPlayer}
           />
