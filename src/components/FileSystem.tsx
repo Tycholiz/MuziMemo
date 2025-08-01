@@ -7,6 +7,7 @@ import Toast from 'react-native-toast-message'
 
 import { useFileManager } from '../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
+import { DragDropProvider, useDragDrop, DragItem } from '../contexts/DragDropContext'
 import { Breadcrumbs } from './Breadcrumbs'
 import { AudioClipCard } from './AudioClipCard'
 import { FolderContextMenuModal } from './FolderContextMenuModal'
@@ -14,6 +15,8 @@ import { CreateFolderModal } from './CreateFolderModal'
 import { FileNavigatorModal } from './FileNavigatorModal'
 import { HomeScreenMenuModal } from './HomeScreenMenuModal'
 import { SortModal } from './SortModal'
+import { DraggableWrapper } from './DraggableWrapper'
+import { DropZoneWrapper } from './DropZoneWrapper'
 import { theme } from '../utils/theme'
 import {
   moveItem,
@@ -22,6 +25,12 @@ import {
   getRelativePathFromRecordings,
   pathToNavigationArray,
 } from '../utils/moveUtils'
+import {
+  validateDragDropOperation,
+  getValidDropTargets,
+  createFolderDragItem,
+  getDropDestinationPath,
+} from '../utils/dragDropUtils'
 import {
   moveToRecentlyDeleted,
   restoreFromRecentlyDeleted,
@@ -47,10 +56,12 @@ export type AudioFileData = {
   duration?: number
 }
 
-export function FileSystemComponent() {
+// Internal component that uses DragDropContext
+function FileSystemContent() {
   const router = useRouter()
   const fileManager = useFileManager()
   const audioPlayer = useAudioPlayerContext()
+  const dragDrop = useDragDrop()
 
   const [folders, setFolders] = useState<FolderData[]>([])
   const [audioFiles, setAudioFiles] = useState<AudioFileData[]>([])
@@ -67,6 +78,49 @@ export function FileSystemComponent() {
   const scrollViewRef = useRef<ScrollView>(null)
   const scrollPositionRef = useRef(0)
   const shouldRestoreScrollRef = useRef(false)
+
+  // Handle drag and drop operations
+  const handleDropItem = useCallback(async (dragItem: DragItem, targetFolderId: string) => {
+    try {
+      const targetFolder = folders.find(f => f.id === targetFolderId)
+      if (!targetFolder) {
+        showMoveErrorToast('Target folder not found')
+        return
+      }
+
+      const currentPath = fileManager.getFullPath()
+      const validation = validateDragDropOperation(dragItem, targetFolder, currentPath)
+
+      if (!validation.isValid) {
+        showMoveErrorToast(validation.errorMessage || 'Invalid move operation')
+        return
+      }
+
+      const sourcePath = `${currentPath}/${dragItem.name}`
+      const destinationPath = getDropDestinationPath(targetFolder, currentPath)
+
+      // Perform the move operation
+      await moveItem(sourcePath, destinationPath, dragItem.name)
+
+      // Show success toast with navigation
+      const recordingsBasePath = fileManager
+        .getFullPath()
+        .replace(fileManager.getCurrentPathString(), '')
+        .replace(/\/$/, '')
+
+      const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
+      showMoveSuccessToast(dragItem.name, () => {
+        const navigationPath = pathToNavigationArray(relativePath)
+        fileManager.navigateToPath(navigationPath)
+      })
+
+      // Refresh the current folder contents
+      await loadFolderContents()
+    } catch (error: any) {
+      console.error('Failed to move item via drag and drop:', error)
+      showMoveErrorToast(error.message || 'Failed to move item')
+    }
+  }, [folders, fileManager])
 
   // Memoized sorted arrays to prevent unnecessary re-renders
   const sortedFolders = useMemo(() => {
@@ -96,6 +150,20 @@ export function FileSystemComponent() {
 
     loadSavedSortPreference()
   }, [])
+
+  // Set the drop handler when component mounts
+  useEffect(() => {
+    dragDrop.setDropHandler(handleDropItem)
+  }, [dragDrop, handleDropItem])
+
+  // Update valid drop targets when drag starts or folders change
+  useEffect(() => {
+    if (dragDrop.isDragging && dragDrop.dragItem) {
+      const currentPath = fileManager.getFullPath()
+      const validTargets = getValidDropTargets(dragDrop.dragItem, folders, currentPath)
+      dragDrop.setValidDropTargets(validTargets)
+    }
+  }, [dragDrop.isDragging, dragDrop.dragItem, folders, fileManager])
 
   const loadFolderContents = async () => {
     try {
@@ -572,31 +640,62 @@ export function FileSystemComponent() {
         {/* Folders Grid */}
         {sortedFolders.length > 0 && (
           <View style={styles.foldersGrid}>
-            {sortedFolders.map(folder => (
-              <View key={folder.id} style={styles.folderCard}>
-                <TouchableOpacity
-                  style={styles.folderContent}
-                  onPress={() => handleFolderPress(folder)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.folderIcon}>
-                    <Ionicons name="folder" size={40} color="#FF4444" />
-                  </View>
-                  <Text style={styles.folderName} numberOfLines={1} ellipsizeMode="tail">
-                    {folder.name}
-                  </Text>
-                  <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
-                </TouchableOpacity>
+            {sortedFolders.map(folder => {
+              const currentPath = fileManager.getFullPath()
+              const folderDragItem = createFolderDragItem(folder, currentPath)
+              const isInRecentlyDeleted = fileManager.getIsInRecentlyDeleted()
 
-                <View style={styles.folderMenuContainer}>
-                  <FolderContextMenuModal
-                    onRename={() => handleRenameFolder(folder)}
-                    onMove={() => handleMoveFolder(folder)}
-                    onDelete={() => handleDeleteFolder(folder)}
-                  />
+              const folderContent = (
+                <View style={styles.folderCard}>
+                  <TouchableOpacity
+                    style={styles.folderContent}
+                    onPress={() => handleFolderPress(folder)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.folderIcon}>
+                      <Ionicons name="folder" size={40} color="#FF4444" />
+                    </View>
+                    <Text style={styles.folderName} numberOfLines={1} ellipsizeMode="tail">
+                      {folder.name}
+                    </Text>
+                    <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.folderMenuContainer}>
+                    <FolderContextMenuModal
+                      onRename={() => handleRenameFolder(folder)}
+                      onMove={() => handleMoveFolder(folder)}
+                      onDelete={() => handleDeleteFolder(folder)}
+                    />
+                  </View>
                 </View>
-              </View>
-            ))}
+              )
+
+              // Wrap with DropZoneWrapper for drop functionality
+              const droppableFolder = (
+                <DropZoneWrapper
+                  key={folder.id}
+                  dropTargetId={folder.id}
+                  disabled={isInRecentlyDeleted}
+                >
+                  {folderContent}
+                </DropZoneWrapper>
+              )
+
+              // Wrap with DraggableWrapper for drag functionality (if not in recently deleted)
+              if (!isInRecentlyDeleted) {
+                return (
+                  <DraggableWrapper
+                    key={folder.id}
+                    dragItem={folderDragItem}
+                  >
+                    {droppableFolder}
+                  </DraggableWrapper>
+                )
+              }
+
+              return droppableFolder
+            })}
           </View>
         )}
 
@@ -635,6 +734,7 @@ export function FileSystemComponent() {
           const handleRestore = () => handleRestoreAudioFile(audioFile)
           const handleDelete = () => handleDeleteAudioFile(audioFile)
           const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+          const currentPath = fileManager.getFullPath()
 
           return (
             <AudioClipCard
@@ -648,6 +748,8 @@ export function FileSystemComponent() {
               onRestore={isInRecentlyDeletedFolder ? handleRestore : undefined}
               onDelete={handleDelete}
               isInRecentlyDeleted={isInRecentlyDeletedFolder}
+              enableDragDrop={!isInRecentlyDeletedFolder}
+              currentPath={currentPath}
             />
           )
         })}
@@ -713,6 +815,15 @@ export function FileSystemComponent() {
         onClose={() => setShowSortDropdown(false)}
       />
     </View>
+  )
+}
+
+// Main component that provides DragDropContext
+export function FileSystemComponent() {
+  return (
+    <DragDropProvider>
+      <FileSystemContent />
+    </DragDropProvider>
   )
 }
 

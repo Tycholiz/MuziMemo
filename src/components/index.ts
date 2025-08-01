@@ -69,3 +69,12 @@ export type { CreateFolderModalProps } from './CreateFolderModal'
 
 export { FileSystemComponent } from './FileSystem'
 export type { FolderData, AudioFileData } from './FileSystem'
+
+export { DragDropProvider, useDragDrop } from '../contexts/DragDropContext'
+export type { DragItem, DropTarget, DragDropContextType } from '../contexts/DragDropContext'
+
+export { DraggableWrapper } from './DraggableWrapper'
+export type { DraggableWrapperProps } from './DraggableWrapper'
+
+export { DropZoneWrapper } from './DropZoneWrapper'
+export type { DropZoneWrapperProps } from './DropZoneWrapper'
