@@ -165,10 +165,11 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(({
   }
 
   const handleScrollEnd = () => {
-    // Delay resetting the flag to ensure keyboard dismissal doesn't interfere
+    // Delay resetting the flag to ensure keyboard dismissal animation completes
+    // Keyboard animations typically take 250-300ms, so we use 400ms for safety
     setTimeout(() => {
       isInteractingWithDropdown.current = false
-    }, 100)
+    }, 400)
   }
 
   const handleFolderSelect = (folder: any) => {
