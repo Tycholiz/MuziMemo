@@ -94,8 +94,21 @@ export function SearchResults({
     Keyboard.dismiss()
   }
 
-  const handleScrollEnd = () => {
-    // Notify parent that scrolling ended
+  const handleScrollEndDrag = (event: any) => {
+    // Called when user lifts finger
+    // Check if there's momentum (velocity > threshold) to determine if momentum scrolling will continue
+    const { velocity } = event.nativeEvent
+    const hasSignificantVelocity = Math.abs(velocity?.y || 0) > 0.1
+
+    if (!hasSignificantVelocity) {
+      // No momentum scrolling will occur, safe to reset interaction flag
+      onScrollEnd?.()
+    }
+    // If momentum will continue, let handleMomentumScrollEnd handle the reset
+  }
+
+  const handleMomentumScrollEnd = () => {
+    // Called when momentum scrolling ends - always reset interaction flag
     onScrollEnd?.()
   }
 
@@ -104,8 +117,8 @@ export function SearchResults({
       style={styles.container}
       showsVerticalScrollIndicator={false}
       onScrollBeginDrag={handleScrollBegin}
-      onScrollEndDrag={handleScrollEnd}
-      onMomentumScrollEnd={handleScrollEnd}
+      onScrollEndDrag={handleScrollEndDrag}
+      onMomentumScrollEnd={handleMomentumScrollEnd}
       keyboardShouldPersistTaps="handled"
     >
       {/* Search Filters */}
