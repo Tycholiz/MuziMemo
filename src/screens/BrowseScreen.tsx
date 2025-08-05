@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react'
-import { StyleSheet, View, Animated, TouchableWithoutFeedback } from 'react-native'
+import { StyleSheet, View, Animated } from 'react-native'
 
 import { Screen } from '../components/Layout'
 import { FileSystemComponent } from '../components/FileSystem'
@@ -79,10 +79,7 @@ export default function BrowseScreen() {
     [audioPlayer]
   )
 
-  const handleOutsideTouch = useCallback(() => {
-    // Dismiss search dropdown when touching outside
-    searchBarRef.current?.dismissDropdown()
-  }, [])
+
 
   return (
     <Screen padding={false}>
@@ -99,12 +96,10 @@ export default function BrowseScreen() {
           />
         </View>
 
-        {/* File System Component - Wrap in TouchableWithoutFeedback to detect outside touches */}
-        <TouchableWithoutFeedback onPress={handleOutsideTouch}>
-          <View style={styles.fileSystemContainer}>
-            <FileSystemComponent />
-          </View>
-        </TouchableWithoutFeedback>
+        {/* File System Component */}
+        <View style={styles.fileSystemContainer}>
+          <FileSystemComponent />
+        </View>
 
         {/* Show media player if audio is playing */}
         {audioPlayer.currentClip && (

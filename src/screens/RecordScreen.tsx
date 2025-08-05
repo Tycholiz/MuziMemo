@@ -58,8 +58,6 @@ export default function RecordScreen() {
     resetRecording,
     requestPermissions,
   } = useAudioRecording(audioQuality)
-  const [recordingUri, setRecordingUri] = useState<string | null>(null)
-
   const [selectedFolderPath, setSelectedFolderPath] = useState<string>('') // Store the full path for nested folders
   const [showFileNavigator, setShowFileNavigator] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
@@ -236,7 +234,6 @@ export default function RecordScreen() {
       const uri = await stopRecording()
       if (uri) {
         await saveRecordingToFolder(uri)
-        setRecordingUri(uri)
       }
     } catch (err) {
       console.error('Stop recording error:', err)
@@ -358,15 +355,11 @@ export default function RecordScreen() {
 
       // Reset the recording state to prepare for a new recording
       resetRecording()
-
-      // Clear any recording URI state
-      setRecordingUri(null)
     } catch (err) {
       console.error('Cancel recording error:', err)
       Alert.alert('Cancel Error', 'Failed to cancel recording properly, but recording has been stopped.')
       // Still reset the state even if cancellation had issues
       resetRecording()
-      setRecordingUri(null)
     }
   }
 
