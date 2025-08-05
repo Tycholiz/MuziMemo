@@ -24,6 +24,29 @@ export function formatDurationFromSeconds(seconds: number): string {
 }
 
 /**
+ * Format duration in seconds to MM:SS or HH:MM:SS format based on duration
+ * Uses MM:SS for clips under 60 minutes, HH:MM:SS for longer clips
+ */
+export function formatDurationSmart(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0 || !isFinite(seconds)) {
+    return '00:00'
+  }
+
+  const totalSeconds = Math.floor(seconds)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const remainingSeconds = totalSeconds % 60
+
+  if (hours > 0) {
+    // HH:MM:SS format for clips 60+ minutes
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  } else {
+    // MM:SS format for clips under 60 minutes
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+}
+
+/**
  * Format file size in bytes to human readable format
  */
 export function formatFileSize(bytes: number): string {

@@ -58,6 +58,9 @@ export function TabsWithMediaPlayer() {
         <View style={[styles.mediaPlayerContainer, { bottom: tabBarHeight }]}>
           <BottomMediaPlayer
             title={audioPlayer.currentClip.name}
+            currentTimeSeconds={audioPlayer.position}
+            durationSeconds={audioPlayer.duration}
+            onSeek={audioPlayer.seekTo}
             isPlaying={audioPlayer.isPlaying}
             isVisible={true}
             onPlayPause={() => {

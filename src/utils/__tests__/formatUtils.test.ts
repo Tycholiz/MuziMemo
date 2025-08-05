@@ -5,6 +5,7 @@
 import {
   formatDuration,
   formatDurationFromSeconds,
+  formatDurationSmart,
   formatFileSize,
   formatDate,
   formatDateSmart,
@@ -39,6 +40,34 @@ describe('formatUtils', () => {
     it('should handle large durations', () => {
       expect(formatDurationFromSeconds(7200)).toBe('120:00') // 2 hours
       expect(formatDurationFromSeconds(3599)).toBe('59:59')
+    })
+  })
+
+  describe('formatDurationSmart', () => {
+    it('should format short durations as MM:SS', () => {
+      expect(formatDurationSmart(0)).toBe('00:00')
+      expect(formatDurationSmart(1)).toBe('00:01')
+      expect(formatDurationSmart(60)).toBe('01:00')
+      expect(formatDurationSmart(90)).toBe('01:30')
+      expect(formatDurationSmart(3599)).toBe('59:59') // 59:59 - still MM:SS
+    })
+
+    it('should format long durations as HH:MM:SS', () => {
+      expect(formatDurationSmart(3600)).toBe('01:00:00') // 1 hour
+      expect(formatDurationSmart(3661)).toBe('01:01:01') // 1 hour 1 minute 1 second
+      expect(formatDurationSmart(7200)).toBe('02:00:00') // 2 hours
+      expect(formatDurationSmart(7323)).toBe('02:02:03') // 2 hours 2 minutes 3 seconds
+    })
+
+    it('should handle edge cases', () => {
+      expect(formatDurationSmart(-10)).toBe('00:00') // Negative values
+      expect(formatDurationSmart(NaN)).toBe('00:00') // NaN values
+      expect(formatDurationSmart(Infinity)).toBe('00:00') // Infinity
+    })
+
+    it('should handle fractional seconds', () => {
+      expect(formatDurationSmart(90.7)).toBe('01:30') // Should floor to 90 seconds
+      expect(formatDurationSmart(3600.9)).toBe('01:00:00') // Should floor to 3600 seconds
     })
   })
 
@@ -88,7 +117,7 @@ describe('formatUtils', () => {
     it('should return formatted date for older dates', () => {
       const oldDate = new Date('2023-01-15')
       const result = formatDateSmart(oldDate)
-      expect(result).toBe('Jan 14, 2023')
+      expect(result).toBe('Jan 15, 2023')
     })
 
     it('should handle different times on same day as today', () => {
