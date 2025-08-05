@@ -25,6 +25,7 @@ export type FileNavigatorModalProps = {
   onPrimaryAction?: (currentPath: string) => void
   disablePrimaryButton?: boolean
   excludePath?: string // Path to exclude from navigation (e.g., the folder being moved)
+  excludePaths?: string[] // Multiple paths to exclude from navigation (for multi-select)
 }
 
 /**
@@ -42,6 +43,7 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   onPrimaryAction,
   disablePrimaryButton = false,
   excludePath,
+  excludePaths,
 }: FileNavigatorModalProps) {
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
   const [loading, setLoading] = useState(false)
@@ -86,11 +88,15 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
             continue
           }
 
+          // Check if this folder should be marked as being moved
+          const allExcludePaths = excludePaths || (excludePath ? [excludePath] : [])
+          const isBeingMoved = allExcludePaths.includes(itemPath)
+
           folderItems.push({
             id: `folder-${item}`,
             name: item,
             path: itemPath,
-            isBeingMoved: excludePath === itemPath,
+            isBeingMoved,
           })
         }
       }
@@ -104,7 +110,7 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
     } finally {
       setLoading(false)
     }
-  }, [currentFolderPath, excludePath])
+  }, [currentFolderPath, excludePath, excludePaths])
 
   // Load folder contents when component mounts or path changes
   useEffect(() => {
@@ -137,11 +143,12 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   }, [onPrimaryAction, currentFolderPath, onClose, getRecordingsDirectory, onSelectFolder])
 
   // Check if the current directory is invalid for move operations
-  const isCurrentDirectoryInvalid = useMemo(
-    () =>
-      Boolean(excludePath && (currentFolderPath === excludePath || currentFolderPath.startsWith(excludePath + '/'))),
-    [excludePath, currentFolderPath]
-  )
+  const isCurrentDirectoryInvalid = useMemo(() => {
+    const allExcludePaths = excludePaths || (excludePath ? [excludePath] : [])
+    return allExcludePaths.some(path =>
+      currentFolderPath === path || currentFolderPath.startsWith(path + '/')
+    )
+  }, [excludePath, excludePaths, currentFolderPath])
 
   const handleNewFolder = useCallback(() => {
     Alert.prompt(

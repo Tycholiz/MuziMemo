@@ -14,6 +14,7 @@ import { FolderContextMenuModal } from './FolderContextMenuModal'
 import { CreateFolderModal } from './CreateFolderModal'
 import { FileNavigatorModal } from './FileNavigatorModal'
 import { HomeScreenMenuModal } from './HomeScreenMenuModal'
+import { MultiSelectToolbar } from './MultiSelectToolbar'
 import { SortModal } from './SortModal'
 import { theme } from '../utils/theme'
 import {
@@ -64,6 +65,10 @@ export function FileSystemComponent() {
   const [selectedFileForRestore, setSelectedFileForRestore] = useState<AudioFileData | null>(null)
   const [sortOption, setSortOption] = useState<SortOption>(DEFAULT_SORT_OPTION)
   const [showSortDropdown, setShowSortDropdown] = useState(false)
+
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
 
   // Scroll position preservation
   const scrollViewRef = useRef<ScrollView>(null)
@@ -451,8 +456,47 @@ export function FileSystemComponent() {
         .replace(fileManager.getCurrentPathString(), '')
         .replace(/\/$/, '')
 
-      if (selectedFolderForMove) {
-        // Moving a folder
+      if (isMultiSelectMode && selectedItems.size > 0) {
+        // Batch move for multi-select
+        let successCount = 0
+        let failedItems: string[] = []
+
+        for (const itemId of selectedItems) {
+          try {
+            if (itemId.startsWith('folder-')) {
+              const folderName = itemId.replace('folder-', '')
+              const sourcePath = `${fileManager.getFullPath()}/${folderName}`
+              await moveItem(sourcePath, destinationPath, folderName)
+            } else if (itemId.startsWith('audio-')) {
+              const fileName = itemId.replace('audio-', '')
+              const sourcePath = `${fileManager.getFullPath()}/${fileName}`
+              await moveItem(sourcePath, destinationPath, fileName)
+            }
+            successCount++
+          } catch (error: any) {
+            console.error(`Failed to move item ${itemId}:`, error)
+            failedItems.push(itemId.replace(/^(folder-|audio-)/, ''))
+          }
+        }
+
+        // Show appropriate toast messages
+        if (successCount > 0) {
+          const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
+          showMoveSuccessToast(`${successCount} item${successCount !== 1 ? 's' : ''}`, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        }
+
+        if (failedItems.length > 0) {
+          showMoveErrorToast(`Failed to move: ${failedItems.join(', ')}`)
+        }
+
+        // Exit multi-select mode
+        setIsMultiSelectMode(false)
+        setSelectedItems(new Set())
+      } else if (selectedFolderForMove) {
+        // Moving a single folder
         const sourcePath = `${fileManager.getFullPath()}/${selectedFolderForMove.name}`
         await moveItem(sourcePath, destinationPath, selectedFolderForMove.name)
 
@@ -463,7 +507,7 @@ export function FileSystemComponent() {
           fileManager.navigateToPath(navigationPath)
         })
       } else if (selectedFileForMove) {
-        // Moving a file
+        // Moving a single file
         const sourcePath = `${fileManager.getFullPath()}/${selectedFileForMove.name}`
         await moveItem(sourcePath, destinationPath, selectedFileForMove.name)
 
@@ -528,6 +572,46 @@ export function FileSystemComponent() {
     setSelectedFileForRestore(null)
   }
 
+  // Multi-select handlers
+  const handleMultiSelectMode = useCallback(() => {
+    setIsMultiSelectMode(true)
+    setSelectedItems(new Set())
+  }, [])
+
+  const handleMultiSelectCancel = useCallback(() => {
+    setIsMultiSelectMode(false)
+    setSelectedItems(new Set())
+  }, [])
+
+  const toggleItemSelection = useCallback((itemId: string) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId)
+      } else {
+        newSet.add(itemId)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleMultiSelectMove = useCallback(() => {
+    if (selectedItems.size === 0) return
+
+    // Create excludePaths array from selected folder items
+    const excludePaths: string[] = []
+    const currentPath = fileManager.getFullPath()
+
+    selectedItems.forEach(itemId => {
+      if (itemId.startsWith('folder-')) {
+        const folderName = itemId.replace('folder-', '')
+        excludePaths.push(`${currentPath}/${folderName}`)
+      }
+    })
+
+    setShowMoveModal(true)
+  }, [selectedItems, fileManager])
+
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -556,10 +640,22 @@ export function FileSystemComponent() {
         </View>
         {!fileManager.getIsInRecentlyDeleted() && (
           <View style={styles.headerMenuContainer}>
-            <HomeScreenMenuModal onRecentlyDeleted={handleNavigateToRecentlyDeleted} />
+            <HomeScreenMenuModal
+              onRecentlyDeleted={handleNavigateToRecentlyDeleted}
+              onMultiSelect={handleMultiSelectMode}
+            />
           </View>
         )}
       </View>
+
+      {/* Multi-Select Toolbar */}
+      {isMultiSelectMode && (
+        <MultiSelectToolbar
+          selectedCount={selectedItems.size}
+          onCancel={handleMultiSelectCancel}
+          onMove={handleMultiSelectMove}
+        />
+      )}
 
       {/* Content */}
       <ScrollView
@@ -574,31 +670,51 @@ export function FileSystemComponent() {
         {/* Folders Grid */}
         {sortedFolders.length > 0 && (
           <View style={styles.foldersGrid}>
-            {sortedFolders.map(folder => (
-              <View key={folder.id} style={styles.folderCard}>
-                <TouchableOpacity
-                  style={styles.folderContent}
-                  onPress={() => handleFolderPress(folder)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.folderIcon}>
-                    <Ionicons name="folder" size={40} color="#FF4444" />
-                  </View>
-                  <Text style={styles.folderName} numberOfLines={1} ellipsizeMode="tail">
-                    {folder.name}
-                  </Text>
-                  <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
-                </TouchableOpacity>
+            {sortedFolders.map(folder => {
+              const isSelected = selectedItems.has(folder.id)
+              const handlePress = isMultiSelectMode
+                ? () => toggleItemSelection(folder.id)
+                : () => handleFolderPress(folder)
 
-                <View style={styles.folderMenuContainer}>
-                  <FolderContextMenuModal
-                    onRename={() => handleRenameFolder(folder)}
-                    onMove={() => handleMoveFolder(folder)}
-                    onDelete={() => handleDeleteFolder(folder)}
-                  />
+              return (
+                <View key={folder.id} style={styles.folderCard}>
+                  <TouchableOpacity
+                    style={styles.folderContent}
+                    onPress={handlePress}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.folderIcon}>
+                      <Ionicons name="folder" size={40} color="#FF4444" />
+                    </View>
+                    <Text style={styles.folderName} numberOfLines={1} ellipsizeMode="tail">
+                      {folder.name}
+                    </Text>
+                    <Text style={styles.folderItemCount}>{folder.itemCount} items</Text>
+                  </TouchableOpacity>
+
+                  {/* Multi-select checkmark */}
+                  {isMultiSelectMode && (
+                    <View style={styles.folderCheckmark}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={24}
+                        color={isSelected ? theme.colors.primary : theme.colors.text.secondary}
+                      />
+                    </View>
+                  )}
+
+                  {!isMultiSelectMode && (
+                    <View style={styles.folderMenuContainer}>
+                      <FolderContextMenuModal
+                        onRename={() => handleRenameFolder(folder)}
+                        onMove={() => handleMoveFolder(folder)}
+                        onDelete={() => handleDeleteFolder(folder)}
+                      />
+                    </View>
+                  )}
                 </View>
-              </View>
-            ))}
+              )
+            })}
           </View>
         )}
 
@@ -646,6 +762,8 @@ export function FileSystemComponent() {
           const handleRestore = () => handleRestoreAudioFile(audioFile)
           const handleDelete = () => handleDeleteAudioFile(audioFile)
           const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+          const isSelected = selectedItems.has(audioFile.id)
+          const handleToggleSelection = () => toggleItemSelection(audioFile.id)
 
           return (
             <AudioClipCard
@@ -659,6 +777,9 @@ export function FileSystemComponent() {
               onRestore={isInRecentlyDeletedFolder ? handleRestore : undefined}
               onDelete={handleDelete}
               isInRecentlyDeleted={isInRecentlyDeletedFolder}
+              isMultiSelectMode={isMultiSelectMode}
+              isSelected={isSelected}
+              onToggleSelection={handleToggleSelection}
             />
           )
         })}
@@ -696,12 +817,23 @@ export function FileSystemComponent() {
         visible={showMoveModal}
         onClose={handleMoveCancelOrClose}
         onSelectFolder={() => {}} // Not used for move operations
-        title={`Move ${selectedFolderForMove ? selectedFolderForMove.name : selectedFileForMove?.name || ''}`}
+        title={
+          isMultiSelectMode && selectedItems.size > 0
+            ? `Move ${selectedItems.size} item${selectedItems.size !== 1 ? 's' : ''}`
+            : `Move ${selectedFolderForMove ? selectedFolderForMove.name : selectedFileForMove?.name || ''}`
+        }
         primaryButtonText="Move Here"
         primaryButtonIcon="arrow-forward"
         onPrimaryAction={handleMoveConfirm}
         initialDirectory={fileManager.getFullPath()}
         excludePath={selectedFolderForMove ? `${fileManager.getFullPath()}/${selectedFolderForMove.name}` : undefined}
+        excludePaths={
+          isMultiSelectMode && selectedItems.size > 0
+            ? Array.from(selectedItems)
+                .filter(itemId => itemId.startsWith('folder-'))
+                .map(itemId => `${fileManager.getFullPath()}/${itemId.replace('folder-', '')}`)
+            : undefined
+        }
       />
 
       {/* Restore Modal */}
@@ -873,6 +1005,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
+  },
+  folderCheckmark: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
   },
   emptyState: {
     alignItems: 'center',

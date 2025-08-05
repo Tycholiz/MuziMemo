@@ -6,6 +6,7 @@ import { theme } from '@utils/theme'
 
 export type HomeScreenMenuModalProps = {
   onRecentlyDeleted: () => void
+  onMultiSelect: () => void
 }
 
 type MenuOption = {
@@ -20,10 +21,19 @@ type MenuOption = {
  * HomeScreenMenuModal Component
  * Provides an ellipsis menu for the home screen with options like "Recently Deleted"
  */
-export function HomeScreenMenuModal({ onRecentlyDeleted }: HomeScreenMenuModalProps) {
+export function HomeScreenMenuModal({ onRecentlyDeleted, onMultiSelect }: HomeScreenMenuModalProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   const menuOptions: MenuOption[] = [
+    {
+      id: 'multi-select',
+      label: 'Multi-Select',
+      icon: 'checkmark-circle-outline',
+      onPress: () => {
+        setIsVisible(false)
+        onMultiSelect()
+      },
+    },
     {
       id: 'recently-deleted',
       label: 'Recently Deleted',
