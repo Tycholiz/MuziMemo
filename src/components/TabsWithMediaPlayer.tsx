@@ -63,10 +63,11 @@ export function TabsWithMediaPlayer() {
             isPlaying={audioPlayer.isPlaying}
             isVisible={true}
             onPlayPause={() => {
+              console.log('🎵 TabsWithMediaPlayer: onPlayPause clicked, isPlaying:', audioPlayer.isPlaying)
               if (audioPlayer.isPlaying) {
                 audioPlayer.pauseClip()
               } else {
-                audioPlayer.playClip(audioPlayer.currentClip!)
+                audioPlayer.resumeClip()
               }
             }}
             onSeek={audioPlayer.seekTo}

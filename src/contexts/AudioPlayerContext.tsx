@@ -19,6 +19,7 @@ export type AudioPlayerState = {
 
 export type AudioPlayerActions = {
   playClip: (clip: AudioClip) => Promise<void>
+  resumeClip: () => void
   pauseClip: () => void
   stopClip: () => void
   seekTo: (position: number) => void
@@ -160,6 +161,18 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     [audioPlayer]
   )
 
+  const resumeClip = useCallback(() => {
+    console.log('🎵 AudioPlayerContext: resumeClip called')
+    if (currentClip) {
+      audioPlayer.play()
+      setIsPlayingOverride(true)
+      startPositionTracking()
+      console.log('🎵 AudioPlayerContext: Resumed playback for:', currentClip.name)
+    } else {
+      console.warn('🎵 AudioPlayerContext: No current clip to resume')
+    }
+  }, [audioPlayer, currentClip, startPositionTracking])
+
   const pauseClip = useCallback(() => {
     console.log('🎵 AudioPlayerContext: pauseClip called')
     audioPlayer.pause()
@@ -232,6 +245,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
     // Actions
     playClip,
+    resumeClip,
     pauseClip,
     stopClip,
     seekTo,
