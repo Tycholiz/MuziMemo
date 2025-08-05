@@ -567,13 +567,6 @@ export default function RecordScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-
-        {/* Recording Info */}
-        {recordingUri && (
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoText}>Last recording saved successfully!</Text>
-          </View>
-        )}
       </Container>
 
       {/* File Navigator Modal */}
