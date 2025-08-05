@@ -118,13 +118,10 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       // Set playing state to false when playback completes
       setIsPlayingOverride(false)
 
-      // Reset position to beginning for next play
-      setCurrentPosition(0)
-
       // Stop position tracking since playback is complete
       stopPositionTracking()
 
-      console.log('🎵 AudioPlayerContext: Updated state after completion - isPlaying: false, position: 0')
+      console.log('🎵 AudioPlayerContext: Updated state after completion - isPlaying: false, scrubber stays at end')
     }
   }, [audioStatus.didJustFinish, currentClip, stopPositionTracking])
 
@@ -180,7 +177,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     [audioPlayer]
   )
 
-  const resumeClip = useCallback(() => {
+  const resumeClip = useCallback(async () => {
     console.log('🎵 AudioPlayerContext: resumeClip called')
     if (currentClip) {
       // Check if we're at the end of the track (completed playback)
@@ -188,15 +185,30 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
       if (isAtEnd) {
         console.log('🎵 AudioPlayerContext: At end of track, restarting from beginning')
-        // Restart from beginning if at the end
-        audioPlayer.seekTo(0)
+        console.log('🎵 AudioPlayerContext: Current position:', currentPosition, 'Duration:', currentDuration)
+
+        // Reset position in UI immediately for visual feedback
         setCurrentPosition(0)
+
+        // Reset audio player position and wait for it to complete
+        try {
+          await audioPlayer.seekTo(0)
+          console.log('🎵 AudioPlayerContext: Successfully reset audio player position to 0')
+        } catch (error) {
+          console.error('🎵 AudioPlayerContext: Error seeking to 0:', error)
+        }
+
+        // Small delay to ensure seek operation completes
+        await new Promise(resolve => setTimeout(resolve, 50))
       }
 
+      // Start playback
+      console.log('🎵 AudioPlayerContext: Starting audio playback...')
       audioPlayer.play()
       setIsPlayingOverride(true)
       startPositionTracking()
-      console.log('🎵 AudioPlayerContext: Resumed playback for:', currentClip.name, isAtEnd ? '(restarted from beginning)' : '')
+
+      console.log('🎵 AudioPlayerContext: Resumed playback for:', currentClip.name, isAtEnd ? '(restarted from beginning)' : '(normal resume)')
     } else {
       console.warn('🎵 AudioPlayerContext: No current clip to resume')
     }
