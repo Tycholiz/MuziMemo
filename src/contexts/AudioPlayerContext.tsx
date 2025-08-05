@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef, useMemo } from 'react'
 import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
@@ -38,7 +38,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const audioPlayer = useAudioPlayer()
   const [currentClip, setCurrentClip] = useState<AudioClip | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isPlayingOverride, setIsPlayingOverride] = useState(false)
+  const [isPlayingOverride, setIsPlayingOverride] = useState<boolean | null>(null)
 
   // Add state for tracking position and duration with timer-based updates
   const [currentPosition, setCurrentPosition] = useState(0)
@@ -211,22 +211,38 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
   // Sync override state with actual audio player state
   useEffect(() => {
-    if (isPlayingOverride && audioPlayer.playing) {
-      // Audio player has caught up, disable override
-      console.log('🎵 AudioPlayerContext: Disabling isPlayingOverride - audio player caught up')
-      setIsPlayingOverride(false)
-    } else if (!audioPlayer.playing && !isPlayingOverride && currentClip) {
-      // Audio stopped but we still have a current clip, clear it
-      console.log('🎵 AudioPlayerContext: Audio stopped, clearing current clip')
-      setCurrentClip(null)
-      stopPositionTracking()
+    console.log('🎵 AudioPlayerContext: State sync check -', {
+      isPlayingOverride,
+      audioPlayerPlaying: audioPlayer.playing,
+      currentClip: currentClip?.name
+    })
+
+    // When we have an override and the audio player catches up, clear the override
+    if (isPlayingOverride === true && audioPlayer.playing) {
+      // Audio player has caught up after starting, clear override to use native state
+      console.log('🎵 AudioPlayerContext: Clearing isPlayingOverride - audio player caught up after start')
+      setIsPlayingOverride(null)
+    } else if (isPlayingOverride === false && !audioPlayer.playing) {
+      // Audio player has caught up after pausing, clear override to use native state
+      console.log('🎵 AudioPlayerContext: Clearing isPlayingOverride - audio player caught up after pause')
+      setIsPlayingOverride(null)
     }
-  }, [audioPlayer.playing, isPlayingOverride, currentClip, stopPositionTracking])
+  }, [audioPlayer.playing, isPlayingOverride, currentClip])
+
+  // Calculate the actual playing state with proper priority
+  const actualIsPlaying = useMemo(() => {
+    // If we have an explicit override (true for starting, false for pausing), use it
+    if (isPlayingOverride !== null) {
+      return isPlayingOverride
+    }
+    // Otherwise, fall back to the audio player's state
+    return audioPlayer.playing
+  }, [isPlayingOverride, audioPlayer.playing])
 
   // Debug logging for audio player state
   console.log('🎵 AudioPlayerContext: Current state -', {
     currentClip: currentClip?.name,
-    isPlaying: isPlayingOverride || audioPlayer.playing,
+    isPlaying: actualIsPlaying,
     position: currentPosition, // Use tracked position
     duration: currentDuration, // Use tracked duration
     rawPosition: audioPlayer.currentTime,
@@ -238,7 +254,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const value: AudioPlayerContextType = {
     // State
     currentClip,
-    isPlaying: isPlayingOverride || audioPlayer.playing,
+    isPlaying: actualIsPlaying,
     isLoading,
     position: currentPosition, // Use tracked position instead of audioPlayer.currentTime
     duration: currentDuration, // Use tracked duration instead of audioPlayer.duration
