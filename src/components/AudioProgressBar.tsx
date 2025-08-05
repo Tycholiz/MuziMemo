@@ -7,7 +7,7 @@ import Animated, {
   runOnJS,
   interpolate,
   Extrapolate,
-  cancelAnimation,
+  useDerivedValue,
 } from 'react-native-reanimated'
 
 import { theme } from '@utils/theme'
@@ -67,22 +67,20 @@ export function AudioProgressBar({
     })
   }, [currentTime, duration, sharedCurrentTime, sharedDuration])
 
-  // Animated progress value for smooth updates
-  const animatedProgress = useSharedValue(0)
+  // Manual position override for immediate user control
+  const manualPosition = useSharedValue<number | null>(null)
 
-  // Update animated progress when not dragging
-  useEffect(() => {
-    if (!isDragging.value) {
-      const calculatedProgress = Math.max(0, Math.min(1, currentTime / duration))
-      console.log('🎵 AudioProgressBar: Updating progress to', Math.round(calculatedProgress * 100), '%')
-
-      // Cancel any existing animation to prevent bouncing
-      cancelAnimation(animatedProgress)
-
-      // Set progress immediately without spring animation
-      animatedProgress.value = calculatedProgress
+  // Smooth animated progress using derived value for 60 FPS updates
+  const animatedProgress = useDerivedValue(() => {
+    // If we have a manual position override (during/after user interaction), use it
+    if (manualPosition.value !== null) {
+      return manualPosition.value
     }
-  }, [currentTime, duration, animatedProgress, isDragging])
+
+    // Otherwise, calculate smooth progress from current time (runs on UI thread at 60 FPS)
+    if (!sharedDuration.value || sharedDuration.value <= 0) return 0
+    return Math.max(0, Math.min(1, sharedCurrentTime.value / sharedDuration.value))
+  })
 
   // Handle seeking to a specific position
   const handleSeek = useCallback(
@@ -106,34 +104,36 @@ export function AudioProgressBar({
   const handleDragStart = useCallback(() => {
     console.log('🎵 AudioProgressBar: Pan gesture started')
 
-    // Cancel any existing animation to prevent conflicts
-    cancelAnimation(animatedProgress)
-
     isDragging.value = true
     onDragStateChange?.(true)
-  }, [onDragStateChange, isDragging, animatedProgress])
+  }, [onDragStateChange, isDragging])
 
   const handleDragUpdate = useCallback((position: number) => {
     dragPosition.value = position
 
-    // Update animated progress immediately during drag
-    animatedProgress.value = position
+    // Set manual position override for immediate positioning
+    manualPosition.value = position
 
     const previewTime = position * duration
     onDragStateChange?.(true, previewTime)
     console.log('🎵 AudioProgressBar: Dragging to position', Math.round(position * 100), '% - preview time:', previewTime.toFixed(1), 's')
-  }, [onDragStateChange, duration, dragPosition, animatedProgress])
+  }, [onDragStateChange, duration, dragPosition, manualPosition])
 
   const handleDragEnd = useCallback((position: number) => {
     console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(position * 100), '%')
 
-    // Set final position immediately without animation
-    animatedProgress.value = position
+    // Keep manual position for immediate final positioning
+    manualPosition.value = position
 
     isDragging.value = false
     onDragStateChange?.(false)
     handleSeek(position)
-  }, [onDragStateChange, isDragging, handleSeek, animatedProgress])
+
+    // Clear manual override after a short delay to allow seek to complete
+    setTimeout(() => {
+      manualPosition.value = null
+    }, 100)
+  }, [onDragStateChange, isDragging, handleSeek, manualPosition])
 
   // Pan gesture for dragging the thumb
   const panGesture = Gesture.Pan()
@@ -166,11 +166,17 @@ export function AudioProgressBar({
 
     console.log('🎵 AudioProgressBar: Tap gesture at position', Math.round(position * 100), '%')
 
-    // Cancel any existing animation and set position immediately
-    cancelAnimation(animatedProgress)
-    animatedProgress.value = position
+    // Set manual position override for immediate positioning
+    manualPosition.value = position
 
     runOnJS(handleSeek)(position)
+
+    // Clear manual override after seek completes
+    runOnJS(() => {
+      setTimeout(() => {
+        manualPosition.value = null
+      }, 100)
+    })()
   })
 
   // Combined gesture
