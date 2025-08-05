@@ -151,6 +151,16 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     }
   }, [audioPlayer.playing, isPlayingOverride, currentClip])
 
+  // Debug logging for audio player state
+  console.log('🎵 AudioPlayerContext: Current state -', {
+    currentClip: currentClip?.name,
+    isPlaying: isPlayingOverride || audioPlayer.playing,
+    position: audioPlayer.currentTime,
+    duration: audioPlayer.duration,
+    isPlayingOverride,
+    audioPlayerPlaying: audioPlayer.playing
+  })
+
   const value: AudioPlayerContextType = {
     // State
     currentClip,

@@ -8,6 +8,7 @@ import Animated, {
   interpolate,
   Extrapolate,
   withSpring,
+  useDerivedValue,
 } from 'react-native-reanimated'
 
 import { theme } from '@utils/theme'
@@ -36,24 +37,50 @@ export function AudioProgressBar({
   const isDragging = useSharedValue(false)
   const dragPosition = useSharedValue(0)
   const trackWidth = useSharedValue(0)
-  const animatedProgress = useSharedValue(0)
   const trackLayoutRef = useRef<View>(null)
 
   // Calculate progress as a percentage (0-1)
   const progress = useMemo(() => {
     if (!duration || duration <= 0) return 0
-    return Math.max(0, Math.min(1, currentTime / duration))
+    const calculatedProgress = Math.max(0, Math.min(1, currentTime / duration))
+    console.log('🎵 AudioProgressBar: Progress calculated -', {
+      currentTime,
+      duration,
+      progress: calculatedProgress,
+      percentage: Math.round(calculatedProgress * 100) + '%'
+    })
+    return calculatedProgress
   }, [currentTime, duration])
 
-  // Update animated progress when not dragging
+  // Create shared values for current time and duration that can be used in worklets
+  const sharedCurrentTime = useSharedValue(currentTime)
+  const sharedDuration = useSharedValue(duration)
+
+  // Update shared values when props change
   useEffect(() => {
-    if (!isDragging.value) {
-      animatedProgress.value = withSpring(progress, {
+    sharedCurrentTime.value = currentTime
+    sharedDuration.value = duration
+    console.log('🎵 AudioProgressBar: Updated shared values -', {
+      currentTime,
+      duration
+    })
+  }, [currentTime, duration, sharedCurrentTime, sharedDuration])
+
+  // Use derived value for animated progress that updates automatically
+  const animatedProgress = useDerivedValue(() => {
+    if (isDragging.value) {
+      // When dragging, use the drag position
+      return dragPosition.value
+    } else {
+      // When not dragging, calculate progress from current time
+      if (!sharedDuration.value || sharedDuration.value <= 0) return 0
+      const calculatedProgress = Math.max(0, Math.min(1, sharedCurrentTime.value / sharedDuration.value))
+      return withSpring(calculatedProgress, {
         damping: 20,
         stiffness: 100,
       })
     }
-  }, [progress, animatedProgress, isDragging])
+  })
 
   // Handle seeking to a specific position
   const handleSeek = useCallback(
@@ -89,7 +116,6 @@ export function AudioProgressBar({
       const position = Math.max(0, Math.min(1, adjustedX / actualTrackWidth))
 
       dragPosition.value = position
-      animatedProgress.value = position
 
       console.log('🎵 AudioProgressBar: Dragging to position', Math.round(position * 100), '%')
     })

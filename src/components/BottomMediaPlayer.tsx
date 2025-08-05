@@ -47,6 +47,15 @@ export function BottomMediaPlayer({
   // Format time for display
   const timeDisplay = formatPlaybackTime(currentTime, duration)
 
+  // Debug logging for props
+  console.log('🎵 BottomMediaPlayer: Received props -', {
+    title,
+    currentTime,
+    duration,
+    isPlaying,
+    hasOnSeek: !!onSeek
+  })
+
   return (
     <View style={[styles.container, style]}>
       <View style={styles.playerContainer}>
