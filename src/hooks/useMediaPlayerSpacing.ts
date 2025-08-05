@@ -10,8 +10,11 @@ export function useMediaPlayerSpacing() {
   const audioPlayer = useAudioPlayerContext()
 
   // Calculate the media player height based on its styling
-  // MediaCard has: padding (16px) + content height (~60px) = ~76px total
-  const MEDIA_PLAYER_HEIGHT = 76
+  // MediaCard: padding (16px) + content height (~60px) = ~76px
+  // Progress bar: height (~44px) + margins (~8px) = ~52px
+  // Time labels: height (~20px) + padding (~16px) = ~36px
+  // Total: ~164px
+  const MEDIA_PLAYER_HEIGHT = 164
 
   const bottomSpacing = useMemo(() => {
     // Only add bottom spacing when media player is visible (currentClip exists)

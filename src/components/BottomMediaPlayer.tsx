@@ -1,69 +1,85 @@
 import React from 'react'
-import { View, StyleSheet, ViewStyle } from 'react-native'
+import { View, StyleSheet, ViewStyle, Text } from 'react-native'
 
 import { MediaCard } from './Card'
+import { AudioProgressBar } from './AudioProgressBar'
 import { theme } from '@utils/theme'
+import { formatPlaybackTime } from '@utils/timeFormat'
 
 export type BottomMediaPlayerProps = {
   title?: string
   artist?: string
-  duration?: string
-  currentTime?: string
+  currentTime?: number // Changed to number for progress bar
+  duration?: number // Changed to number for progress bar
   isPlaying?: boolean
   isVisible?: boolean
   onPlayPause?: () => void
   onNext?: () => void
   onPrevious?: () => void
   onMore?: () => void
+  onSeek?: (position: number) => void // Added for progress bar
   style?: ViewStyle
 }
 
 /**
  * Bottom Media Player Component
  * Fixed media player that appears at the bottom of the screen when audio is loaded
+ * Now includes an audio progress bar with seeking functionality
  */
 export function BottomMediaPlayer({
   title = '',
   artist = '',
-  duration = '',
-  currentTime = '',
+  currentTime = 0,
+  duration = 0,
   isPlaying = false,
   isVisible = false,
   onPlayPause,
   onNext,
   onPrevious,
   onMore,
+  onSeek,
   style,
 }: BottomMediaPlayerProps) {
   if (!isVisible) {
     return null
   }
 
-  // Format the artist display to include current time and duration
-  const formatArtistDisplay = () => {
-    const parts = []
-    if (artist) parts.push(artist)
-    if (currentTime && duration) {
-      parts.push(`${currentTime} / ${duration}`)
-    } else if (duration) {
-      parts.push(duration)
-    }
-    return parts.join(' • ')
-  }
+  // Format time for display
+  const timeDisplay = formatPlaybackTime(currentTime, duration)
 
   return (
     <View style={[styles.container, style]}>
-      <MediaCard
-        title={title}
-        artist={formatArtistDisplay()}
-        duration={duration}
-        isPlaying={isPlaying}
-        onPlayPause={onPlayPause}
-        onNext={onNext}
-        onPrevious={onPrevious}
-        onMore={onMore}
-        style={styles.mediaCard}
-      />
+      <View style={styles.playerContainer}>
+        {/* Media Card with controls */}
+        <MediaCard
+          title={title}
+          artist={artist}
+          isPlaying={isPlaying}
+          onPlayPause={onPlayPause}
+          onNext={onNext}
+          onPrevious={onPrevious}
+          onMore={onMore}
+          style={styles.mediaCard}
+        />
+
+        {/* Progress Bar */}
+        {onSeek && (
+          <AudioProgressBar
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={onSeek}
+            style={styles.progressBar}
+          />
+        )}
+
+        {/* Time Labels */}
+        {timeDisplay.isValid && (
+          <View style={styles.timeContainer}>
+            <Text style={styles.timeText}>{timeDisplay.current}</Text>
+            <Text style={styles.timeText}>{timeDisplay.total}</Text>
+          </View>
+        )}
+      </View>
     </View>
   )
 }
@@ -74,11 +90,31 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     opacity: 0.97,
   },
-  mediaCard: {
-    borderRadius: 0, // Remove border radius for seamless integration
-    marginBottom: 0, // Remove bottom margin
+  playerContainer: {
     backgroundColor: theme.colors.background.secondary, // Match tab bar background for seamless integration
     borderTopLeftRadius: theme.borderRadius.md,
     borderTopRightRadius: theme.borderRadius.md,
+    paddingTop: theme.spacing.sm,
+  },
+  mediaCard: {
+    borderRadius: 0, // Remove border radius for seamless integration
+    marginBottom: 0, // Remove bottom margin
+    backgroundColor: 'transparent', // Make transparent since parent has background
+    padding: theme.spacing.md,
+  },
+  progressBar: {
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
+  },
+  timeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+  },
+  timeText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.tertiary,
+    fontWeight: theme.typography.fontWeight.medium,
   },
 })
