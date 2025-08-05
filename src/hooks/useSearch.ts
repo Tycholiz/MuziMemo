@@ -85,7 +85,7 @@ export function useSearch(): UseSearchReturn {
     }
 
     if (query.trim()) {
-      // @ts-expect-error
+      // @ts-ignore
       debounceTimeoutRef.current = setTimeout(async () => {
         const trimmedQuery = query.trim()
         if (!trimmedQuery) {

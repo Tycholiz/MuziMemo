@@ -32,6 +32,8 @@ export type { SearchResultsProps } from './SearchResults'
 export { SearchFilters } from './SearchFilters'
 export type { SearchFiltersProps } from './SearchFilters'
 
+export { TabsWithMediaPlayer } from './TabsWithMediaPlayer'
+
 export { Screen, Container, Row, Column, Spacer } from './Layout'
 export type { ScreenProps, ContainerProps } from './Layout'
 
