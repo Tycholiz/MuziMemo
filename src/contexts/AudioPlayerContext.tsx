@@ -127,6 +127,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
   const seekTo = useCallback(
     (position: number) => {
+      console.log('🎵 AudioPlayerContext: seekTo called with position', position, 'seconds')
       audioPlayer.seekTo(position)
     },
     [audioPlayer]

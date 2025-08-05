@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react'
+import React, { useCallback, useMemo, useRef, useEffect } from 'react'
 import { View, StyleSheet, ViewStyle, LayoutChangeEvent } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import Animated, {
@@ -7,6 +7,7 @@ import Animated, {
   runOnJS,
   interpolate,
   Extrapolate,
+  withSpring,
 } from 'react-native-reanimated'
 
 import { theme } from '@utils/theme'
@@ -35,6 +36,7 @@ export function AudioProgressBar({
   const isDragging = useSharedValue(false)
   const dragPosition = useSharedValue(0)
   const trackWidth = useSharedValue(0)
+  const animatedProgress = useSharedValue(0)
   const trackLayoutRef = useRef<View>(null)
 
   // Calculate progress as a percentage (0-1)
@@ -43,11 +45,22 @@ export function AudioProgressBar({
     return Math.max(0, Math.min(1, currentTime / duration))
   }, [currentTime, duration])
 
+  // Update animated progress when not dragging
+  useEffect(() => {
+    if (!isDragging.value) {
+      animatedProgress.value = withSpring(progress, {
+        damping: 20,
+        stiffness: 100,
+      })
+    }
+  }, [progress, animatedProgress, isDragging])
+
   // Handle seeking to a specific position
   const handleSeek = useCallback(
     (position: number) => {
       if (!duration || duration <= 0) return
       const seekTime = Math.max(0, Math.min(duration, position * duration))
+      console.log('🎵 AudioProgressBar: Seeking to', seekTime, 'seconds (', Math.round(position * 100), '%)')
       onSeek(seekTime)
     },
     [duration, onSeek]
@@ -55,27 +68,47 @@ export function AudioProgressBar({
 
   // Handle track layout to get accurate width
   const handleTrackLayout = useCallback((event: LayoutChangeEvent) => {
-    trackWidth.value = event.nativeEvent.layout.width
+    const { width } = event.nativeEvent.layout
+    trackWidth.value = width
+    console.log('🎵 AudioProgressBar: Track width set to', width)
   }, [trackWidth])
 
   // Pan gesture for dragging the thumb
   const panGesture = Gesture.Pan()
     .onStart(() => {
+      console.log('🎵 AudioProgressBar: Pan gesture started')
       isDragging.value = true
     })
     .onUpdate((event) => {
-      // Calculate position based on gesture location within the track
-      const position = Math.max(0, Math.min(1, event.x / trackWidth.value))
+      if (trackWidth.value <= 0) return
+
+      // Account for the padding in the touch area
+      // The actual track starts at THUMB_SIZE/2 from the left edge of the touch area
+      const adjustedX = event.x - (THUMB_SIZE / 2)
+      const actualTrackWidth = trackWidth.value
+      const position = Math.max(0, Math.min(1, adjustedX / actualTrackWidth))
+
       dragPosition.value = position
+      animatedProgress.value = position
+
+      console.log('🎵 AudioProgressBar: Dragging to position', Math.round(position * 100), '%')
     })
     .onEnd(() => {
+      console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(dragPosition.value * 100), '%')
       isDragging.value = false
       runOnJS(handleSeek)(dragPosition.value)
     })
 
   // Tap gesture for tap-to-seek
   const tapGesture = Gesture.Tap().onEnd((event) => {
-    const position = Math.max(0, Math.min(1, event.x / trackWidth.value))
+    if (trackWidth.value <= 0) return
+
+    // Account for the padding in the touch area
+    const adjustedX = event.x - (THUMB_SIZE / 2)
+    const actualTrackWidth = trackWidth.value
+    const position = Math.max(0, Math.min(1, adjustedX / actualTrackWidth))
+
+    console.log('🎵 AudioProgressBar: Tap gesture at position', Math.round(position * 100), '%')
     runOnJS(handleSeek)(position)
   })
 
@@ -84,22 +117,20 @@ export function AudioProgressBar({
 
   // Animated styles for the progress fill
   const progressStyle = useAnimatedStyle(() => {
-    const currentProgress = isDragging.value ? dragPosition.value : progress
     return {
-      width: `${currentProgress * 100}%`,
+      width: `${animatedProgress.value * 100}%`,
     }
   })
 
   // Animated styles for the thumb
   const thumbStyle = useAnimatedStyle(() => {
-    const currentProgress = isDragging.value ? dragPosition.value : progress
     const scale = isDragging.value ? 1.2 : 1
 
     return {
       transform: [
         {
           translateX: interpolate(
-            currentProgress,
+            animatedProgress.value,
             [0, 1],
             [0, trackWidth.value - THUMB_SIZE],
             Extrapolate.CLAMP
