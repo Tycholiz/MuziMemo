@@ -8,6 +8,8 @@ import Animated, {
   interpolate,
   Extrapolate,
   useDerivedValue,
+  withTiming,
+  Easing,
 } from 'react-native-reanimated'
 
 import { theme } from '@utils/theme'
@@ -40,46 +42,57 @@ export function AudioProgressBar({
   const trackWidth = useSharedValue(0)
   const trackLayoutRef = useRef<View>(null)
 
-  // Calculate progress as a percentage (0-1)
-  const progress = useMemo(() => {
-    if (!duration || duration <= 0) return 0
-    const calculatedProgress = Math.max(0, Math.min(1, currentTime / duration))
-    console.log('🎵 AudioProgressBar: Progress calculated -', {
-      currentTime,
-      duration,
-      progress: calculatedProgress,
-      percentage: Math.round(calculatedProgress * 100) + '%'
-    })
-    return calculatedProgress
-  }, [currentTime, duration])
 
-  // Create shared values for current time and duration that can be used in worklets
-  const sharedCurrentTime = useSharedValue(currentTime)
-  const sharedDuration = useSharedValue(duration)
 
-  // Update shared values when props change
-  useEffect(() => {
-    sharedCurrentTime.value = currentTime
-    sharedDuration.value = duration
-    console.log('🎵 AudioProgressBar: Updated shared values -', {
-      currentTime,
-      duration
-    })
-  }, [currentTime, duration, sharedCurrentTime, sharedDuration])
+  // Shared values for smooth animation on UI thread
+  const animatedProgress = useSharedValue(0)
+  const lastKnownProgress = useSharedValue(0)
+  const isUserInteracting = useSharedValue(false)
 
   // Manual position override for immediate user control
   const manualPosition = useSharedValue<number | null>(null)
 
-  // Smooth animated progress using derived value for 60 FPS updates
-  const animatedProgress = useDerivedValue(() => {
+  // Calculate current progress from props
+  const currentProgress = useMemo(() => {
+    if (!duration || duration <= 0) return 0
+    return Math.max(0, Math.min(1, currentTime / duration))
+  }, [currentTime, duration])
+
+  // Update animated progress with smooth interpolation
+  useEffect(() => {
+    const newProgress = currentProgress
+
+    console.log('🎵 AudioProgressBar: Progress update -', {
+      currentTime,
+      duration,
+      newProgress: Math.round(newProgress * 100),
+      lastProgress: Math.round(lastKnownProgress.value * 100),
+      isUserInteracting: isUserInteracting.value,
+      hasManualOverride: manualPosition.value !== null
+    })
+
+    // Only animate if user is not currently interacting and no manual override
+    if (!isUserInteracting.value && manualPosition.value === null) {
+      // Use smooth timing animation for 60fps interpolation
+      animatedProgress.value = withTiming(newProgress, {
+        duration: 100, // Match the update interval for smooth animation
+        easing: Easing.linear,
+      })
+    }
+
+    lastKnownProgress.value = newProgress
+  }, [currentProgress, animatedProgress, lastKnownProgress, isUserInteracting, manualPosition])
+
+  // Derived value for final progress calculation
+  const finalProgress = useDerivedValue(() => {
     // If we have a manual position override (during/after user interaction), use it
     if (manualPosition.value !== null) {
+      console.log('🎵 AudioProgressBar: Using manual position -', Math.round(manualPosition.value * 100), '%')
       return manualPosition.value
     }
 
-    // Otherwise, calculate smooth progress from current time (runs on UI thread at 60 FPS)
-    if (!sharedDuration.value || sharedDuration.value <= 0) return 0
-    return Math.max(0, Math.min(1, sharedCurrentTime.value / sharedDuration.value))
+    // Otherwise, use the smoothly animated progress
+    return animatedProgress.value
   })
 
   // Handle seeking to a specific position
@@ -102,11 +115,12 @@ export function AudioProgressBar({
 
   // Handle drag state changes
   const handleDragStart = useCallback(() => {
-    console.log('🎵 AudioProgressBar: Pan gesture started')
+    console.log('🎵 AudioProgressBar: Pan gesture started - pausing smooth animation')
 
     isDragging.value = true
+    isUserInteracting.value = true
     onDragStateChange?.(true)
-  }, [onDragStateChange, isDragging])
+  }, [onDragStateChange, isDragging, isUserInteracting])
 
   const handleDragUpdate = useCallback((position: number) => {
     dragPosition.value = position
@@ -120,7 +134,7 @@ export function AudioProgressBar({
   }, [onDragStateChange, duration, dragPosition, manualPosition])
 
   const handleDragEnd = useCallback((position: number) => {
-    console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(position * 100), '%')
+    console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(position * 100), '% - resuming smooth animation')
 
     // Keep manual position for immediate final positioning
     manualPosition.value = position
@@ -129,11 +143,13 @@ export function AudioProgressBar({
     onDragStateChange?.(false)
     handleSeek(position)
 
-    // Clear manual override after a short delay to allow seek to complete
+    // Clear manual override and resume smooth animation after seek completes
     setTimeout(() => {
       manualPosition.value = null
-    }, 100)
-  }, [onDragStateChange, isDragging, handleSeek, manualPosition])
+      isUserInteracting.value = false
+      console.log('🎵 AudioProgressBar: Manual override cleared - smooth animation resumed')
+    }, 150) // Slightly longer delay to ensure seek completes
+  }, [onDragStateChange, isDragging, handleSeek, manualPosition, isUserInteracting])
 
   // Pan gesture for dragging the thumb
   const panGesture = Gesture.Pan()
@@ -164,18 +180,23 @@ export function AudioProgressBar({
     const actualTrackWidth = trackWidth.value
     const position = Math.max(0, Math.min(1, adjustedX / actualTrackWidth))
 
-    console.log('🎵 AudioProgressBar: Tap gesture at position', Math.round(position * 100), '%')
+    console.log('🎵 AudioProgressBar: Tap gesture at position', Math.round(position * 100), '% - pausing smooth animation')
+
+    // Pause smooth animation during tap-to-seek
+    isUserInteracting.value = true
 
     // Set manual position override for immediate positioning
     manualPosition.value = position
 
     runOnJS(handleSeek)(position)
 
-    // Clear manual override after seek completes
+    // Clear manual override and resume smooth animation after seek completes
     runOnJS(() => {
       setTimeout(() => {
         manualPosition.value = null
-      }, 100)
+        isUserInteracting.value = false
+        console.log('🎵 AudioProgressBar: Tap seek completed - smooth animation resumed')
+      }, 150)
     })()
   })
 
@@ -184,20 +205,22 @@ export function AudioProgressBar({
 
   // Animated styles for the progress fill
   const progressStyle = useAnimatedStyle(() => {
+    const progress = finalProgress.value
     return {
-      width: `${animatedProgress.value * 100}%`,
+      width: `${progress * 100}%`,
     }
   })
 
   // Animated styles for the thumb
   const thumbStyle = useAnimatedStyle(() => {
     const scale = isDragging.value ? 1.2 : 1
+    const progress = finalProgress.value
 
     return {
       transform: [
         {
           translateX: interpolate(
-            animatedProgress.value,
+            progress,
             [0, 1],
             [0, trackWidth.value - THUMB_SIZE],
             Extrapolate.CLAMP
@@ -215,7 +238,7 @@ export function AudioProgressBar({
           style={styles.touchArea}
           accessible={true}
           accessibilityRole="adjustable"
-          accessibilityLabel={`Audio progress: ${Math.round(progress * 100)}%`}
+          accessibilityLabel={`Audio progress: ${Math.round(currentProgress * 100)}%`}
           accessibilityHint="Drag to seek or tap to jump to position"
           accessibilityValue={{
             min: 0,
