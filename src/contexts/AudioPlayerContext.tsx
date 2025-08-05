@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef, useMemo } from 'react'
 import { Platform } from 'react-native'
-import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio'
 
 export type AudioClip = {
   id: string
@@ -36,6 +36,7 @@ type AudioPlayerProviderProps = {
 
 export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const audioPlayer = useAudioPlayer()
+  const audioStatus = useAudioPlayerStatus(audioPlayer)
   const [currentClip, setCurrentClip] = useState<AudioClip | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPlayingOverride, setIsPlayingOverride] = useState<boolean | null>(null)
@@ -109,6 +110,24 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     }
   }, [stopPositionTracking])
 
+  // Handle playback completion detection
+  useEffect(() => {
+    if (audioStatus.didJustFinish && currentClip) {
+      console.log('🎵 AudioPlayerContext: Audio playback completed naturally for:', currentClip.name)
+
+      // Set playing state to false when playback completes
+      setIsPlayingOverride(false)
+
+      // Reset position to beginning for next play
+      setCurrentPosition(0)
+
+      // Stop position tracking since playback is complete
+      stopPositionTracking()
+
+      console.log('🎵 AudioPlayerContext: Updated state after completion - isPlaying: false, position: 0')
+    }
+  }, [audioStatus.didJustFinish, currentClip, stopPositionTracking])
+
   const playClip = useCallback(
     async (clip: AudioClip) => {
       try {
@@ -164,14 +183,24 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const resumeClip = useCallback(() => {
     console.log('🎵 AudioPlayerContext: resumeClip called')
     if (currentClip) {
+      // Check if we're at the end of the track (completed playback)
+      const isAtEnd = currentPosition >= currentDuration && currentDuration > 0
+
+      if (isAtEnd) {
+        console.log('🎵 AudioPlayerContext: At end of track, restarting from beginning')
+        // Restart from beginning if at the end
+        audioPlayer.seekTo(0)
+        setCurrentPosition(0)
+      }
+
       audioPlayer.play()
       setIsPlayingOverride(true)
       startPositionTracking()
-      console.log('🎵 AudioPlayerContext: Resumed playback for:', currentClip.name)
+      console.log('🎵 AudioPlayerContext: Resumed playback for:', currentClip.name, isAtEnd ? '(restarted from beginning)' : '')
     } else {
       console.warn('🎵 AudioPlayerContext: No current clip to resume')
     }
-  }, [audioPlayer, currentClip, startPositionTracking])
+  }, [audioPlayer, currentClip, currentPosition, currentDuration, startPositionTracking])
 
   const pauseClip = useCallback(() => {
     console.log('🎵 AudioPlayerContext: pauseClip called')
@@ -248,7 +277,9 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     rawPosition: audioPlayer.currentTime,
     rawDuration: audioPlayer.duration,
     isPlayingOverride,
-    audioPlayerPlaying: audioPlayer.playing
+    audioPlayerPlaying: audioPlayer.playing,
+    didJustFinish: audioStatus.didJustFinish,
+    isAtEnd: currentPosition >= currentDuration && currentDuration > 0
   })
 
   const value: AudioPlayerContextType = {
