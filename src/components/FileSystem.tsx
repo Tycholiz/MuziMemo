@@ -459,7 +459,7 @@ export function FileSystemComponent() {
       if (isMultiSelectMode && selectedItems.size > 0) {
         // Batch move for multi-select
         let successCount = 0
-        let failedItems: string[] = []
+        const failedItems: string[] = []
 
         for (const itemId of selectedItems) {
           try {
@@ -678,11 +678,7 @@ export function FileSystemComponent() {
 
               return (
                 <View key={folder.id} style={styles.folderCard}>
-                  <TouchableOpacity
-                    style={styles.folderContent}
-                    onPress={handlePress}
-                    activeOpacity={0.7}
-                  >
+                  <TouchableOpacity style={styles.folderContent} onPress={handlePress} activeOpacity={0.7}>
                     <View style={styles.folderIcon}>
                       <Ionicons name="folder" size={40} color="#FF4444" />
                     </View>
