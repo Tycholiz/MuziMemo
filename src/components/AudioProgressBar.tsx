@@ -7,8 +7,7 @@ import Animated, {
   runOnJS,
   interpolate,
   Extrapolate,
-  withSpring,
-  useDerivedValue,
+  cancelAnimation,
 } from 'react-native-reanimated'
 
 import { theme } from '@utils/theme'
@@ -68,21 +67,22 @@ export function AudioProgressBar({
     })
   }, [currentTime, duration, sharedCurrentTime, sharedDuration])
 
-  // Use derived value for animated progress that updates automatically
-  const animatedProgress = useDerivedValue(() => {
-    if (isDragging.value) {
-      // When dragging, use the drag position
-      return dragPosition.value
-    } else {
-      // When not dragging, calculate progress from current time
-      if (!sharedDuration.value || sharedDuration.value <= 0) return 0
-      const calculatedProgress = Math.max(0, Math.min(1, sharedCurrentTime.value / sharedDuration.value))
-      return withSpring(calculatedProgress, {
-        damping: 20,
-        stiffness: 100,
-      })
+  // Animated progress value for smooth updates
+  const animatedProgress = useSharedValue(0)
+
+  // Update animated progress when not dragging
+  useEffect(() => {
+    if (!isDragging.value) {
+      const calculatedProgress = Math.max(0, Math.min(1, currentTime / duration))
+      console.log('🎵 AudioProgressBar: Updating progress to', Math.round(calculatedProgress * 100), '%')
+
+      // Cancel any existing animation to prevent bouncing
+      cancelAnimation(animatedProgress)
+
+      // Set progress immediately without spring animation
+      animatedProgress.value = calculatedProgress
     }
-  })
+  }, [currentTime, duration, animatedProgress, isDragging])
 
   // Handle seeking to a specific position
   const handleSeek = useCallback(
@@ -105,23 +105,35 @@ export function AudioProgressBar({
   // Handle drag state changes
   const handleDragStart = useCallback(() => {
     console.log('🎵 AudioProgressBar: Pan gesture started')
+
+    // Cancel any existing animation to prevent conflicts
+    cancelAnimation(animatedProgress)
+
     isDragging.value = true
     onDragStateChange?.(true)
-  }, [onDragStateChange, isDragging])
+  }, [onDragStateChange, isDragging, animatedProgress])
 
   const handleDragUpdate = useCallback((position: number) => {
     dragPosition.value = position
+
+    // Update animated progress immediately during drag
+    animatedProgress.value = position
+
     const previewTime = position * duration
     onDragStateChange?.(true, previewTime)
     console.log('🎵 AudioProgressBar: Dragging to position', Math.round(position * 100), '% - preview time:', previewTime.toFixed(1), 's')
-  }, [onDragStateChange, duration, dragPosition])
+  }, [onDragStateChange, duration, dragPosition, animatedProgress])
 
   const handleDragEnd = useCallback((position: number) => {
     console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(position * 100), '%')
+
+    // Set final position immediately without animation
+    animatedProgress.value = position
+
     isDragging.value = false
     onDragStateChange?.(false)
     handleSeek(position)
-  }, [onDragStateChange, isDragging, handleSeek])
+  }, [onDragStateChange, isDragging, handleSeek, animatedProgress])
 
   // Pan gesture for dragging the thumb
   const panGesture = Gesture.Pan()
@@ -153,6 +165,11 @@ export function AudioProgressBar({
     const position = Math.max(0, Math.min(1, adjustedX / actualTrackWidth))
 
     console.log('🎵 AudioProgressBar: Tap gesture at position', Math.round(position * 100), '%')
+
+    // Cancel any existing animation and set position immediately
+    cancelAnimation(animatedProgress)
+    animatedProgress.value = position
+
     runOnJS(handleSeek)(position)
   })
 
