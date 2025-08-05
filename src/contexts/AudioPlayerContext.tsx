@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
@@ -39,6 +39,11 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isPlayingOverride, setIsPlayingOverride] = useState(false)
 
+  // Add state for tracking position and duration with timer-based updates
+  const [currentPosition, setCurrentPosition] = useState(0)
+  const [currentDuration, setCurrentDuration] = useState(0)
+  const timeUpdateInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // Configure audio session for playback
   useEffect(() => {
     const configureAudio = async () => {
@@ -62,6 +67,46 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
     configureAudio()
   }, [])
+
+  // Start position tracking timer
+  const startPositionTracking = useCallback(() => {
+    if (timeUpdateInterval.current) {
+      clearInterval(timeUpdateInterval.current)
+    }
+
+    timeUpdateInterval.current = setInterval(() => {
+      if (audioPlayer.playing) {
+        const position = audioPlayer.currentTime || 0
+        const duration = audioPlayer.duration || 0
+
+        setCurrentPosition(position)
+        if (duration > 0) {
+          setCurrentDuration(duration)
+        }
+
+        console.log('🎵 AudioPlayerContext: Position update -', {
+          position,
+          duration,
+          playing: audioPlayer.playing
+        })
+      }
+    }, 100) // Update every 100ms for smooth progress
+  }, [audioPlayer])
+
+  // Stop position tracking timer
+  const stopPositionTracking = useCallback(() => {
+    if (timeUpdateInterval.current) {
+      clearInterval(timeUpdateInterval.current)
+      timeUpdateInterval.current = null
+    }
+  }, [])
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      stopPositionTracking()
+    }
+  }, [stopPositionTracking])
 
   const playClip = useCallback(
     async (clip: AudioClip) => {
@@ -99,6 +144,9 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
         audioPlayer.play()
         console.log('🎵 AudioPlayerContext: Called audioPlayer.play()')
+
+        // Start position tracking
+        startPositionTracking()
       } catch (error) {
         console.error('❌ Failed to play audio clip:', error)
         // Reset state on error
@@ -116,19 +164,24 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     console.log('🎵 AudioPlayerContext: pauseClip called')
     audioPlayer.pause()
     setIsPlayingOverride(false)
-  }, [audioPlayer])
+    stopPositionTracking()
+  }, [audioPlayer, stopPositionTracking])
 
   const stopClip = useCallback(() => {
     console.log('🎵 AudioPlayerContext: stopClip called')
     audioPlayer.pause()
     audioPlayer.seekTo(0)
     setIsPlayingOverride(false)
-  }, [audioPlayer])
+    setCurrentPosition(0)
+    stopPositionTracking()
+  }, [audioPlayer, stopPositionTracking])
 
   const seekTo = useCallback(
     (position: number) => {
       console.log('🎵 AudioPlayerContext: seekTo called with position', position, 'seconds')
       audioPlayer.seekTo(position)
+      // Update tracked position immediately for instant UI feedback
+      setCurrentPosition(position)
     },
     [audioPlayer]
   )
@@ -138,7 +191,10 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     audioPlayer.pause()
     setCurrentClip(null)
     setIsPlayingOverride(false)
-  }, [audioPlayer])
+    setCurrentPosition(0)
+    setCurrentDuration(0)
+    stopPositionTracking()
+  }, [audioPlayer, stopPositionTracking])
 
   // Sync override state with actual audio player state
   useEffect(() => {
@@ -155,8 +211,10 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   console.log('🎵 AudioPlayerContext: Current state -', {
     currentClip: currentClip?.name,
     isPlaying: isPlayingOverride || audioPlayer.playing,
-    position: audioPlayer.currentTime,
-    duration: audioPlayer.duration,
+    position: currentPosition, // Use tracked position
+    duration: currentDuration, // Use tracked duration
+    rawPosition: audioPlayer.currentTime,
+    rawDuration: audioPlayer.duration,
     isPlayingOverride,
     audioPlayerPlaying: audioPlayer.playing
   })
@@ -166,8 +224,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     currentClip,
     isPlaying: isPlayingOverride || audioPlayer.playing,
     isLoading,
-    position: audioPlayer.currentTime,
-    duration: audioPlayer.duration,
+    position: currentPosition, // Use tracked position instead of audioPlayer.currentTime
+    duration: currentDuration, // Use tracked duration instead of audioPlayer.duration
 
     // Actions
     playClip,
