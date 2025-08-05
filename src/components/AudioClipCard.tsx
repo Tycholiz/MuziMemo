@@ -25,6 +25,9 @@ export type AudioClipCardProps = {
   onRestore?: () => void
   onDelete?: () => void
   isInRecentlyDeleted?: boolean
+  isMultiSelectMode?: boolean
+  isSelected?: boolean
+  onToggleSelection?: () => void
 }
 
 export const AudioClipCard = React.memo(function AudioClipCard({
@@ -37,27 +40,39 @@ export const AudioClipCard = React.memo(function AudioClipCard({
   onRestore,
   onDelete,
   isInRecentlyDeleted = false,
+  isMultiSelectMode = false,
+  isSelected = false,
+  onToggleSelection,
 }: AudioClipCardProps) {
   const handlePress = () => {
-    console.log('🎵 AudioClipCard: handlePress called for:', clip.name)
-    console.log('🎵 AudioClipCard: isPlaying:', isPlaying)
-    if (isPlaying) {
-      console.log('🎵 AudioClipCard: Calling onPause')
-      onPause()
+    if (isMultiSelectMode && onToggleSelection) {
+      console.log('🎵 AudioClipCard: Multi-select mode - toggling selection for:', clip.name)
+      onToggleSelection()
     } else {
-      console.log('🎵 AudioClipCard: Calling onPlay')
-      onPlay()
+      console.log('🎵 AudioClipCard: handlePress called for:', clip.name)
+      console.log('🎵 AudioClipCard: isPlaying:', isPlaying)
+      if (isPlaying) {
+        console.log('🎵 AudioClipCard: Calling onPause')
+        onPause()
+      } else {
+        console.log('🎵 AudioClipCard: Calling onPlay')
+        onPlay()
+      }
     }
   }
 
   return (
     <View style={[styles.container, isPlaying && styles.containerPlaying]}>
       <TouchableOpacity style={styles.content} onPress={handlePress} activeOpacity={0.7}>
-        <View style={styles.playButton}>
+        <View style={[styles.playButton, isMultiSelectMode && isSelected && styles.playButtonSelected]}>
           <Ionicons
-            name={isPlaying ? 'pause' : 'play'}
+            name={isMultiSelectMode ? 'checkmark-circle' : (isPlaying ? 'pause' : 'play')}
             size={24}
-            color={isPlaying ? theme.colors.primary : theme.colors.text.primary}
+            color={
+              isMultiSelectMode
+                ? (isSelected ? theme.colors.surface.primary : theme.colors.text.secondary)
+                : (isPlaying ? theme.colors.primary : theme.colors.text.primary)
+            }
           />
         </View>
 
@@ -121,6 +136,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+  },
+  playButtonSelected: {
+    backgroundColor: theme.colors.primary,
   },
   info: {
     flex: 1,
