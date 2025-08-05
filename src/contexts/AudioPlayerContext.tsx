@@ -200,12 +200,15 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   useEffect(() => {
     if (isPlayingOverride && audioPlayer.playing) {
       // Audio player has caught up, disable override
+      console.log('🎵 AudioPlayerContext: Disabling isPlayingOverride - audio player caught up')
       setIsPlayingOverride(false)
     } else if (!audioPlayer.playing && !isPlayingOverride && currentClip) {
       // Audio stopped but we still have a current clip, clear it
+      console.log('🎵 AudioPlayerContext: Audio stopped, clearing current clip')
       setCurrentClip(null)
+      stopPositionTracking()
     }
-  }, [audioPlayer.playing, isPlayingOverride, currentClip])
+  }, [audioPlayer.playing, isPlayingOverride, currentClip, stopPositionTracking])
 
   // Debug logging for audio player state
   console.log('🎵 AudioPlayerContext: Current state -', {

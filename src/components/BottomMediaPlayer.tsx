@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import { View, StyleSheet, ViewStyle, Text } from 'react-native'
 
 import { MediaCard } from './Card'
@@ -40,12 +40,29 @@ export function BottomMediaPlayer({
   onSeek,
   style,
 }: BottomMediaPlayerProps) {
+  // State for tracking scrubber drag
+  const [isDragging, setIsDragging] = useState(false)
+  const [previewTime, setPreviewTime] = useState<number | undefined>(undefined)
+
   if (!isVisible) {
     return null
   }
 
+  // Handle drag state changes from AudioProgressBar
+  const handleDragStateChange = useCallback((dragging: boolean, preview?: number) => {
+    setIsDragging(dragging)
+    setPreviewTime(preview)
+    console.log('🎵 BottomMediaPlayer: Drag state changed -', {
+      isDragging: dragging,
+      previewTime: preview
+    })
+  }, [])
+
+  // Use preview time during dragging, otherwise use actual current time
+  const displayCurrentTime = isDragging && previewTime !== undefined ? previewTime : currentTime
+
   // Format time for display
-  const timeDisplay = formatPlaybackTime(currentTime, duration)
+  const timeDisplay = formatPlaybackTime(displayCurrentTime, duration)
 
   // Debug logging for props
   console.log('🎵 BottomMediaPlayer: Received props -', {
@@ -53,7 +70,10 @@ export function BottomMediaPlayer({
     currentTime,
     duration,
     isPlaying,
-    hasOnSeek: !!onSeek
+    hasOnSeek: !!onSeek,
+    isDragging,
+    previewTime,
+    displayCurrentTime
   })
 
   return (
@@ -77,6 +97,7 @@ export function BottomMediaPlayer({
             currentTime={currentTime}
             duration={duration}
             onSeek={onSeek}
+            onDragStateChange={handleDragStateChange}
             style={styles.progressBar}
           />
         )}

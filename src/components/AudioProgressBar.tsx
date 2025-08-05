@@ -17,6 +17,7 @@ export type AudioProgressBarProps = {
   currentTime: number
   duration: number
   onSeek: (position: number) => void
+  onDragStateChange?: (isDragging: boolean, previewTime?: number) => void
   style?: ViewStyle
 }
 
@@ -32,6 +33,7 @@ export function AudioProgressBar({
   currentTime,
   duration,
   onSeek,
+  onDragStateChange,
   style,
 }: AudioProgressBarProps) {
   const isDragging = useSharedValue(false)
@@ -100,11 +102,31 @@ export function AudioProgressBar({
     console.log('🎵 AudioProgressBar: Track width set to', width)
   }, [trackWidth])
 
+  // Handle drag state changes
+  const handleDragStart = useCallback(() => {
+    console.log('🎵 AudioProgressBar: Pan gesture started')
+    isDragging.value = true
+    onDragStateChange?.(true)
+  }, [onDragStateChange, isDragging])
+
+  const handleDragUpdate = useCallback((position: number) => {
+    dragPosition.value = position
+    const previewTime = position * duration
+    onDragStateChange?.(true, previewTime)
+    console.log('🎵 AudioProgressBar: Dragging to position', Math.round(position * 100), '% - preview time:', previewTime.toFixed(1), 's')
+  }, [onDragStateChange, duration, dragPosition])
+
+  const handleDragEnd = useCallback((position: number) => {
+    console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(position * 100), '%')
+    isDragging.value = false
+    onDragStateChange?.(false)
+    handleSeek(position)
+  }, [onDragStateChange, isDragging, handleSeek])
+
   // Pan gesture for dragging the thumb
   const panGesture = Gesture.Pan()
     .onStart(() => {
-      console.log('🎵 AudioProgressBar: Pan gesture started')
-      isDragging.value = true
+      runOnJS(handleDragStart)()
     })
     .onUpdate((event) => {
       if (trackWidth.value <= 0) return
@@ -115,14 +137,10 @@ export function AudioProgressBar({
       const actualTrackWidth = trackWidth.value
       const position = Math.max(0, Math.min(1, adjustedX / actualTrackWidth))
 
-      dragPosition.value = position
-
-      console.log('🎵 AudioProgressBar: Dragging to position', Math.round(position * 100), '%')
+      runOnJS(handleDragUpdate)(position)
     })
     .onEnd(() => {
-      console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(dragPosition.value * 100), '%')
-      isDragging.value = false
-      runOnJS(handleSeek)(dragPosition.value)
+      runOnJS(handleDragEnd)(dragPosition.value)
     })
 
   // Tap gesture for tap-to-seek
