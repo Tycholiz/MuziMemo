@@ -177,19 +177,17 @@ export function useSearch(): UseSearchReturn {
     }
   }
 
-  const addToRecentSearches = useCallback((item: Omit<RecentSearchItem, 'timestamp'>) => {
-    const newItem: RecentSearchItem = {
-      ...item,
-      timestamp: Date.now(),
-    }
+  const addToSearchHistory = useCallback((searchQuery: string) => {
+    const trimmedQuery = searchQuery.trim()
+    if (!trimmedQuery || trimmedQuery.length < 2) return
 
-    setRecentSearches(prev => {
-      // Remove existing instance if present (same id and type)
-      const filtered = prev.filter(existing => !(existing.id === newItem.id && existing.type === newItem.type))
-      // Add to beginning and limit to MAX_RECENT_SEARCHES
-      const newSearches = [newItem, ...filtered].slice(0, MAX_RECENT_SEARCHES)
-      saveRecentSearches(newSearches)
-      return newSearches
+    setSearchHistory(prev => {
+      // Remove existing instance if present
+      const filtered = prev.filter(item => item !== trimmedQuery)
+      // Add to beginning
+      const newHistory = [trimmedQuery, ...filtered].slice(0, MAX_SEARCH_HISTORY)
+      saveSearchHistory(newHistory)
+      return newHistory
     })
   }, [])
 
@@ -268,11 +266,11 @@ export function useSearch(): UseSearchReturn {
     }
   }, [])
 
-  const removeRecentSearchItem = useCallback((item: RecentSearchItem) => {
-    setRecentSearches(prev => {
-      const newSearches = prev.filter(search => !(search.id === item.id && search.type === item.type))
-      saveRecentSearches(newSearches)
-      return newSearches
+  const removeHistoryItem = useCallback((item: string) => {
+    setSearchHistory(prev => {
+      const newHistory = prev.filter(historyItem => historyItem !== item)
+      saveSearchHistory(newHistory)
+      return newHistory
     })
   }, [])
 
