@@ -62,9 +62,14 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
           setCurrentPosition(newPosition)
 
+          // Debug logging for completion detection
+          if (duration > 0 && newPosition >= duration - 0.5) { // Wider tolerance for debugging
+            console.log('🎵 DEBUG: Near completion - position:', newPosition, 'duration:', duration, 'hasCompleted:', hasCompleted, 'audioPlayer.playing:', audioPlayer.playing, 'isPlayingOverride:', isPlayingOverride)
+          }
+
           // Check if audio has completed (reached the end) - only log once
           if (duration > 0 && newPosition >= duration - 0.1 && !hasCompleted) { // 0.1s tolerance for completion
-            console.log('🎵 AudioPlayerContext: Audio completed')
+            console.log('🎵 AudioPlayerContext: Audio completed - setting hasCompleted=true, isPlayingOverride=false')
             setHasCompleted(true)
             setIsPlayingOverride(false) // Stop playing when audio completes
           }
@@ -234,10 +239,20 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     // This allows the media player to remain visible after audio completion
   }, [audioPlayer.playing, isPlayingOverride])
 
+  // Debug the isPlaying calculation
+  const calculatedIsPlaying = isPlayingOverride || audioPlayer.playing
+
+  // Log when there's a state change that might affect the UI
+  useEffect(() => {
+    if (hasCompleted) {
+      console.log('🎵 DEBUG: hasCompleted=true, isPlayingOverride:', isPlayingOverride, 'audioPlayer.playing:', audioPlayer.playing, 'calculatedIsPlaying:', calculatedIsPlaying)
+    }
+  }, [hasCompleted, isPlayingOverride, audioPlayer.playing, calculatedIsPlaying])
+
   const value: AudioPlayerContextType = {
     // State
     currentClip,
-    isPlaying: isPlayingOverride || audioPlayer.playing,
+    isPlaying: calculatedIsPlaying,
     isLoading,
     position: currentPosition, // Use tracked position instead of audioPlayer.currentTime
     duration: audioPlayer.duration,
