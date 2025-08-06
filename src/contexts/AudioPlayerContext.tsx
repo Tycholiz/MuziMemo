@@ -66,6 +66,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
           if (duration > 0 && newPosition >= duration - 0.1 && !hasCompleted) { // 0.1s tolerance for completion
             console.log('🎵 AudioPlayerContext: Audio completed')
             setHasCompleted(true)
+            setIsPlayingOverride(false) // Stop playing when audio completes
           }
         }, 16) // 16ms = ~60 FPS for smooth animation
       }
