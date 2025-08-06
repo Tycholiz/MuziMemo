@@ -67,6 +67,9 @@ export function TabsWithMediaPlayer() {
                 audioPlayer.playClip(audioPlayer.currentClip!)
               }
             }}
+            onSeek={audioPlayer.seekTo}
+            currentTimeSeconds={audioPlayer.position}
+            durationSeconds={audioPlayer.duration}
             style={styles.seamlessMediaPlayer}
           />
         </View>

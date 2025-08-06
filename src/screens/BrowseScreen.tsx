@@ -114,6 +114,9 @@ export default function BrowseScreen() {
                 audioPlayer.playClip(audioPlayer.currentClip!)
               }
             }}
+            onSeek={audioPlayer.seekTo}
+            currentTimeSeconds={audioPlayer.position}
+            durationSeconds={audioPlayer.duration}
           />
         )}
       </View>
