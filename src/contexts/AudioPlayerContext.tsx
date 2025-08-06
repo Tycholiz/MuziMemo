@@ -231,11 +231,23 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   }, [audioPlayer, stopPositionTracking])
 
   const seekTo = useCallback(
-    (position: number) => {
+    async (position: number) => {
       console.log('🎵 AudioPlayerContext: seekTo called with position', position, 'seconds')
-      audioPlayer.seekTo(position)
-      // Update tracked position immediately for instant UI feedback
-      setCurrentPosition(position)
+      console.log('🎵 AudioPlayerContext: Current audio player state - playing:', audioPlayer.playing, 'currentTime:', audioPlayer.currentTime)
+
+      try {
+        // Update tracked position immediately for instant UI feedback
+        setCurrentPosition(position)
+
+        // Perform the seek operation
+        await audioPlayer.seekTo(position)
+        console.log('🎵 AudioPlayerContext: Successfully seeked to position', position, 'seconds')
+
+        // Verify the seek worked
+        console.log('🎵 AudioPlayerContext: After seek - audio player currentTime:', audioPlayer.currentTime)
+      } catch (error) {
+        console.error('🎵 AudioPlayerContext: Error during seekTo operation:', error)
+      }
     },
     [audioPlayer]
   )

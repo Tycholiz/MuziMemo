@@ -97,11 +97,17 @@ export function AudioProgressBar({
 
   // Handle seeking to a specific position
   const handleSeek = useCallback(
-    (position: number) => {
+    async (position: number) => {
       if (!duration || duration <= 0) return
       const seekTime = Math.max(0, Math.min(duration, position * duration))
       console.log('🎵 AudioProgressBar: Seeking to', seekTime, 'seconds (', Math.round(position * 100), '%)')
-      onSeek(seekTime)
+
+      try {
+        await onSeek(seekTime)
+        console.log('🎵 AudioProgressBar: Seek operation completed successfully')
+      } catch (error) {
+        console.error('🎵 AudioProgressBar: Error during seek operation:', error)
+      }
     },
     [duration, onSeek]
   )
@@ -133,22 +139,30 @@ export function AudioProgressBar({
     console.log('🎵 AudioProgressBar: Dragging to position', Math.round(position * 100), '% - preview time:', previewTime.toFixed(1), 's')
   }, [onDragStateChange, duration, dragPosition, manualPosition])
 
-  const handleDragEnd = useCallback((position: number) => {
-    console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(position * 100), '% - resuming smooth animation')
+  const handleDragEnd = useCallback(async (position: number) => {
+    console.log('🎵 AudioProgressBar: Pan gesture ended at position', Math.round(position * 100), '% - performing seek operation')
 
     // Keep manual position for immediate final positioning
     manualPosition.value = position
 
     isDragging.value = false
     onDragStateChange?.(false)
-    handleSeek(position)
+
+    // Perform the seek operation and wait for it to complete
+    try {
+      await handleSeek(position)
+      console.log('🎵 AudioProgressBar: Drag-to-seek completed successfully')
+    } catch (error) {
+      console.error('🎵 AudioProgressBar: Error during drag-to-seek:', error)
+    }
 
     // Clear manual override and resume smooth animation after seek completes
+    // Use a longer delay to ensure the audio player has updated its position
     setTimeout(() => {
       manualPosition.value = null
       isUserInteracting.value = false
       console.log('🎵 AudioProgressBar: Manual override cleared - smooth animation resumed')
-    }, 150) // Slightly longer delay to ensure seek completes
+    }, 200) // Longer delay to ensure seek operation fully completes
   }, [onDragStateChange, isDragging, handleSeek, manualPosition, isUserInteracting])
 
   // Pan gesture for dragging the thumb
@@ -180,7 +194,7 @@ export function AudioProgressBar({
     const actualTrackWidth = trackWidth.value
     const position = Math.max(0, Math.min(1, adjustedX / actualTrackWidth))
 
-    console.log('🎵 AudioProgressBar: Tap gesture at position', Math.round(position * 100), '% - pausing smooth animation')
+    console.log('🎵 AudioProgressBar: Tap gesture at position', Math.round(position * 100), '% - performing seek operation')
 
     // Pause smooth animation during tap-to-seek
     isUserInteracting.value = true
@@ -188,15 +202,21 @@ export function AudioProgressBar({
     // Set manual position override for immediate positioning
     manualPosition.value = position
 
-    runOnJS(handleSeek)(position)
+    // Perform the seek operation
+    runOnJS(async () => {
+      try {
+        await handleSeek(position)
+        console.log('🎵 AudioProgressBar: Tap-to-seek completed successfully')
+      } catch (error) {
+        console.error('🎵 AudioProgressBar: Error during tap-to-seek:', error)
+      }
 
-    // Clear manual override and resume smooth animation after seek completes
-    runOnJS(() => {
+      // Clear manual override and resume smooth animation after seek completes
       setTimeout(() => {
         manualPosition.value = null
         isUserInteracting.value = false
         console.log('🎵 AudioProgressBar: Tap seek completed - smooth animation resumed')
-      }, 150)
+      }, 200)
     })()
   })
 
