@@ -5,6 +5,7 @@
 import {
   formatDuration,
   formatDurationFromSeconds,
+  formatDurationSmart,
   formatFileSize,
   formatDate,
   formatDateSmart,
@@ -39,6 +40,32 @@ describe('formatUtils', () => {
     it('should handle large durations', () => {
       expect(formatDurationFromSeconds(7200)).toBe('120:00') // 2 hours
       expect(formatDurationFromSeconds(3599)).toBe('59:59')
+    })
+  })
+
+  describe('formatDurationSmart', () => {
+    it('should format short durations to MM:SS', () => {
+      expect(formatDurationSmart(0)).toBe('00:00')
+      expect(formatDurationSmart(1)).toBe('00:01')
+      expect(formatDurationSmart(60)).toBe('01:00')
+      expect(formatDurationSmart(90)).toBe('01:30')
+      expect(formatDurationSmart(3599)).toBe('59:59') // 59:59 - just under 1 hour
+    })
+
+    it('should format long durations to HH:MM:SS', () => {
+      expect(formatDurationSmart(3600)).toBe('01:00:00') // exactly 1 hour
+      expect(formatDurationSmart(3661)).toBe('01:01:01') // 1 hour, 1 minute, 1 second
+      expect(formatDurationSmart(7200)).toBe('02:00:00') // 2 hours
+      expect(formatDurationSmart(7323)).toBe('02:02:03') // 2 hours, 2 minutes, 3 seconds
+    })
+
+    it('should handle fractional seconds', () => {
+      expect(formatDurationSmart(1.7)).toBe('00:01')
+      expect(formatDurationSmart(3600.9)).toBe('01:00:00')
+    })
+
+    it('should handle negative values', () => {
+      expect(formatDurationSmart(-10)).toBe('00:00')
     })
   })
 

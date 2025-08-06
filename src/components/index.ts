@@ -23,6 +23,9 @@ export type { SoundWaveProps } from './SoundWave'
 export { BottomMediaPlayer } from './BottomMediaPlayer'
 export type { BottomMediaPlayerProps } from './BottomMediaPlayer'
 
+export { AudioProgressBar } from './AudioProgressBar'
+export type { AudioProgressBarProps } from './AudioProgressBar'
+
 export { SearchBar } from './SearchBar'
 export type { SearchBarProps } from './SearchBar'
 

@@ -2,6 +2,8 @@ import React from 'react'
 import { View, StyleSheet, ViewStyle } from 'react-native'
 
 import { MediaCard } from './Card'
+import { AudioProgressBar } from './AudioProgressBar'
+import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
 import { theme } from '@utils/theme'
 
 export type BottomMediaPlayerProps = {
@@ -16,6 +18,7 @@ export type BottomMediaPlayerProps = {
   onPrevious?: () => void
   onMore?: () => void
   style?: ViewStyle
+  showProgressBar?: boolean
 }
 
 /**
@@ -34,7 +37,10 @@ export function BottomMediaPlayer({
   onPrevious,
   onMore,
   style,
+  showProgressBar = true,
 }: BottomMediaPlayerProps) {
+  const audioPlayer = useAudioPlayerContext()
+
   if (!isVisible) {
     return null
   }
@@ -43,9 +49,9 @@ export function BottomMediaPlayer({
   const formatArtistDisplay = () => {
     const parts = []
     if (artist) parts.push(artist)
-    if (currentTime && duration) {
+    if (!showProgressBar && currentTime && duration) {
       parts.push(`${currentTime} / ${duration}`)
-    } else if (duration) {
+    } else if (!showProgressBar && duration) {
       parts.push(duration)
     }
     return parts.join(' • ')
@@ -53,6 +59,18 @@ export function BottomMediaPlayer({
 
   return (
     <View style={[styles.container, style]}>
+      {/* Progress Bar */}
+      {showProgressBar && (
+        <AudioProgressBar
+          currentTime={audioPlayer.position}
+          duration={audioPlayer.duration}
+          onSeek={audioPlayer.seekTo}
+          disabled={!audioPlayer.currentClip}
+          style={styles.progressBar}
+        />
+      )}
+
+      {/* Media Controls */}
       <MediaCard
         title={title}
         artist={formatArtistDisplay()}
@@ -74,11 +92,16 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
     opacity: 0.97,
   },
+  progressBar: {
+    backgroundColor: theme.colors.background.secondary,
+    borderTopLeftRadius: theme.borderRadius.md,
+    borderTopRightRadius: theme.borderRadius.md,
+  },
   mediaCard: {
     borderRadius: 0, // Remove border radius for seamless integration
     marginBottom: 0, // Remove bottom margin
     backgroundColor: theme.colors.background.secondary, // Match tab bar background for seamless integration
-    borderTopLeftRadius: theme.borderRadius.md,
-    borderTopRightRadius: theme.borderRadius.md,
+    borderTopLeftRadius: 0, // Remove top radius since progress bar is above
+    borderTopRightRadius: 0, // Remove top radius since progress bar is above
   },
 })

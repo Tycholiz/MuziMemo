@@ -24,6 +24,29 @@ export function formatDurationFromSeconds(seconds: number): string {
 }
 
 /**
+ * Format duration in seconds with smart format selection
+ * Uses HH:MM:SS for durations >= 60 minutes, MM:SS otherwise
+ */
+export function formatDurationSmart(seconds: number): string {
+  const totalSeconds = Math.floor(seconds)
+
+  if (totalSeconds >= 3600) {
+    // Use HH:MM:SS format for durations >= 1 hour
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const remainingSeconds = totalSeconds % 60
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  } else {
+    // Use MM:SS format for durations < 1 hour
+    const minutes = Math.floor(totalSeconds / 60)
+    const remainingSeconds = totalSeconds % 60
+
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+}
+
+/**
  * Format file size in bytes to human readable format
  */
 export function formatFileSize(bytes: number): string {
