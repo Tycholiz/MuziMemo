@@ -107,6 +107,8 @@ export default function BrowseScreen() {
             title={audioPlayer.currentClip.name}
             isPlaying={audioPlayer.isPlaying}
             isVisible={true}
+            currentTimeSeconds={audioPlayer.position}
+            durationSeconds={audioPlayer.duration}
             onPlayPause={() => {
               if (audioPlayer.isPlaying) {
                 audioPlayer.pauseClip()
@@ -114,6 +116,7 @@ export default function BrowseScreen() {
                 audioPlayer.playClip(audioPlayer.currentClip!)
               }
             }}
+            onSeek={audioPlayer.seekTo}
           />
         )}
       </View>
