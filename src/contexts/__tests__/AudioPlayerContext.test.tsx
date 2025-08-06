@@ -106,4 +106,49 @@ describe('AudioPlayerContext', () => {
     expect(getByTestId('currentClip')).toHaveTextContent('none')
     expect(getByTestId('isPlaying')).toHaveTextContent('false')
   })
+
+  it('should resume paused audio without reloading', async () => {
+    let audioPlayerRef: any
+
+    const TestComponentWithActions = () => {
+      audioPlayerRef = useAudioPlayerContext()
+      return <TestComponent />
+    }
+
+    const { getByTestId } = render(
+      <AudioPlayerProvider>
+        <TestComponentWithActions />
+      </AudioPlayerProvider>
+    )
+
+    const testClip = {
+      id: 'test-1',
+      name: 'Test Audio.m4a',
+      uri: 'file://test.m4a',
+    }
+
+    // Start playing
+    await act(async () => {
+      await audioPlayerRef.playClip(testClip)
+    })
+
+    expect(getByTestId('currentClip')).toHaveTextContent('Test Audio.m4a')
+    expect(getByTestId('isPlaying')).toHaveTextContent('true')
+
+    // Pause
+    act(() => {
+      audioPlayerRef.pauseClip()
+    })
+
+    expect(getByTestId('currentClip')).toHaveTextContent('Test Audio.m4a') // Should still have clip
+    expect(getByTestId('isPlaying')).toHaveTextContent('false')
+
+    // Resume - should not reload the clip
+    await act(async () => {
+      await audioPlayerRef.playClip(testClip) // Same clip
+    })
+
+    expect(getByTestId('currentClip')).toHaveTextContent('Test Audio.m4a')
+    expect(getByTestId('isPlaying')).toHaveTextContent('true')
+  })
 })

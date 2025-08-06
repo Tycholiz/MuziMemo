@@ -116,10 +116,11 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       try {
         console.log('🎵 AudioPlayerContext: playClip called for:', clip.name)
 
-        // Check if this is the same clip that has completed - restart from beginning
         const isSameClip = currentClip && currentClip.id === clip.id
         const shouldRestart = isSameClip && hasCompleted
+        const shouldResume = isSameClip && !hasCompleted
 
+        // Case 1: Restart completed audio from beginning
         if (shouldRestart) {
           console.log('🎵 AudioPlayerContext: Restarting completed audio from beginning')
           audioPlayer.seekTo(0)
@@ -129,6 +130,17 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
           audioPlayer.play()
           return
         }
+
+        // Case 2: Resume paused audio (same clip, not completed)
+        if (shouldResume) {
+          console.log('🎵 AudioPlayerContext: Resuming paused audio from position:', currentPosition)
+          setIsPlayingOverride(true)
+          audioPlayer.play()
+          return
+        }
+
+        // Case 3: Play new clip (different clip or no current clip)
+        console.log('🎵 AudioPlayerContext: Loading new audio clip')
 
         // Ensure audio mode is set for main speakers before playing
         try {
@@ -174,7 +186,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         setIsLoading(false)
       }
     },
-    [audioPlayer, currentClip, hasCompleted]
+    [audioPlayer, currentClip, hasCompleted, currentPosition]
   )
 
   const pauseClip = useCallback(() => {
