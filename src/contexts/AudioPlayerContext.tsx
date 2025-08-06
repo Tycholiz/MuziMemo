@@ -235,9 +235,22 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       // Audio player has caught up, disable override
       setIsPlayingOverride(false)
     }
+
+    // Detect audio completion when audioPlayer.playing becomes false
+    // but we still have a current clip and haven't explicitly paused
+    if (!audioPlayer.playing && currentClip && !hasCompleted && currentPosition > 0) {
+      const duration = audioPlayer.duration || 0
+      // Check if we're near the end (within 1 second) when audio stops
+      if (duration > 0 && currentPosition >= duration - 1) {
+        console.log('🎵 AudioPlayerContext: Audio completion detected via playing state change')
+        setHasCompleted(true)
+        setIsPlayingOverride(false)
+      }
+    }
+
     // Note: We no longer automatically clear currentClip when audio stops
     // This allows the media player to remain visible after audio completion
-  }, [audioPlayer.playing, isPlayingOverride])
+  }, [audioPlayer.playing, isPlayingOverride, currentClip, hasCompleted, currentPosition, audioPlayer.duration])
 
   // Debug the isPlaying calculation
   const calculatedIsPlaying = isPlayingOverride || audioPlayer.playing
