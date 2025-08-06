@@ -62,8 +62,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
           setCurrentPosition(newPosition)
 
-          // Check if audio has completed (reached the end)
-          if (duration > 0 && newPosition >= duration - 0.1) { // 0.1s tolerance for completion
+          // Check if audio has completed (reached the end) - only log once
+          if (duration > 0 && newPosition >= duration - 0.1 && !hasCompleted) { // 0.1s tolerance for completion
             console.log('🎵 AudioPlayerContext: Audio completed')
             setHasCompleted(true)
           }
@@ -85,7 +85,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         positionPollingInterval.current = null
       }
     }
-  }, [isPlayingOverride, audioPlayer.playing, currentClip, audioPlayer])
+  }, [isPlayingOverride, audioPlayer.playing, currentClip, audioPlayer, hasCompleted])
 
   // Configure audio session for playback
   useEffect(() => {
