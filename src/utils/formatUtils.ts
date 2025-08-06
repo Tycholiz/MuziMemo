@@ -72,6 +72,30 @@ export function formatDateSmart(date: Date): string {
 }
 
 /**
+ * Format audio duration with smart MM:SS or HH:MM:SS formatting
+ * @param seconds Duration in seconds (optional)
+ * @returns Formatted duration string or "--:--" if undefined
+ */
+export function formatAudioDuration(seconds?: number): string {
+  if (seconds === undefined || seconds === null || isNaN(seconds)) {
+    return '--:--'
+  }
+
+  const totalSeconds = Math.floor(seconds)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const remainingSeconds = totalSeconds % 60
+
+  if (hours > 0) {
+    // Format as HH:MM:SS for durations 1 hour or longer
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  } else {
+    // Format as MM:SS for durations under 1 hour
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+  }
+}
+
+/**
  * Generate a default recording name with gap-filling logic
  * Scans existing files to find the lowest available number in the "Recording X" sequence
  *

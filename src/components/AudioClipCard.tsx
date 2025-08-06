@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
 import { FileContextMenuModal } from './FileContextMenuModal'
-import { formatDateSmart, formatFileSize } from '../utils/formatUtils'
+import { formatDateSmart, formatAudioDuration } from '../utils/formatUtils'
 
 export type AudioClipData = {
   id: string
@@ -81,8 +81,7 @@ export const AudioClipCard = React.memo(function AudioClipCard({
             {clip.name}
           </Text>
           <Text style={styles.details}>
-            {formatDateSmart(clip.createdAt)} • {formatFileSize(clip.size)}
-            {clip.duration && ` • ${clip.duration}`}
+            {formatDateSmart(clip.createdAt)} • {formatAudioDuration(clip.duration)}
           </Text>
         </View>
 

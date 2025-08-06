@@ -8,6 +8,7 @@ import Toast from 'react-native-toast-message'
 import { useFileManager } from '../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
 import { useMediaPlayerSpacing } from '../hooks/useMediaPlayerSpacing'
+import { AudioMetadataService } from '../services/AudioMetadataService'
 import { Breadcrumbs } from './Breadcrumbs'
 import { AudioClipCard } from './AudioClipCard'
 import { FolderContextMenuModal } from './FolderContextMenuModal'
@@ -164,12 +165,23 @@ export function FileSystemComponent() {
             timestamp = Date.now()
           }
 
+          // Get audio duration from metadata
+          let duration: number | undefined
+          try {
+            const metadata = await AudioMetadataService.getMetadata(itemPath)
+            duration = metadata.duration > 0 ? metadata.duration : undefined
+          } catch (error) {
+            // Duration will remain undefined if metadata extraction fails
+            console.warn(`Failed to get duration for ${item}:`, error)
+          }
+
           audioFileList.push({
             id: `audio-${item}`,
             name: item,
             uri: itemPath,
             size: (itemInfo as any).size || 0,
             createdAt: new Date((itemInfo as any).modificationTime * 1000),
+            duration,
           })
         }
       }

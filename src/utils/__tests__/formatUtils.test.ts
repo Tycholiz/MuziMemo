@@ -5,6 +5,7 @@
 import {
   formatDuration,
   formatDurationFromSeconds,
+  formatAudioDuration,
   formatFileSize,
   formatDate,
   formatDateSmart,
@@ -39,6 +40,36 @@ describe('formatUtils', () => {
     it('should handle large durations', () => {
       expect(formatDurationFromSeconds(7200)).toBe('120:00') // 2 hours
       expect(formatDurationFromSeconds(3599)).toBe('59:59')
+    })
+  })
+
+  describe('formatAudioDuration', () => {
+    it('should return fallback for undefined/null/NaN values', () => {
+      expect(formatAudioDuration(undefined)).toBe('--:--')
+      expect(formatAudioDuration(null as any)).toBe('--:--')
+      expect(formatAudioDuration(NaN)).toBe('--:--')
+    })
+
+    it('should format short durations as MM:SS', () => {
+      expect(formatAudioDuration(0)).toBe('00:00')
+      expect(formatAudioDuration(1)).toBe('00:01')
+      expect(formatAudioDuration(60)).toBe('01:00')
+      expect(formatAudioDuration(90)).toBe('01:30')
+      expect(formatAudioDuration(225)).toBe('03:45')
+      expect(formatAudioDuration(3599)).toBe('59:59') // Just under 1 hour
+    })
+
+    it('should format long durations as HH:MM:SS', () => {
+      expect(formatAudioDuration(3600)).toBe('1:00:00') // Exactly 1 hour
+      expect(formatAudioDuration(3661)).toBe('1:01:01') // 1 hour, 1 minute, 1 second
+      expect(formatAudioDuration(5025)).toBe('1:23:45') // 1 hour, 23 minutes, 45 seconds
+      expect(formatAudioDuration(7200)).toBe('2:00:00') // 2 hours
+      expect(formatAudioDuration(36000)).toBe('10:00:00') // 10 hours
+    })
+
+    it('should handle fractional seconds by flooring', () => {
+      expect(formatAudioDuration(90.7)).toBe('01:30')
+      expect(formatAudioDuration(3661.9)).toBe('1:01:01')
     })
   })
 
