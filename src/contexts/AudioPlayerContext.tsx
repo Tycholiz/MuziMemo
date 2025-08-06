@@ -53,9 +53,9 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     const isActuallyPlaying = isPlayingOverride || audioPlayer.playing
 
     if (isActuallyPlaying && currentClip) {
-      // Start polling for position updates every 100ms
+      // Start polling for position updates every 16ms for smooth 60 FPS animation
       if (!positionPollingInterval.current) {
-        console.log('🎵 AudioPlayerContext: Starting position polling')
+        console.log('🎵 AudioPlayerContext: Starting high-frequency position polling (60 FPS)')
         positionPollingInterval.current = setInterval(() => {
           const newPosition = audioPlayer.currentTime || 0
           const duration = audioPlayer.duration || 0
@@ -67,7 +67,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
             console.log('🎵 AudioPlayerContext: Audio completed')
             setHasCompleted(true)
           }
-        }, 100)
+        }, 16) // 16ms = ~60 FPS for smooth animation
       }
     } else {
       // Stop polling when not playing, but keep position if audio completed

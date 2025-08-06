@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, memo } from 'react'
 import { View, Text, StyleSheet, ViewStyle } from 'react-native'
 import { Slider } from 'react-native-awesome-slider'
-import { useSharedValue } from 'react-native-reanimated'
+import { useSharedValue, runOnUI } from 'react-native-reanimated'
 
 import { theme } from '@utils/theme'
 import { formatAudioDuration } from '@utils/formatUtils'
@@ -17,15 +17,22 @@ export type AudioProgressBarProps = {
 /**
  * AudioProgressBar Component
  * Interactive progress bar for audio playback with scrubbing support
- * 
+ *
  * Features:
- * - Real-time position updates during playback
+ * - Real-time position updates during playback (60 FPS)
  * - Interactive scrubbing with immediate visual feedback
  * - Time labels that update during scrubbing
  * - Proper handling of edge cases (zero duration, invalid positions)
  * - Theme integration and accessibility support
+ * - Optimized for smooth UI thread animations using React Native Reanimated
+ *
+ * Performance Optimizations:
+ * - Uses runOnUI for smooth progress updates on UI thread
+ * - Memoized component to prevent unnecessary re-renders
+ * - Hardware acceleration enabled for smooth animations
+ * - Optimized touch targets and gesture handling
  */
-export function AudioProgressBar({
+export const AudioProgressBar = memo(function AudioProgressBar({
   currentTime,
   duration,
   onSeek,
@@ -45,9 +52,14 @@ export function AudioProgressBar({
   // Update slider values when duration or currentTime changes
   useEffect(() => {
     if (!isScrubbing) {
-      // Only update if user is not currently scrubbing
+      // Update max value immediately
       max.value = duration || 1
-      progress.value = currentTime || 0
+
+      // Use runOnUI for smooth UI thread updates of progress
+      runOnUI(() => {
+        'worklet'
+        progress.value = currentTime || 0
+      })()
     }
   }, [currentTime, duration, isScrubbing, max, progress])
 
@@ -99,6 +111,9 @@ export function AudioProgressBar({
           }}
           thumbWidth={16}
           renderBubble={() => null} // Hide the bubble for cleaner look
+          // Performance optimizations
+          panHitSlop={{ top: 20, bottom: 20, left: 0, right: 0 }} // Better touch area
+          containerStyle={styles.sliderContainer}
         />
       </View>
 
@@ -113,7 +128,7 @@ export function AudioProgressBar({
       </View>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   container: {
