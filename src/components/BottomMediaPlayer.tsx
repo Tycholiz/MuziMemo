@@ -78,7 +78,7 @@ export function BottomMediaPlayer({
           currentTime={currentTimeSeconds}
           duration={durationSeconds}
           onSeek={onSeek}
-          disabled={!isPlaying && currentTimeSeconds === 0}
+          disabled={false} // Always allow seeking, even when paused or completed
           style={styles.progressBar}
         />
       )}
