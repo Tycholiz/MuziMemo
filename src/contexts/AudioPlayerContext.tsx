@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
@@ -38,6 +38,43 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const [currentClip, setCurrentClip] = useState<AudioClip | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPlayingOverride, setIsPlayingOverride] = useState(false)
+
+  // State for tracking current position (to trigger re-renders)
+  const [currentPosition, setCurrentPosition] = useState(0)
+
+  // Ref for position polling interval
+  const positionPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Start/stop position polling based on playback state
+  useEffect(() => {
+    const isActuallyPlaying = isPlayingOverride || audioPlayer.playing
+
+    if (isActuallyPlaying && currentClip) {
+      // Start polling for position updates every 100ms
+      if (!positionPollingInterval.current) {
+        console.log('🎵 AudioPlayerContext: Starting position polling')
+        positionPollingInterval.current = setInterval(() => {
+          const newPosition = audioPlayer.currentTime || 0
+          setCurrentPosition(newPosition)
+        }, 100)
+      }
+    } else {
+      // Stop polling when not playing
+      if (positionPollingInterval.current) {
+        console.log('🎵 AudioPlayerContext: Stopping position polling')
+        clearInterval(positionPollingInterval.current)
+        positionPollingInterval.current = null
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (positionPollingInterval.current) {
+        clearInterval(positionPollingInterval.current)
+        positionPollingInterval.current = null
+      }
+    }
+  }, [isPlayingOverride, audioPlayer.playing, currentClip, audioPlayer])
 
   // Configure audio session for playback
   useEffect(() => {
@@ -88,6 +125,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         // Set state immediately for instant visual feedback
         setIsLoading(true)
         setCurrentClip(clip)
+        setCurrentPosition(0) // Reset position for new clip
         setIsPlayingOverride(true)
         console.log('🎵 AudioPlayerContext: Set currentClip and isPlayingOverride to true')
 
@@ -122,12 +160,14 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     console.log('🎵 AudioPlayerContext: stopClip called')
     audioPlayer.pause()
     audioPlayer.seekTo(0)
+    setCurrentPosition(0)
     setIsPlayingOverride(false)
   }, [audioPlayer])
 
   const seekTo = useCallback(
     (position: number) => {
       audioPlayer.seekTo(position)
+      setCurrentPosition(position) // Update tracked position immediately
     },
     [audioPlayer]
   )
@@ -136,6 +176,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     console.log('🎵 AudioPlayerContext: cleanup called')
     audioPlayer.pause()
     setCurrentClip(null)
+    setCurrentPosition(0)
     setIsPlayingOverride(false)
   }, [audioPlayer])
 
@@ -147,6 +188,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     } else if (!audioPlayer.playing && !isPlayingOverride && currentClip) {
       // Audio stopped but we still have a current clip, clear it
       setCurrentClip(null)
+      setCurrentPosition(0)
     }
   }, [audioPlayer.playing, isPlayingOverride, currentClip])
 
@@ -155,7 +197,7 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     currentClip,
     isPlaying: isPlayingOverride || audioPlayer.playing,
     isLoading,
-    position: audioPlayer.currentTime,
+    position: currentPosition, // Use tracked position instead of audioPlayer.currentTime
     duration: audioPlayer.duration,
 
     // Actions
