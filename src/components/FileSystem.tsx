@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
+import { Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
 
 import { useFileManager } from '../contexts/FileManagerContext'
@@ -459,23 +460,120 @@ export function FileSystemComponent() {
     setShowRestoreModal(true)
   }, [])
 
-  const handleShareAudioFile = useCallback(async (audioFile: AudioFileData) => {
+  // Test function to verify sharing works with a simple text share
+  const testSharing = useCallback(async () => {
+    console.log('🧪 Testing basic sharing functionality...')
     try {
-      // Check if sharing is available on this platform
+      if (Platform.OS === 'web') {
+        console.log('❌ Web platform - sharing not supported')
+        Alert.alert('Test Result', 'Web platform - sharing not supported')
+        return
+      }
+
       const isAvailable = await Sharing.isAvailableAsync()
+      console.log('🧪 Sharing available:', isAvailable)
+
       if (!isAvailable) {
+        Alert.alert('Test Result', 'Sharing not available on this device')
+        return
+      }
+
+      // Try sharing a simple text message first
+      console.log('🧪 Attempting to share test message...')
+      const result = await Sharing.shareAsync('data:text/plain;base64,' + btoa('Test sharing from MuziMemo'))
+      console.log('🧪 Test sharing result:', result)
+      Alert.alert('Test Result', 'Basic sharing test completed - check console for details')
+
+    } catch (error) {
+      console.error('🧪 Test sharing failed:', error)
+      Alert.alert('Test Result', `Test failed: ${error.message}`)
+    }
+  }, [])
+
+  const handleShareAudioFile = useCallback(async (audioFile: AudioFileData) => {
+    console.log('🔄 About to share audio file:', audioFile.name)
+    console.log('🔄 Audio file URI:', audioFile.uri)
+    console.log('🔄 Platform:', Platform.OS)
+
+    try {
+      // Web platform doesn't support expo-sharing
+      if (Platform.OS === 'web') {
+        console.log('❌ Sharing not supported on web platform')
+        Alert.alert('Sharing Not Available', 'File sharing is not available on the web version. Please use the mobile app.')
+        return
+      }
+
+      // Check if sharing is available on this platform
+      console.log('🔄 Checking if sharing is available...')
+      const isAvailable = await Sharing.isAvailableAsync()
+      console.log('🔄 Sharing available:', isAvailable)
+
+      if (!isAvailable) {
+        console.log('❌ Sharing not available on this platform')
         Alert.alert('Sharing Not Available', 'Sharing is not available on this device.')
         return
       }
 
-      // Share the audio file
-      await Sharing.shareAsync(audioFile.uri, {
-        mimeType: 'audio/m4a',
-        dialogTitle: `Share ${audioFile.name}`,
-      })
+      // Verify file exists before sharing
+      console.log('🔄 Verifying file exists...')
+      const fileInfo = await FileSystem.getInfoAsync(audioFile.uri)
+      console.log('🔄 File info:', JSON.stringify(fileInfo, null, 2))
+
+      if (!fileInfo.exists) {
+        console.log('❌ File does not exist at URI:', audioFile.uri)
+        Alert.alert('File Not Found', 'The audio file could not be found. It may have been moved or deleted.')
+        return
+      }
+
+      // Determine MIME type based on file extension
+      const fileExtension = audioFile.name.toLowerCase().split('.').pop()
+      let mimeType = 'audio/m4a' // default
+
+      switch (fileExtension) {
+        case 'mp3':
+          mimeType = 'audio/mpeg'
+          break
+        case 'wav':
+          mimeType = 'audio/wav'
+          break
+        case 'm4a':
+        default:
+          mimeType = 'audio/m4a'
+          break
+      }
+
+      console.log('🔄 Using MIME type:', mimeType)
+      console.log('🔄 File size:', fileInfo.size, 'bytes')
+
+      // Try sharing with different approaches
+      console.log('🔄 Attempting to share with full options...')
+
+      try {
+        const result = await Sharing.shareAsync(audioFile.uri, {
+          mimeType,
+          dialogTitle: `Share ${audioFile.name}`,
+        })
+        console.log('✅ Sharing result:', JSON.stringify(result, null, 2))
+      } catch (shareError) {
+        console.log('❌ First sharing attempt failed, trying without options...')
+        console.error('Share error details:', shareError)
+
+        // Fallback: try sharing without options
+        const fallbackResult = await Sharing.shareAsync(audioFile.uri)
+        console.log('✅ Fallback sharing result:', JSON.stringify(fallbackResult, null, 2))
+      }
+
     } catch (error) {
-      console.error('Failed to share audio file:', error)
-      Alert.alert('Share Error', 'Failed to share the audio file. Please try again.')
+      console.error('❌ Failed to share audio file:', error)
+      console.error('❌ Error details:', JSON.stringify(error, null, 2))
+      console.error('❌ Error stack:', error.stack)
+
+      let errorMessage = 'Failed to share the audio file. Please try again.'
+      if (error.message) {
+        errorMessage = `Failed to share: ${error.message}`
+      }
+
+      Alert.alert('Share Error', errorMessage)
     }
   }, [])
 
@@ -767,6 +865,15 @@ export function FileSystemComponent() {
             <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
               <Ionicons name="mic" size={20} color="white" />
               <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
+            </TouchableOpacity>
+
+            {/* Temporary test button for debugging sharing */}
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
+              onPress={testSharing}
+            >
+              <Ionicons name="share-outline" size={20} color="white" />
+              <Text style={[styles.actionButtonText, { color: 'white' }]}>Test Share</Text>
             </TouchableOpacity>
           </View>
         )}
