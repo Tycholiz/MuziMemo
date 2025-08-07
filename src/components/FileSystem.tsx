@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
+import { Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
 
 import { useFileManager } from '../contexts/FileManagerContext'
@@ -458,6 +460,152 @@ export function FileSystemComponent() {
     setShowRestoreModal(true)
   }, [])
 
+  // Fallback sharing using React Native's built-in Share API
+  const shareWithReactNative = useCallback(async (audioFile: AudioFileData) => {
+    console.log('🔄 Attempting React Native Share fallback...')
+    try {
+      const result = await Share.share({
+        url: audioFile.uri,
+        title: `Share ${audioFile.name}`,
+        message: `Sharing audio file: ${audioFile.name}`,
+      })
+
+      console.log('✅ React Native Share result:', result)
+
+      if (result.action === Share.sharedAction) {
+        console.log('✅ File shared successfully via React Native Share')
+      } else if (result.action === Share.dismissedAction) {
+        console.log('ℹ️ User dismissed the share dialog')
+      }
+    } catch (error) {
+      console.error('❌ React Native Share failed:', error)
+      throw error
+    }
+  }, [])
+
+  const handleShareAudioFile = useCallback(async (audioFile: AudioFileData) => {
+    console.log('🔄 About to share audio file:', audioFile.name)
+    console.log('🔄 Audio file URI:', audioFile.uri)
+    console.log('🔄 Platform:', Platform.OS)
+
+    try {
+      // Web platform doesn't support expo-sharing
+      if (Platform.OS === 'web') {
+        console.log('❌ Sharing not supported on web platform')
+        Alert.alert(
+          'Sharing Not Available',
+          'File sharing is not available on the web version. Please use the mobile app.'
+        )
+        return
+      }
+
+      // Check if sharing is available on this platform
+      console.log('🔄 Checking if sharing is available...')
+      const isAvailable = await Sharing.isAvailableAsync()
+      console.log('🔄 Sharing available:', isAvailable)
+
+      if (!isAvailable) {
+        console.log('❌ Sharing not available on this platform')
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.')
+        return
+      }
+
+      // Verify file exists before sharing
+      console.log('🔄 Verifying file exists...')
+      const fileInfo = await FileSystem.getInfoAsync(audioFile.uri)
+      console.log('🔄 File info:', JSON.stringify(fileInfo, null, 2))
+
+      if (!fileInfo.exists) {
+        console.log('❌ File does not exist at URI:', audioFile.uri)
+        Alert.alert('File Not Found', 'The audio file could not be found. It may have been moved or deleted.')
+        return
+      }
+
+      // Determine MIME type based on file extension
+      const fileExtension = audioFile.name.toLowerCase().split('.').pop()
+      let mimeType = 'audio/m4a' // default
+
+      switch (fileExtension) {
+        case 'mp3':
+          mimeType = 'audio/mpeg'
+          break
+        case 'wav':
+          mimeType = 'audio/wav'
+          break
+        case 'm4a':
+        default:
+          mimeType = 'audio/m4a'
+          break
+      }
+
+      console.log('🔄 Using MIME type:', mimeType)
+      console.log('🔄 File size:', fileInfo.size, 'bytes')
+
+      // Add delay to prevent hanging issue (known expo-sharing bug)
+      console.log('🔄 Adding 500ms delay to prevent hanging...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Try sharing with timeout to prevent indefinite hanging
+      console.log('🔄 Attempting to share with timeout protection...')
+
+      try {
+        const sharePromise = Sharing.shareAsync(audioFile.uri, {
+          mimeType,
+          dialogTitle: `Share ${audioFile.name}`,
+        })
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Sharing timeout after 15 seconds')), 15000)
+        )
+
+        const result = await Promise.race([sharePromise, timeoutPromise])
+        console.log('✅ Sharing completed successfully:', JSON.stringify(result, null, 2))
+      } catch (shareError) {
+        console.log('❌ First sharing attempt failed, trying fallback...')
+        console.error('Share error details:', shareError)
+
+        // @ts-expect-error
+        if (shareError.message?.includes('timeout')) {
+          throw new Error('Sharing timed out. Please try again or restart the app if the issue persists.')
+        }
+
+        // Fallback: try sharing without options with timeout
+        console.log('🔄 Trying fallback sharing without options...')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Another delay for fallback
+
+        const fallbackPromise = Sharing.shareAsync(audioFile.uri)
+        const fallbackTimeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Fallback sharing timeout after 15 seconds')), 15000)
+        )
+
+        const fallbackResult = await Promise.race([fallbackPromise, fallbackTimeoutPromise])
+        console.log('✅ Fallback sharing completed:', JSON.stringify(fallbackResult, null, 2))
+      }
+    } catch (error) {
+      console.error('❌ expo-sharing failed, trying React Native Share fallback:', error)
+      console.error('❌ Error details:', JSON.stringify(error, null, 2))
+
+      try {
+        // Try React Native Share as fallback
+        await shareWithReactNative(audioFile)
+      } catch (fallbackError) {
+        console.error('❌ All sharing methods failed:', fallbackError)
+
+        let errorMessage = 'Failed to share the audio file. Please try again.'
+        // @ts-expect-error
+        if (error.message?.includes('timeout')) {
+          errorMessage = 'Sharing timed out. Please restart the app and try again.'
+          // @ts-expect-error
+        } else if (error.message) {
+          // @ts-expect-error
+          errorMessage = `Failed to share: ${error.message}`
+        }
+
+        Alert.alert('Share Error', errorMessage)
+      }
+    }
+  }, [])
+
   const handleMoveConfirm = async (destinationPath: string) => {
     try {
       const recordingsBasePath = fileManager
@@ -765,6 +913,7 @@ export function FileSystemComponent() {
           const handleRename = () => handleRenameAudioFile(audioFile)
           const handleMove = () => handleMoveAudioFile(audioFile)
           const handleRestore = () => handleRestoreAudioFile(audioFile)
+          const handleShare = () => handleShareAudioFile(audioFile)
           const handleDelete = () => handleDeleteAudioFile(audioFile)
           const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
           const isSelected = selectedItems.has(audioFile.id)
@@ -780,6 +929,7 @@ export function FileSystemComponent() {
               onRename={handleRename}
               onMove={isInRecentlyDeletedFolder ? undefined : handleMove}
               onRestore={isInRecentlyDeletedFolder ? handleRestore : undefined}
+              onShare={handleShare}
               onDelete={handleDelete}
               isInRecentlyDeleted={isInRecentlyDeletedFolder}
               isMultiSelectMode={isMultiSelectMode}

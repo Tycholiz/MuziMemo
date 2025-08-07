@@ -23,6 +23,7 @@ export type AudioClipCardProps = {
   onRename?: () => void
   onMove?: () => void
   onRestore?: () => void
+  onShare?: () => void
   onDelete?: () => void
   isInRecentlyDeleted?: boolean
   isMultiSelectMode?: boolean
@@ -38,6 +39,7 @@ export const AudioClipCard = React.memo(function AudioClipCard({
   onRename,
   onMove,
   onRestore,
+  onShare,
   onDelete,
   isInRecentlyDeleted = false,
   isMultiSelectMode = false,
@@ -63,7 +65,7 @@ export const AudioClipCard = React.memo(function AudioClipCard({
 
   return (
     <View style={[styles.container, isPlaying && styles.containerPlaying]}>
-      <TouchableOpacity style={styles.content} onPress={handlePress} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.content} onPress={handlePress} activeOpacity={0.7} testID="audio-clip-card-content">
         <View style={[styles.playButton, isMultiSelectMode && isSelected && styles.playButtonSelected]}>
           <Ionicons
             name={isMultiSelectMode ? 'checkmark-circle' : (isPlaying ? 'pause' : 'play')}
@@ -92,12 +94,13 @@ export const AudioClipCard = React.memo(function AudioClipCard({
         )}
       </TouchableOpacity>
 
-      {(onRename || onMove || onRestore || onDelete) && (
+      {(onRename || onMove || onRestore || onShare || onDelete) && (
         <View style={styles.menuContainer}>
           <FileContextMenuModal
             onRename={onRename || (() => {})}
             onMove={onMove}
             onRestore={onRestore}
+            onShare={onShare}
             onDelete={onDelete || (() => {})}
             isInRecentlyDeleted={isInRecentlyDeleted}
           />

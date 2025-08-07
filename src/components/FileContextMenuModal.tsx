@@ -8,6 +8,7 @@ export type FileContextMenuModalProps = {
   onRename: () => void
   onMove?: () => void
   onRestore?: () => void
+  onShare?: () => void
   onDelete: () => void
   isInRecentlyDeleted?: boolean
 }
@@ -28,6 +29,7 @@ export function FileContextMenuModal({
   onRename,
   onMove,
   onRestore,
+  onShare,
   onDelete,
   isInRecentlyDeleted = false
 }: FileContextMenuModalProps) {
@@ -59,6 +61,16 @@ export function FileContextMenuModal({
       onPress: () => {
         setIsVisible(false)
         onMove()
+      },
+    }] : []),
+    // Add Share option if onShare is provided
+    ...(onShare ? [{
+      id: 'share',
+      label: 'Share',
+      icon: 'share-outline' as keyof typeof Ionicons.glyphMap,
+      onPress: () => {
+        setIsVisible(false)
+        onShare()
       },
     }] : []),
     {
@@ -100,6 +112,7 @@ export function FileContextMenuModal({
         onPress={handleEllipsisPress}
         activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        testID="ellipsis-button"
       >
         <Ionicons name="ellipsis-vertical" size={20} color={theme.colors.text.tertiary} />
       </TouchableOpacity>
