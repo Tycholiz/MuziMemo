@@ -73,7 +73,7 @@ export function BottomMediaPlayer({
       />
 
       {/* Audio Progress Bar */}
-      {onSeek && durationSeconds > 0 && (
+      {onSeek && (
         <AudioProgressBar
           currentTime={currentTimeSeconds}
           duration={durationSeconds}

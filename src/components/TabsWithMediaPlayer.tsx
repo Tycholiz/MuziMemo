@@ -54,14 +54,14 @@ export function TabsWithMediaPlayer() {
       </Tabs>
 
       {/* Persistent Bottom Media Player */}
-      {audioPlayer.currentClip && (
+      {audioPlayer.currentClip && (audioPlayer.duration > 0 || audioPlayer.currentClip.duration) && (
         <View style={[styles.mediaPlayerContainer, { bottom: tabBarHeight }]}>
           <BottomMediaPlayer
             title={audioPlayer.currentClip.name}
             isPlaying={audioPlayer.isPlaying}
             isVisible={true}
             currentTimeSeconds={audioPlayer.position}
-            durationSeconds={audioPlayer.duration}
+            durationSeconds={audioPlayer.duration || audioPlayer.currentClip.duration || 0}
             onPlayPause={() => {
               if (audioPlayer.isPlaying) {
                 audioPlayer.pauseClip()
