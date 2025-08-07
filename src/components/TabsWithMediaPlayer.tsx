@@ -90,8 +90,8 @@ export function TabsWithMediaPlayer() {
               }
             }}
             onSeek={audioPlayer.seekTo}
-            onSkipForward={audioPlayer.skipForward}
-            onSkipBackward={audioPlayer.skipBackward}
+            onSkipForward={() => audioPlayer.skipForward()}
+            onSkipBackward={() => audioPlayer.skipBackward()}
             onRename={handleRename}
             onMove={handleMove}
             onDelete={handleDelete}

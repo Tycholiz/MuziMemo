@@ -219,13 +219,16 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   )
 
   const skipForward = useCallback(
-    (jumpSeconds = 10) => {
+    (jumpSeconds: number = 10) => {
+      // Ensure jumpSeconds is a valid number
+      const skipAmount = typeof jumpSeconds === 'number' && !isNaN(jumpSeconds) ? jumpSeconds : 10
+
       // Use the actual audio player current time for more accurate positioning
       const currentPos = audioPlayer.currentTime || 0
       const duration = audioPlayer.duration || currentClip?.duration || 0
-      const newPosition = Math.min(currentPos + jumpSeconds, duration)
+      const newPosition = Math.min(currentPos + skipAmount, duration)
 
-      console.log(`🎵 AudioPlayerContext: skipForward ${jumpSeconds}s from ${currentPos} to ${newPosition}`)
+      console.log(`🎵 AudioPlayerContext: skipForward ${skipAmount}s from ${currentPos} to ${newPosition}`)
       setCurrentPosition(newPosition) // Update tracked position immediately
       audioPlayer.seekTo(newPosition)
       setHasCompleted(false) // Reset completion state when seeking
@@ -234,12 +237,15 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   )
 
   const skipBackward = useCallback(
-    (jumpSeconds = 10) => {
+    (jumpSeconds: number = 10) => {
+      // Ensure jumpSeconds is a valid number
+      const skipAmount = typeof jumpSeconds === 'number' && !isNaN(jumpSeconds) ? jumpSeconds : 10
+
       // Use the actual audio player current time for more accurate positioning
       const currentPos = audioPlayer.currentTime || 0
-      const newPosition = Math.max(currentPos - jumpSeconds, 0)
+      const newPosition = Math.max(currentPos - skipAmount, 0)
 
-      console.log(`🎵 AudioPlayerContext: skipBackward ${jumpSeconds}s from ${currentPos} to ${newPosition}`)
+      console.log(`🎵 AudioPlayerContext: skipBackward ${skipAmount}s from ${currentPos} to ${newPosition}`)
       setCurrentPosition(newPosition) // Update tracked position immediately
       audioPlayer.seekTo(newPosition)
       setHasCompleted(false) // Reset completion state when seeking
