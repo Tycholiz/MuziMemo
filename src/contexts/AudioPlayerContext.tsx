@@ -218,26 +218,30 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     [audioPlayer]
   )
 
-  const skipForward = useCallback(() => {
-    const currentPos = currentPosition || 0
-    const duration = audioPlayer.duration || currentClip?.duration || 0
-    const newPosition = Math.min(currentPos + 5, duration)
+  const skipForward = useCallback(
+    (jumpSeconds = 10) => {
+      const currentPos = currentPosition || 0
+      const duration = audioPlayer.duration || currentClip?.duration || 0
+      const newPosition = Math.min(currentPos + jumpSeconds, duration)
 
-    console.log(`🎵 AudioPlayerContext: skipForward 5s from ${currentPos} to ${newPosition}`)
-    setCurrentPosition(newPosition) // Update tracked position immediately
-    audioPlayer.seekTo(newPosition)
-    setHasCompleted(false) // Reset completion state when seeking
-  }, [audioPlayer, currentPosition, currentClip])
+      setCurrentPosition(newPosition) // Update tracked position immediately
+      audioPlayer.seekTo(newPosition)
+      setHasCompleted(false) // Reset completion state when seeking
+    },
+    [audioPlayer, currentPosition, currentClip]
+  )
 
-  const skipBackward = useCallback(() => {
-    const currentPos = currentPosition || 0
-    const newPosition = Math.max(currentPos - 5, 0)
+  const skipBackward = useCallback(
+    (jumpSeconds = 10) => {
+      const currentPos = currentPosition || 0
+      const newPosition = Math.max(currentPos - jumpSeconds, 0)
 
-    console.log(`🎵 AudioPlayerContext: skipBackward 5s from ${currentPos} to ${newPosition}`)
-    setCurrentPosition(newPosition) // Update tracked position immediately
-    audioPlayer.seekTo(newPosition)
-    setHasCompleted(false) // Reset completion state when seeking
-  }, [audioPlayer, currentPosition])
+      setCurrentPosition(newPosition) // Update tracked position immediately
+      audioPlayer.seekTo(newPosition)
+      setHasCompleted(false) // Reset completion state when seeking
+    },
+    [audioPlayer, currentPosition]
+  )
 
   const cleanup = useCallback(() => {
     console.log('🎵 AudioPlayerContext: cleanup called')
