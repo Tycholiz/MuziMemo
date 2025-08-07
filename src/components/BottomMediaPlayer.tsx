@@ -74,7 +74,6 @@ export function BottomMediaPlayer({
           onPlayPause={onPlayPause}
           onSkipForward={onSkipForward}
           onSkipBackward={onSkipBackward}
-          onMore={undefined} // We'll handle the menu separately
           style={styles.mediaCardInner}
         />
 

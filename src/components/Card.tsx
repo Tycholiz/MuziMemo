@@ -87,7 +87,6 @@ export function MediaCard({
   onPlayPause,
   onSkipForward,
   onSkipBackward,
-  onMore,
   isPlaying = false,
   style,
 }: {
@@ -97,7 +96,6 @@ export function MediaCard({
   onPlayPause?: () => void
   onSkipForward?: () => void
   onSkipBackward?: () => void
-  onMore?: () => void
   isPlaying?: boolean
   style?: ViewStyle
 }) {
@@ -126,10 +124,6 @@ export function MediaCard({
 
           <TouchableOpacity onPress={onSkipForward} style={styles.mediaControlButton}>
             <Ionicons name="play-forward" size={20} color={theme.colors.text.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={onMore} style={styles.mediaControlButton}>
-            <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
