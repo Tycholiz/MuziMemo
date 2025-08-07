@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 
@@ -115,15 +115,15 @@ export function MediaCard({
 
         <View style={styles.mediaCardControls}>
           <TouchableOpacity onPress={onSkipBackward} style={styles.mediaControlButton}>
-            <Ionicons name="play-back" size={20} color={theme.colors.text.primary} />
+            <MaterialIcons name="replay-10" size={26} color={theme.colors.text.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onPlayPause} style={styles.mediaControlButton}>
-            <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={theme.colors.text.primary} />
+            <Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color={theme.colors.text.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onSkipForward} style={styles.mediaControlButton}>
-            <Ionicons name="play-forward" size={20} color={theme.colors.text.primary} />
+            <MaterialIcons name="forward-10" size={26} color={theme.colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
