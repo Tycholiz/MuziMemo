@@ -221,6 +221,8 @@ const styles = StyleSheet.create({
   mediaCardControls: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '45%',
   },
 
   mediaControlButton: {
