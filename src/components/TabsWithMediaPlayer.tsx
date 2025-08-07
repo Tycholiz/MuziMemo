@@ -70,17 +70,8 @@ export function TabsWithMediaPlayer() {
               }
             }}
             onSeek={audioPlayer.seekTo}
-            onSkipForward={() => {
-              const currentPosition = audioPlayer.position || 0
-              const duration = audioPlayer.duration || audioPlayer.currentClip?.duration || 0
-              const newPosition = Math.min(currentPosition + 5, duration)
-              audioPlayer.seekTo(newPosition)
-            }}
-            onSkipBackward={() => {
-              const currentPosition = audioPlayer.position || 0
-              const newPosition = Math.max(currentPosition - 5, 0)
-              audioPlayer.seekTo(newPosition)
-            }}
+            onSkipForward={audioPlayer.skipForward}
+            onSkipBackward={audioPlayer.skipBackward}
             style={styles.seamlessMediaPlayer}
           />
         </View>

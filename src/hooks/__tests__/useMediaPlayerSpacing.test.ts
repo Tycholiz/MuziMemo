@@ -34,6 +34,8 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 
@@ -59,6 +61,8 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 
@@ -83,6 +87,8 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 
@@ -105,6 +111,8 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 

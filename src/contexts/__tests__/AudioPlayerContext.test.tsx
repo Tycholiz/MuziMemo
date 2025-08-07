@@ -27,6 +27,8 @@ const TestComponent = () => {
       <div testID="isPlaying">{audioPlayer.isPlaying.toString()}</div>
       {/* @ts-expect-error */}
       <div testID="isLoading">{audioPlayer.isLoading.toString()}</div>
+      {/* @ts-expect-error */}
+      <div testID="position">{audioPlayer.position.toString()}</div>
     </>
   )
 }
@@ -232,5 +234,46 @@ describe('AudioPlayerContext', () => {
     // This is verified through the restart behavior - if audio was completed,
     // the restart logic would be triggered, which resets hasCompleted to false
     expect(getByTestId('currentClip')).toHaveTextContent('Test Audio.m4a')
+  })
+
+  it('should handle skip forward and backward correctly', async () => {
+    let audioPlayerRef: any
+
+    const TestComponentWithActions = () => {
+      audioPlayerRef = useAudioPlayerContext()
+      return <TestComponent />
+    }
+
+    const { getByTestId } = render(
+      <AudioPlayerProvider>
+        <TestComponentWithActions />
+      </AudioPlayerProvider>
+    )
+
+    const testClip = {
+      id: 'test-1',
+      name: 'Test Audio.m4a',
+      uri: 'file://test.m4a',
+      duration: 120, // 2 minutes
+    }
+
+    // Start playing
+    await act(async () => {
+      await audioPlayerRef.playClip(testClip)
+    })
+
+    // Test skip forward
+    await act(async () => {
+      audioPlayerRef.skipForward()
+    })
+
+    expect(getByTestId('position')).toHaveTextContent('5')
+
+    // Test skip backward
+    await act(async () => {
+      audioPlayerRef.skipBackward()
+    })
+
+    expect(getByTestId('position')).toHaveTextContent('0')
   })
 })

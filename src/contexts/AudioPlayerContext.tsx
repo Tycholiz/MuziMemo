@@ -23,6 +23,8 @@ export type AudioPlayerActions = {
   stopClip: () => void
   seekTo: (position: number) => void
   cleanup: () => void
+  skipForward: () => void
+  skipBackward: () => void
 }
 
 export type AudioPlayerContextType = AudioPlayerState & AudioPlayerActions
@@ -233,6 +235,27 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     [audioPlayer]
   )
 
+  const skipForward = useCallback(() => {
+    const currentPos = currentPosition || 0
+    const duration = audioPlayer.duration || currentClip?.duration || 0
+    const newPosition = Math.min(currentPos + 5, duration)
+
+    console.log(`🎵 AudioPlayerContext: skipForward 5s from ${currentPos} to ${newPosition}`)
+    setCurrentPosition(newPosition) // Update tracked position immediately
+    audioPlayer.seekTo(newPosition)
+    setHasCompleted(false) // Reset completion state when seeking
+  }, [audioPlayer, currentPosition, currentClip])
+
+  const skipBackward = useCallback(() => {
+    const currentPos = currentPosition || 0
+    const newPosition = Math.max(currentPos - 5, 0)
+
+    console.log(`🎵 AudioPlayerContext: skipBackward 5s from ${currentPos} to ${newPosition}`)
+    setCurrentPosition(newPosition) // Update tracked position immediately
+    audioPlayer.seekTo(newPosition)
+    setHasCompleted(false) // Reset completion state when seeking
+  }, [audioPlayer, currentPosition])
+
   const cleanup = useCallback(() => {
     console.log('🎵 AudioPlayerContext: cleanup called')
     audioPlayer.pause()
@@ -296,6 +319,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     pauseClip,
     stopClip,
     seekTo,
+    skipForward,
+    skipBackward,
     cleanup,
   }
 
