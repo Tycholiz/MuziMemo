@@ -41,7 +41,7 @@ describe('useMediaPlayerSpacing', () => {
 
     expect(result.current.bottomPadding).toBe(16) // theme.spacing.md
     expect(result.current.isMediaPlayerVisible).toBe(false)
-    expect(result.current.mediaPlayerHeight).toBe(76)
+    expect(result.current.mediaPlayerHeight).toBe(140)
   })
 
   it('should return increased spacing when media player is visible', () => {
@@ -64,9 +64,9 @@ describe('useMediaPlayerSpacing', () => {
 
     const { result } = renderHook(() => useMediaPlayerSpacing())
 
-    expect(result.current.bottomPadding).toBe(92) // 76 + 16 (MEDIA_PLAYER_HEIGHT + theme.spacing.md)
+    expect(result.current.bottomPadding).toBe(156) // 140 + 16 (MEDIA_PLAYER_HEIGHT + theme.spacing.md)
     expect(result.current.isMediaPlayerVisible).toBe(true)
-    expect(result.current.mediaPlayerHeight).toBe(76)
+    expect(result.current.mediaPlayerHeight).toBe(140)
   })
 
   it('should update spacing when media player visibility changes', () => {
@@ -109,7 +109,7 @@ describe('useMediaPlayerSpacing', () => {
     })
 
     rerender({})
-    expect(result.current.bottomPadding).toBe(92)
+    expect(result.current.bottomPadding).toBe(156)
     expect(result.current.isMediaPlayerVisible).toBe(true)
   })
 })
