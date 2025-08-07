@@ -483,43 +483,6 @@ export function FileSystemComponent() {
     }
   }, [])
 
-  // Test function to verify sharing works with a simple text share
-  const testSharing = useCallback(async () => {
-    console.log('🧪 Testing basic sharing functionality...')
-    try {
-      if (Platform.OS === 'web') {
-        console.log('❌ Web platform - sharing not supported')
-        Alert.alert('Test Result', 'Web platform - sharing not supported')
-        return
-      }
-
-      const isAvailable = await Sharing.isAvailableAsync()
-      console.log('🧪 Sharing available:', isAvailable)
-
-      if (!isAvailable) {
-        Alert.alert('Test Result', 'Sharing not available on this device')
-        return
-      }
-
-      // Try sharing a simple text message first with delay and timeout
-      console.log('🧪 Adding delay before test sharing...')
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      console.log('🧪 Attempting to share test message with timeout...')
-      const sharePromise = Sharing.shareAsync('data:text/plain;base64,' + btoa('Test sharing from MuziMemo'))
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Test sharing timeout')), 10000)
-      )
-
-      const result = await Promise.race([sharePromise, timeoutPromise])
-      console.log('🧪 Test sharing result:', result)
-      Alert.alert('Test Result', 'Basic sharing test completed successfully!')
-    } catch (error) {
-      console.error('🧪 Test sharing failed:', error)
-      Alert.alert('Test Result', `Test failed: ${error.message}`)
-    }
-  }, [])
-
   const handleShareAudioFile = useCallback(async (audioFile: AudioFileData) => {
     console.log('🔄 About to share audio file:', audioFile.name)
     console.log('🔄 Audio file URI:', audioFile.uri)
@@ -601,6 +564,7 @@ export function FileSystemComponent() {
         console.log('❌ First sharing attempt failed, trying fallback...')
         console.error('Share error details:', shareError)
 
+        // @ts-expect-error
         if (shareError.message?.includes('timeout')) {
           throw new Error('Sharing timed out. Please try again or restart the app if the issue persists.')
         }
@@ -628,9 +592,12 @@ export function FileSystemComponent() {
         console.error('❌ All sharing methods failed:', fallbackError)
 
         let errorMessage = 'Failed to share the audio file. Please try again.'
+        // @ts-expect-error
         if (error.message?.includes('timeout')) {
           errorMessage = 'Sharing timed out. Please restart the app and try again.'
+          // @ts-expect-error
         } else if (error.message) {
+          // @ts-expect-error
           errorMessage = `Failed to share: ${error.message}`
         }
 
