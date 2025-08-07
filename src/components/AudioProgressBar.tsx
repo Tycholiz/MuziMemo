@@ -74,11 +74,21 @@ export const AudioProgressBar = memo(function AudioProgressBar({
   }, [])
 
   // Handle when user finishes dragging
-  const handleSlidingComplete = useCallback((value: number) => {
-    setIsScrubbing(false)
-    setScrubPosition(0)
-    onSeek(value)
-  }, [onSeek])
+  const handleSlidingComplete = useCallback(
+    (value: number) => {
+      // First call onSeek to update the audio position
+      onSeek(value)
+
+      // Delay setting isScrubbing to false to prevent visual glitch
+      // This allows the seek operation to complete and position to update
+      // before we re-enable automatic progress updates
+      setTimeout(() => {
+        setIsScrubbing(false)
+        setScrubPosition(0)
+      }, 50) // Small delay to ensure seek operation completes
+    },
+    [onSeek]
+  )
 
   // Calculate display values
   const displayCurrentTime = isScrubbing ? scrubPosition : currentTime
@@ -119,12 +129,8 @@ export const AudioProgressBar = memo(function AudioProgressBar({
 
       {/* Time Labels */}
       <View style={styles.timeContainer}>
-        <Text style={styles.timeText}>
-          {formatAudioDuration(displayCurrentTime)}
-        </Text>
-        <Text style={styles.timeText}>
-          {formatAudioDuration(displayDuration)}
-        </Text>
+        <Text style={styles.timeText}>{formatAudioDuration(displayCurrentTime)}</Text>
+        <Text style={styles.timeText}>{formatAudioDuration(displayDuration)}</Text>
       </View>
     </View>
   )

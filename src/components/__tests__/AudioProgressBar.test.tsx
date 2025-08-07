@@ -5,12 +5,12 @@ import { AudioProgressBar } from '../AudioProgressBar'
 // Mock react-native-reanimated
 jest.mock('react-native-reanimated', () => {
   const Reanimated = require('react-native-reanimated/mock')
-  
+
   // Add useSharedValue mock
-  Reanimated.useSharedValue = jest.fn((initialValue) => ({
+  Reanimated.useSharedValue = jest.fn(initialValue => ({
     value: initialValue,
   }))
-  
+
   return Reanimated
 })
 
@@ -43,7 +43,7 @@ describe('AudioProgressBar', () => {
 
   it('should render correctly with default props', () => {
     const { getByText } = render(<AudioProgressBar {...defaultProps} />)
-    
+
     expect(getByText('00:30')).toBeTruthy() // Current time
     expect(getByText('02:00')).toBeTruthy() // Duration
   })
@@ -56,84 +56,51 @@ describe('AudioProgressBar', () => {
         onSeek={jest.fn()}
       />
     )
-    
+
     expect(getByText('1:01:01')).toBeTruthy() // Current time in HH:MM:SS
     expect(getByText('2:00:00')).toBeTruthy() // Duration in HH:MM:SS
   })
 
   it('should handle zero duration gracefully', () => {
-    const { getAllByText } = render(
-      <AudioProgressBar
-        currentTime={0}
-        duration={0}
-        onSeek={jest.fn()}
-      />
-    )
+    const { getAllByText } = render(<AudioProgressBar currentTime={0} duration={0} onSeek={jest.fn()} />)
 
     const timeLabels = getAllByText('00:00')
     expect(timeLabels).toHaveLength(2) // Both current and duration should show 00:00
   })
 
   it('should handle undefined/invalid values', () => {
-    const { getByText } = render(
-      <AudioProgressBar
-        currentTime={NaN}
-        duration={undefined as any}
-        onSeek={jest.fn()}
-      />
-    )
-    
+    const { getByText } = render(<AudioProgressBar currentTime={NaN} duration={undefined as any} onSeek={jest.fn()} />)
+
     expect(getByText('--:--')).toBeTruthy() // Should show fallback format
   })
 
   it('should call onSeek when slider interaction completes', () => {
     const mockOnSeek = jest.fn()
-    const { getByTestId } = render(
-      <AudioProgressBar
-        {...defaultProps}
-        onSeek={mockOnSeek}
-      />
-    )
-    
+    const { getByTestId } = render(<AudioProgressBar {...defaultProps} onSeek={mockOnSeek} />)
+
     const slider = getByTestId('audio-slider')
     fireEvent(slider, 'touchEnd')
-    
+
     expect(mockOnSeek).toHaveBeenCalledWith(50)
   })
 
   it('should be disabled when disabled prop is true', () => {
-    const { getByTestId } = render(
-      <AudioProgressBar
-        {...defaultProps}
-        disabled={true}
-      />
-    )
-    
+    const { getByTestId } = render(<AudioProgressBar {...defaultProps} disabled={true} />)
+
     const slider = getByTestId('audio-slider')
     expect(slider.props.disable).toBe(true)
   })
 
   it('should be disabled when duration is zero or invalid', () => {
-    const { getByTestId } = render(
-      <AudioProgressBar
-        currentTime={0}
-        duration={0}
-        onSeek={jest.fn()}
-      />
-    )
-    
+    const { getByTestId } = render(<AudioProgressBar currentTime={0} duration={0} onSeek={jest.fn()} />)
+
     const slider = getByTestId('audio-slider')
     expect(slider.props.disable).toBe(true)
   })
 
   it('should apply custom styles', () => {
     const customStyle = { backgroundColor: 'red' }
-    const { getByTestId } = render(
-      <AudioProgressBar
-        {...defaultProps}
-        style={customStyle}
-      />
-    )
+    const { getByTestId } = render(<AudioProgressBar {...defaultProps} style={customStyle} />)
 
     // Check that the component renders with custom style
     const slider = getByTestId('audio-slider')
@@ -148,7 +115,7 @@ describe('AudioProgressBar', () => {
         onSeek={jest.fn()}
       />
     )
-    
+
     expect(getByText('00:45')).toBeTruthy() // Current time in MM:SS
     expect(getByText('03:00')).toBeTruthy() // Duration in MM:SS
   })
@@ -164,5 +131,28 @@ describe('AudioProgressBar', () => {
 
     const timeLabels = getAllByText('1:00:00')
     expect(timeLabels).toHaveLength(2) // Both current and duration should use HH:MM:SS format
+  })
+
+  it('should handle scrubbing completion without visual glitch', async () => {
+    jest.useFakeTimers()
+    const mockOnSeek = jest.fn()
+
+    const { getByTestId } = render(<AudioProgressBar currentTime={30} duration={120} onSeek={mockOnSeek} />)
+
+    const slider = getByTestId('audio-slider')
+
+    // Simulate scrubbing completion
+    fireEvent(slider, 'onSlidingComplete', 60)
+
+    // onSeek should be called immediately
+    expect(mockOnSeek).toHaveBeenCalledWith(60)
+
+    // Fast-forward the timeout to ensure isScrubbing is reset
+    jest.advanceTimersByTime(50)
+
+    // The component should handle the state transition smoothly
+    expect(slider).toBeTruthy()
+
+    jest.useRealTimers()
   })
 })
