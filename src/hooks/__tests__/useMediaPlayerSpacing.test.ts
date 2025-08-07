@@ -34,6 +34,8 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 
@@ -41,7 +43,7 @@ describe('useMediaPlayerSpacing', () => {
 
     expect(result.current.bottomPadding).toBe(16) // theme.spacing.md
     expect(result.current.isMediaPlayerVisible).toBe(false)
-    expect(result.current.mediaPlayerHeight).toBe(76)
+    expect(result.current.mediaPlayerHeight).toBe(140)
   })
 
   it('should return increased spacing when media player is visible', () => {
@@ -59,14 +61,16 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 
     const { result } = renderHook(() => useMediaPlayerSpacing())
 
-    expect(result.current.bottomPadding).toBe(92) // 76 + 16 (MEDIA_PLAYER_HEIGHT + theme.spacing.md)
+    expect(result.current.bottomPadding).toBe(156) // 140 + 16 (MEDIA_PLAYER_HEIGHT + theme.spacing.md)
     expect(result.current.isMediaPlayerVisible).toBe(true)
-    expect(result.current.mediaPlayerHeight).toBe(76)
+    expect(result.current.mediaPlayerHeight).toBe(140)
   })
 
   it('should update spacing when media player visibility changes', () => {
@@ -83,6 +87,8 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 
@@ -105,11 +111,13 @@ describe('useMediaPlayerSpacing', () => {
       pauseClip: jest.fn(),
       stopClip: jest.fn(),
       seekTo: jest.fn(),
+      skipForward: jest.fn(),
+      skipBackward: jest.fn(),
       cleanup: jest.fn(),
     })
 
     rerender({})
-    expect(result.current.bottomPadding).toBe(92)
+    expect(result.current.bottomPadding).toBe(156)
     expect(result.current.isMediaPlayerVisible).toBe(true)
   })
 })

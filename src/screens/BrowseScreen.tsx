@@ -3,7 +3,6 @@ import { StyleSheet, View, Animated } from 'react-native'
 
 import { Screen } from '../components/Layout'
 import { FileSystemComponent } from '../components/FileSystem'
-import { BottomMediaPlayer } from '../components/BottomMediaPlayer'
 import { SearchBar, SearchBarRef } from '../components/SearchBar'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
 import { useFileManager } from '../contexts/FileManagerContext'
@@ -79,8 +78,6 @@ export default function BrowseScreen() {
     [audioPlayer]
   )
 
-
-
   return (
     <Screen padding={false}>
       <View style={styles.container}>
@@ -100,22 +97,6 @@ export default function BrowseScreen() {
         <View style={styles.fileSystemContainer}>
           <FileSystemComponent />
         </View>
-
-        {/* Show media player if audio is playing */}
-        {audioPlayer.currentClip && (
-          <BottomMediaPlayer
-            title={audioPlayer.currentClip.name}
-            isPlaying={audioPlayer.isPlaying}
-            isVisible={true}
-            onPlayPause={() => {
-              if (audioPlayer.isPlaying) {
-                audioPlayer.pauseClip()
-              } else {
-                audioPlayer.playClip(audioPlayer.currentClip!)
-              }
-            }}
-          />
-        )}
       </View>
     </Screen>
   )

@@ -4,16 +4,36 @@ import { Tabs } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 
 import { BottomMediaPlayer } from './BottomMediaPlayer'
+import { FileNavigatorModal } from './FileNavigatorModal'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
+import { useFileManager } from '../contexts/FileManagerContext'
+import { useMediaPlayerFileOperations } from '../hooks/useMediaPlayerFileOperations'
 import { theme } from '../utils/theme'
 
 /**
  * TabsWithMediaPlayer Component
- * Wraps the tab navigation with a persistent bottom media player
- * The media player appears above the tab bar and persists across navigation
+ *
+ * A pure presentational component that renders the bottom tab navigation
+ * and persistent bottom media player. This component focuses solely on
+ * layout and rendering concerns, delegating file operations to the
+ * useMediaPlayerFileOperations hook.
+ *
+ * The media player appears above the tab bar and persists across navigation.
  */
 export function TabsWithMediaPlayer() {
   const audioPlayer = useAudioPlayerContext()
+  const fileManager = useFileManager()
+
+  // Extract file operation logic to custom hook
+  const {
+    handleRename,
+    handleMove,
+    handleDelete,
+    showMoveModal,
+    selectedFileForMove,
+    handleMoveConfirm,
+    handleMoveCancel,
+  } = useMediaPlayerFileOperations()
 
   // Calculate bottom spacing to account for tab bar
   const tabBarHeight = 80 // Approximate tab bar height including safe area
@@ -54,12 +74,14 @@ export function TabsWithMediaPlayer() {
       </Tabs>
 
       {/* Persistent Bottom Media Player */}
-      {audioPlayer.currentClip && (
+      {audioPlayer.currentClip && (audioPlayer.duration > 0 || audioPlayer.currentClip.duration) && (
         <View style={[styles.mediaPlayerContainer, { bottom: tabBarHeight }]}>
           <BottomMediaPlayer
             title={audioPlayer.currentClip.name}
             isPlaying={audioPlayer.isPlaying}
             isVisible={true}
+            currentTimeSeconds={audioPlayer.position}
+            durationSeconds={audioPlayer.duration || audioPlayer.currentClip.duration || 0}
             onPlayPause={() => {
               if (audioPlayer.isPlaying) {
                 audioPlayer.pauseClip()
@@ -67,9 +89,30 @@ export function TabsWithMediaPlayer() {
                 audioPlayer.playClip(audioPlayer.currentClip!)
               }
             }}
+            onSeek={audioPlayer.seekTo}
+            onSkipForward={() => audioPlayer.skipForward()}
+            onSkipBackward={() => audioPlayer.skipBackward()}
+            onRename={handleRename}
+            onMove={handleMove}
+            onDelete={handleDelete}
             style={styles.seamlessMediaPlayer}
           />
         </View>
+      )}
+
+      {/* File Navigator Modal for Move Operation */}
+      {showMoveModal && selectedFileForMove && (
+        <FileNavigatorModal
+          visible={showMoveModal}
+          onClose={handleMoveCancel}
+          onSelectFolder={folder => {
+            handleMoveConfirm(folder.path)
+          }}
+          title={`Move ${selectedFileForMove.name}`}
+          primaryButtonText="Move"
+          onPrimaryAction={handleMoveConfirm}
+          initialDirectory={fileManager.getFullPath()}
+        />
       )}
     </View>
   )

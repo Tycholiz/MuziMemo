@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
 
@@ -23,6 +23,8 @@ export type AudioPlayerActions = {
   stopClip: () => void
   seekTo: (position: number) => void
   cleanup: () => void
+  skipForward: () => void
+  skipBackward: () => void
 }
 
 export type AudioPlayerContextType = AudioPlayerState & AudioPlayerActions
@@ -38,6 +40,64 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   const [currentClip, setCurrentClip] = useState<AudioClip | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isPlayingOverride, setIsPlayingOverride] = useState(false)
+
+  // State for tracking current position (to trigger re-renders)
+  const [currentPosition, setCurrentPosition] = useState(0)
+
+  // State to track if audio has completed (reached the end)
+  const [hasCompleted, setHasCompleted] = useState(false)
+
+  // Ref for position polling interval
+  const positionPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Ref to temporarily pause position polling during seek operations
+  const isSeekingRef = useRef(false)
+
+  // Start/stop position polling based on playback state
+  useEffect(() => {
+    const isActuallyPlaying = isPlayingOverride || audioPlayer.playing
+
+    if (isActuallyPlaying && currentClip) {
+      // Start polling for position updates every 16ms for smooth 60 FPS animation
+      if (!positionPollingInterval.current) {
+        console.log('🎵 AudioPlayerContext: Starting high-frequency position polling (60 FPS)')
+        positionPollingInterval.current = setInterval(() => {
+          // Skip position updates if we're currently seeking to prevent race conditions
+          if (isSeekingRef.current) {
+            return
+          }
+
+          const newPosition = audioPlayer.currentTime || 0
+          const duration = audioPlayer.duration || 0
+
+          setCurrentPosition(newPosition)
+
+          // Check if audio has completed (reached the end) - only log once
+          if (duration > 0 && newPosition >= duration - 0.1 && !hasCompleted) {
+            // 0.1s tolerance for completion
+            console.log('🎵 AudioPlayerContext: Audio completed - setting hasCompleted=true, isPlayingOverride=false')
+            setHasCompleted(true)
+            setIsPlayingOverride(false) // Stop playing when audio completes
+          }
+        }, 16) // 16ms = ~60 FPS for smooth animation
+      }
+    } else {
+      // Stop polling when not playing, but keep position if audio completed
+      if (positionPollingInterval.current) {
+        console.log('🎵 AudioPlayerContext: Stopping position polling')
+        clearInterval(positionPollingInterval.current)
+        positionPollingInterval.current = null
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (positionPollingInterval.current) {
+        clearInterval(positionPollingInterval.current)
+        positionPollingInterval.current = null
+      }
+    }
+  }, [isPlayingOverride, audioPlayer.playing, currentClip, audioPlayer, hasCompleted])
 
   // Configure audio session for playback
   useEffect(() => {
@@ -68,6 +128,32 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       try {
         console.log('🎵 AudioPlayerContext: playClip called for:', clip.name)
 
+        const isSameClip = currentClip && currentClip.id === clip.id
+        const shouldRestart = isSameClip && hasCompleted
+        const shouldResume = isSameClip && !hasCompleted
+
+        // Case 1: Restart completed audio from beginning
+        if (shouldRestart) {
+          console.log('🎵 AudioPlayerContext: Restarting completed audio from beginning')
+          audioPlayer.seekTo(0)
+          setCurrentPosition(0)
+          setHasCompleted(false)
+          setIsPlayingOverride(true)
+          audioPlayer.play()
+          return
+        }
+
+        // Case 2: Resume paused audio (same clip, not completed)
+        if (shouldResume) {
+          console.log('🎵 AudioPlayerContext: Resuming paused audio from position:', currentPosition)
+          setIsPlayingOverride(true)
+          audioPlayer.play()
+          return
+        }
+
+        // Case 3: Play new clip (different clip or no current clip)
+        console.log('🎵 AudioPlayerContext: Loading new audio clip')
+
         // Ensure audio mode is set for main speakers before playing
         try {
           await setAudioModeAsync({
@@ -88,6 +174,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         // Set state immediately for instant visual feedback
         setIsLoading(true)
         setCurrentClip(clip)
+        setCurrentPosition(0) // Reset position for new clip
+        setHasCompleted(false) // Reset completion state
         setIsPlayingOverride(true)
         console.log('🎵 AudioPlayerContext: Set currentClip and isPlayingOverride to true')
 
@@ -105,29 +193,94 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         setCurrentClip(null)
         setIsLoading(false)
         setIsPlayingOverride(false)
+        setHasCompleted(false)
       } finally {
         setIsLoading(false)
       }
     },
-    [audioPlayer]
+    [audioPlayer, currentClip, hasCompleted, currentPosition]
   )
 
   const pauseClip = useCallback(() => {
     console.log('🎵 AudioPlayerContext: pauseClip called')
     audioPlayer.pause()
     setIsPlayingOverride(false)
+    // Don't reset hasCompleted when pausing - user might want to resume
   }, [audioPlayer])
 
   const stopClip = useCallback(() => {
     console.log('🎵 AudioPlayerContext: stopClip called')
     audioPlayer.pause()
     audioPlayer.seekTo(0)
+    setCurrentPosition(0)
+    setHasCompleted(false)
     setIsPlayingOverride(false)
   }, [audioPlayer])
 
   const seekTo = useCallback(
     (position: number) => {
+      // Set seeking flag to prevent position polling interference
+      isSeekingRef.current = true
+
       audioPlayer.seekTo(position)
+      setCurrentPosition(position) // Update tracked position immediately
+      setHasCompleted(false) // Reset completion state when seeking
+
+      // Clear seeking flag after a short delay to allow audio player to catch up
+      setTimeout(() => {
+        isSeekingRef.current = false
+      }, 100) // 100ms should be enough for most seek operations
+    },
+    [audioPlayer]
+  )
+
+  const skipForward = useCallback(
+    (jumpSeconds: number = 10) => {
+      // Ensure jumpSeconds is a valid number
+      const skipAmount = typeof jumpSeconds === 'number' && !isNaN(jumpSeconds) ? jumpSeconds : 10
+
+      // Set seeking flag to prevent position polling interference
+      isSeekingRef.current = true
+
+      // Use the actual audio player current time for more accurate positioning
+      const currentPos = audioPlayer.currentTime || 0
+      const duration = audioPlayer.duration || currentClip?.duration || 0
+      const newPosition = Math.min(currentPos + skipAmount, duration)
+
+      console.log(`🎵 AudioPlayerContext: skipForward ${skipAmount}s from ${currentPos} to ${newPosition}`)
+      setCurrentPosition(newPosition) // Update tracked position immediately
+      audioPlayer.seekTo(newPosition)
+      setHasCompleted(false) // Reset completion state when seeking
+
+      // Clear seeking flag after a short delay to allow audio player to catch up
+      setTimeout(() => {
+        isSeekingRef.current = false
+      }, 150) // Slightly longer delay for skip operations
+    },
+    [audioPlayer, currentClip]
+  )
+
+  const skipBackward = useCallback(
+    (jumpSeconds: number = 10) => {
+      // Ensure jumpSeconds is a valid number
+      const skipAmount = typeof jumpSeconds === 'number' && !isNaN(jumpSeconds) ? jumpSeconds : 10
+
+      // Set seeking flag to prevent position polling interference
+      isSeekingRef.current = true
+
+      // Use the actual audio player current time for more accurate positioning
+      const currentPos = audioPlayer.currentTime || 0
+      const newPosition = Math.max(currentPos - skipAmount, 0)
+
+      console.log(`🎵 AudioPlayerContext: skipBackward ${skipAmount}s from ${currentPos} to ${newPosition}`)
+      setCurrentPosition(newPosition) // Update tracked position immediately
+      audioPlayer.seekTo(newPosition)
+      setHasCompleted(false) // Reset completion state when seeking
+
+      // Clear seeking flag after a short delay to allow audio player to catch up
+      setTimeout(() => {
+        isSeekingRef.current = false
+      }, 150) // Slightly longer delay for skip operations
     },
     [audioPlayer]
   )
@@ -136,6 +289,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     console.log('🎵 AudioPlayerContext: cleanup called')
     audioPlayer.pause()
     setCurrentClip(null)
+    setCurrentPosition(0)
+    setHasCompleted(false)
     setIsPlayingOverride(false)
   }, [audioPlayer])
 
@@ -144,18 +299,33 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     if (isPlayingOverride && audioPlayer.playing) {
       // Audio player has caught up, disable override
       setIsPlayingOverride(false)
-    } else if (!audioPlayer.playing && !isPlayingOverride && currentClip) {
-      // Audio stopped but we still have a current clip, clear it
-      setCurrentClip(null)
     }
-  }, [audioPlayer.playing, isPlayingOverride, currentClip])
+
+    // Detect audio completion when audioPlayer.playing becomes false
+    // but we still have a current clip and haven't explicitly paused
+    if (!audioPlayer.playing && currentClip && !hasCompleted && currentPosition > 0) {
+      const duration = audioPlayer.duration || 0
+      // Check if we're near the end (within 1 second) when audio stops
+      if (duration > 0 && currentPosition >= duration - 1) {
+        console.log('🎵 AudioPlayerContext: Audio completion detected via playing state change')
+        setHasCompleted(true)
+        setIsPlayingOverride(false)
+      }
+    }
+
+    // Note: We no longer automatically clear currentClip when audio stops
+    // This allows the media player to remain visible after audio completion
+  }, [audioPlayer.playing, isPlayingOverride, currentClip, hasCompleted, currentPosition, audioPlayer.duration])
+
+  // When audio has completed, always show play button (not pause) regardless of other states
+  const calculatedIsPlaying = hasCompleted ? false : isPlayingOverride || audioPlayer.playing
 
   const value: AudioPlayerContextType = {
     // State
     currentClip,
-    isPlaying: isPlayingOverride || audioPlayer.playing,
+    isPlaying: calculatedIsPlaying,
     isLoading,
-    position: audioPlayer.currentTime,
+    position: currentPosition, // Use tracked position instead of audioPlayer.currentTime
     duration: audioPlayer.duration,
 
     // Actions
@@ -163,6 +333,8 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     pauseClip,
     stopClip,
     seekTo,
+    skipForward,
+    skipBackward,
     cleanup,
   }
 

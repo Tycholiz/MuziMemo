@@ -85,10 +85,10 @@ export function FileSystemComponent() {
     return sortAudioFiles(audioFiles, sortOption)
   }, [audioFiles, sortOption])
 
-  // Load folder contents when path changes
+  // Load folder contents when path changes or refresh is triggered
   useEffect(() => {
     loadFolderContents()
-  }, [fileManager.currentPath])
+  }, [fileManager.currentPath, fileManager.refreshTrigger])
 
   // Load saved sort preference on mount
   useEffect(() => {
@@ -215,13 +215,10 @@ export function FileSystemComponent() {
 
   const handleFolderPress = useCallback(
     (folder: FolderData) => {
-      // Stop current playback when navigating to a different folder
-      audioPlayer.cleanup()
-
       // Navigate into the folder
       fileManager.navigateToFolder(folder.name)
     },
-    [audioPlayer, fileManager]
+    [fileManager]
   )
 
   const handleRecordButtonPress = useCallback(() => {

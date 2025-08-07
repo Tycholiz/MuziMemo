@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
+import { Ionicons, MaterialIcons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 
@@ -85,9 +85,8 @@ export function MediaCard({
   artist,
   duration,
   onPlayPause,
-  onNext,
-  onPrevious,
-  onMore,
+  onSkipForward,
+  onSkipBackward,
   isPlaying = false,
   style,
 }: {
@@ -95,9 +94,8 @@ export function MediaCard({
   artist?: string
   duration?: string
   onPlayPause?: () => void
-  onNext?: () => void
-  onPrevious?: () => void
-  onMore?: () => void
+  onSkipForward?: () => void
+  onSkipBackward?: () => void
   isPlaying?: boolean
   style?: ViewStyle
 }) {
@@ -116,20 +114,16 @@ export function MediaCard({
         </View>
 
         <View style={styles.mediaCardControls}>
-          <TouchableOpacity onPress={onPrevious} style={styles.mediaControlButton}>
-            <Ionicons name="play-skip-back" size={20} color={theme.colors.text.primary} />
+          <TouchableOpacity onPress={onSkipBackward} style={styles.mediaControlButton}>
+            <MaterialIcons name="replay-10" size={26} color={theme.colors.text.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onPlayPause} style={styles.mediaControlButton}>
-            <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={theme.colors.text.primary} />
+            <Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color={theme.colors.text.primary} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onNext} style={styles.mediaControlButton}>
-            <Ionicons name="play-skip-forward" size={20} color={theme.colors.text.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={onMore} style={styles.mediaControlButton}>
-            <Ionicons name="ellipsis-horizontal" size={20} color={theme.colors.text.primary} />
+          <TouchableOpacity onPress={onSkipForward} style={styles.mediaControlButton}>
+            <MaterialIcons name="forward-10" size={26} color={theme.colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -227,6 +221,8 @@ const styles = StyleSheet.create({
   mediaCardControls: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '45%',
   },
 
   mediaControlButton: {
