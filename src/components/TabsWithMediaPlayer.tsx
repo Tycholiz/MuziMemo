@@ -13,7 +13,7 @@ import { showMoveSuccessToast, getRelativePathFromRecordings, pathToNavigationAr
 
 /**
  * TabsWithMediaPlayer Component
- * Wraps the tab navigation with a persistent bottom media player
+ * Wraps the bottom tab navigation with a persistent bottom media player
  * The media player appears above the tab bar and persists across navigation
  */
 export function TabsWithMediaPlayer() {
