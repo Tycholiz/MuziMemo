@@ -50,6 +50,9 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   // Ref for position polling interval
   const positionPollingInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Ref to temporarily pause position polling during seek operations
+  const isSeekingRef = useRef(false)
+
   // Start/stop position polling based on playback state
   useEffect(() => {
     const isActuallyPlaying = isPlayingOverride || audioPlayer.playing
@@ -59,6 +62,11 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       if (!positionPollingInterval.current) {
         console.log('🎵 AudioPlayerContext: Starting high-frequency position polling (60 FPS)')
         positionPollingInterval.current = setInterval(() => {
+          // Skip position updates if we're currently seeking to prevent race conditions
+          if (isSeekingRef.current) {
+            return
+          }
+
           const newPosition = audioPlayer.currentTime || 0
           const duration = audioPlayer.duration || 0
 
@@ -211,9 +219,17 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
   const seekTo = useCallback(
     (position: number) => {
+      // Set seeking flag to prevent position polling interference
+      isSeekingRef.current = true
+
       audioPlayer.seekTo(position)
       setCurrentPosition(position) // Update tracked position immediately
       setHasCompleted(false) // Reset completion state when seeking
+
+      // Clear seeking flag after a short delay to allow audio player to catch up
+      setTimeout(() => {
+        isSeekingRef.current = false
+      }, 100) // 100ms should be enough for most seek operations
     },
     [audioPlayer]
   )
@@ -222,6 +238,9 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     (jumpSeconds: number = 10) => {
       // Ensure jumpSeconds is a valid number
       const skipAmount = typeof jumpSeconds === 'number' && !isNaN(jumpSeconds) ? jumpSeconds : 10
+
+      // Set seeking flag to prevent position polling interference
+      isSeekingRef.current = true
 
       // Use the actual audio player current time for more accurate positioning
       const currentPos = audioPlayer.currentTime || 0
@@ -232,6 +251,11 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       setCurrentPosition(newPosition) // Update tracked position immediately
       audioPlayer.seekTo(newPosition)
       setHasCompleted(false) // Reset completion state when seeking
+
+      // Clear seeking flag after a short delay to allow audio player to catch up
+      setTimeout(() => {
+        isSeekingRef.current = false
+      }, 150) // Slightly longer delay for skip operations
     },
     [audioPlayer, currentClip]
   )
@@ -241,6 +265,9 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       // Ensure jumpSeconds is a valid number
       const skipAmount = typeof jumpSeconds === 'number' && !isNaN(jumpSeconds) ? jumpSeconds : 10
 
+      // Set seeking flag to prevent position polling interference
+      isSeekingRef.current = true
+
       // Use the actual audio player current time for more accurate positioning
       const currentPos = audioPlayer.currentTime || 0
       const newPosition = Math.max(currentPos - skipAmount, 0)
@@ -249,6 +276,11 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
       setCurrentPosition(newPosition) // Update tracked position immediately
       audioPlayer.seekTo(newPosition)
       setHasCompleted(false) // Reset completion state when seeking
+
+      // Clear seeking flag after a short delay to allow audio player to catch up
+      setTimeout(() => {
+        isSeekingRef.current = false
+      }, 150) // Slightly longer delay for skip operations
     },
     [audioPlayer]
   )
