@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native'
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
@@ -460,6 +460,29 @@ export function FileSystemComponent() {
     setShowRestoreModal(true)
   }, [])
 
+  // Fallback sharing using React Native's built-in Share API
+  const shareWithReactNative = useCallback(async (audioFile: AudioFileData) => {
+    console.log('🔄 Attempting React Native Share fallback...')
+    try {
+      const result = await Share.share({
+        url: audioFile.uri,
+        title: `Share ${audioFile.name}`,
+        message: `Sharing audio file: ${audioFile.name}`,
+      })
+
+      console.log('✅ React Native Share result:', result)
+
+      if (result.action === Share.sharedAction) {
+        console.log('✅ File shared successfully via React Native Share')
+      } else if (result.action === Share.dismissedAction) {
+        console.log('ℹ️ User dismissed the share dialog')
+      }
+    } catch (error) {
+      console.error('❌ React Native Share failed:', error)
+      throw error
+    }
+  }, [])
+
   // Test function to verify sharing works with a simple text share
   const testSharing = useCallback(async () => {
     console.log('🧪 Testing basic sharing functionality...')
@@ -478,11 +501,19 @@ export function FileSystemComponent() {
         return
       }
 
-      // Try sharing a simple text message first
-      console.log('🧪 Attempting to share test message...')
-      const result = await Sharing.shareAsync('data:text/plain;base64,' + btoa('Test sharing from MuziMemo'))
+      // Try sharing a simple text message first with delay and timeout
+      console.log('🧪 Adding delay before test sharing...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      console.log('🧪 Attempting to share test message with timeout...')
+      const sharePromise = Sharing.shareAsync('data:text/plain;base64,' + btoa('Test sharing from MuziMemo'))
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Test sharing timeout')), 10000)
+      )
+
+      const result = await Promise.race([sharePromise, timeoutPromise])
       console.log('🧪 Test sharing result:', result)
-      Alert.alert('Test Result', 'Basic sharing test completed - check console for details')
+      Alert.alert('Test Result', 'Basic sharing test completed successfully!')
 
     } catch (error) {
       console.error('🧪 Test sharing failed:', error)
@@ -545,35 +576,66 @@ export function FileSystemComponent() {
       console.log('🔄 Using MIME type:', mimeType)
       console.log('🔄 File size:', fileInfo.size, 'bytes')
 
-      // Try sharing with different approaches
-      console.log('🔄 Attempting to share with full options...')
+      // Add delay to prevent hanging issue (known expo-sharing bug)
+      console.log('🔄 Adding 500ms delay to prevent hanging...')
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // Try sharing with timeout to prevent indefinite hanging
+      console.log('🔄 Attempting to share with timeout protection...')
 
       try {
-        const result = await Sharing.shareAsync(audioFile.uri, {
+        const sharePromise = Sharing.shareAsync(audioFile.uri, {
           mimeType,
           dialogTitle: `Share ${audioFile.name}`,
         })
-        console.log('✅ Sharing result:', JSON.stringify(result, null, 2))
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Sharing timeout after 15 seconds')), 15000)
+        )
+
+        const result = await Promise.race([sharePromise, timeoutPromise])
+        console.log('✅ Sharing completed successfully:', JSON.stringify(result, null, 2))
+
       } catch (shareError) {
-        console.log('❌ First sharing attempt failed, trying without options...')
+        console.log('❌ First sharing attempt failed, trying fallback...')
         console.error('Share error details:', shareError)
 
-        // Fallback: try sharing without options
-        const fallbackResult = await Sharing.shareAsync(audioFile.uri)
-        console.log('✅ Fallback sharing result:', JSON.stringify(fallbackResult, null, 2))
+        if (shareError.message?.includes('timeout')) {
+          throw new Error('Sharing timed out. Please try again or restart the app if the issue persists.')
+        }
+
+        // Fallback: try sharing without options with timeout
+        console.log('🔄 Trying fallback sharing without options...')
+        await new Promise(resolve => setTimeout(resolve, 500)) // Another delay for fallback
+
+        const fallbackPromise = Sharing.shareAsync(audioFile.uri)
+        const fallbackTimeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Fallback sharing timeout after 15 seconds')), 15000)
+        )
+
+        const fallbackResult = await Promise.race([fallbackPromise, fallbackTimeoutPromise])
+        console.log('✅ Fallback sharing completed:', JSON.stringify(fallbackResult, null, 2))
       }
 
     } catch (error) {
-      console.error('❌ Failed to share audio file:', error)
+      console.error('❌ expo-sharing failed, trying React Native Share fallback:', error)
       console.error('❌ Error details:', JSON.stringify(error, null, 2))
-      console.error('❌ Error stack:', error.stack)
 
-      let errorMessage = 'Failed to share the audio file. Please try again.'
-      if (error.message) {
-        errorMessage = `Failed to share: ${error.message}`
+      try {
+        // Try React Native Share as fallback
+        await shareWithReactNative(audioFile)
+      } catch (fallbackError) {
+        console.error('❌ All sharing methods failed:', fallbackError)
+
+        let errorMessage = 'Failed to share the audio file. Please try again.'
+        if (error.message?.includes('timeout')) {
+          errorMessage = 'Sharing timed out. Please restart the app and try again.'
+        } else if (error.message) {
+          errorMessage = `Failed to share: ${error.message}`
+        }
+
+        Alert.alert('Share Error', errorMessage)
       }
-
-      Alert.alert('Share Error', errorMessage)
     }
   }, [])
 
@@ -867,13 +929,27 @@ export function FileSystemComponent() {
               <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
             </TouchableOpacity>
 
-            {/* Temporary test button for debugging sharing */}
+            {/* Temporary test buttons for debugging sharing */}
             <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#FF9800' }]}
+              style={[styles.actionButton, { backgroundColor: '#FF9800', flex: 0.5 }]}
               onPress={testSharing}
             >
-              <Ionicons name="share-outline" size={20} color="white" />
-              <Text style={[styles.actionButtonText, { color: 'white' }]}>Test Share</Text>
+              <Ionicons name="share-outline" size={16} color="white" />
+              <Text style={[styles.actionButtonText, { color: 'white', fontSize: 12 }]}>Test Expo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, { backgroundColor: '#9C27B0', flex: 0.5 }]}
+              onPress={() => {
+                if (sortedAudioFiles.length > 0) {
+                  shareWithReactNative(sortedAudioFiles[0])
+                } else {
+                  Alert.alert('No Files', 'No audio files available to test sharing')
+                }
+              }}
+            >
+              <Ionicons name="logo-react" size={16} color="white" />
+              <Text style={[styles.actionButtonText, { color: 'white', fontSize: 12 }]}>Test RN</Text>
             </TouchableOpacity>
           </View>
         )}
