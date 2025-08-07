@@ -63,12 +63,25 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
           setCurrentPosition(newPosition)
 
           // Debug logging for completion detection
-          if (duration > 0 && newPosition >= duration - 0.5) { // Wider tolerance for debugging
-            console.log('🎵 DEBUG: Near completion - position:', newPosition, 'duration:', duration, 'hasCompleted:', hasCompleted, 'audioPlayer.playing:', audioPlayer.playing, 'isPlayingOverride:', isPlayingOverride)
+          if (duration > 0 && newPosition >= duration - 0.5) {
+            // Wider tolerance for debugging
+            console.log(
+              '🎵 DEBUG: Near completion - position:',
+              newPosition,
+              'duration:',
+              duration,
+              'hasCompleted:',
+              hasCompleted,
+              'audioPlayer.playing:',
+              audioPlayer.playing,
+              'isPlayingOverride:',
+              isPlayingOverride
+            )
           }
 
           // Check if audio has completed (reached the end) - only log once
-          if (duration > 0 && newPosition >= duration - 0.1 && !hasCompleted) { // 0.1s tolerance for completion
+          if (duration > 0 && newPosition >= duration - 0.1 && !hasCompleted) {
+            // 0.1s tolerance for completion
             console.log('🎵 AudioPlayerContext: Audio completed - setting hasCompleted=true, isPlayingOverride=false')
             setHasCompleted(true)
             setIsPlayingOverride(false) // Stop playing when audio completes
@@ -253,12 +266,20 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
   }, [audioPlayer.playing, isPlayingOverride, currentClip, hasCompleted, currentPosition, audioPlayer.duration])
 
   // Debug the isPlaying calculation
-  const calculatedIsPlaying = isPlayingOverride || audioPlayer.playing
+  // When audio has completed, always show play button (not pause) regardless of other states
+  const calculatedIsPlaying = hasCompleted ? false : isPlayingOverride || audioPlayer.playing
 
   // Log when there's a state change that might affect the UI
   useEffect(() => {
     if (hasCompleted) {
-      console.log('🎵 DEBUG: hasCompleted=true, isPlayingOverride:', isPlayingOverride, 'audioPlayer.playing:', audioPlayer.playing, 'calculatedIsPlaying:', calculatedIsPlaying)
+      console.log(
+        '🎵 DEBUG: hasCompleted=true, isPlayingOverride:',
+        isPlayingOverride,
+        'audioPlayer.playing:',
+        audioPlayer.playing,
+        'calculatedIsPlaying:',
+        calculatedIsPlaying
+      )
     }
   }, [hasCompleted, isPlayingOverride, audioPlayer.playing, calculatedIsPlaying])
 
