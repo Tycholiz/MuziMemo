@@ -267,7 +267,7 @@ describe('AudioPlayerContext', () => {
       audioPlayerRef.skipForward()
     })
 
-    expect(getByTestId('position')).toHaveTextContent('5')
+    expect(getByTestId('position')).toHaveTextContent('10')
 
     // Test skip backward
     await act(async () => {

@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, StyleSheet, ViewStyle, TouchableOpacity } from 'react-native'
-import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons'
+import { Ionicons, MaterialIcons } from '@expo/vector-icons'
 
 import { theme } from '@utils/theme'
 

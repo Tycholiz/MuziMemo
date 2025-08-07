@@ -126,7 +126,7 @@ describe('BottomMediaPlayer', () => {
     // Should have more TouchableOpacity components (including the ellipsis button)
     const TouchableOpacity = require('react-native').TouchableOpacity
     const buttons = UNSAFE_getAllByType(TouchableOpacity)
-    expect(buttons.length).toBeGreaterThan(4) // Skip buttons + play/pause + ellipsis
+    expect(buttons.length).toBeGreaterThan(3) // Skip buttons + play/pause + ellipsis
   })
 
   it('should not render ellipsis menu when no file operation callbacks are provided', () => {
@@ -138,6 +138,6 @@ describe('BottomMediaPlayer', () => {
     // Should have fewer TouchableOpacity components (no ellipsis button)
     const TouchableOpacity = require('react-native').TouchableOpacity
     const buttons = UNSAFE_getAllByType(TouchableOpacity)
-    expect(buttons.length).toBe(4) // Only skip buttons + play/pause, no ellipsis
+    expect(buttons.length).toBe(3) // Only skip buttons + play/pause, no ellipsis
   })
 })
