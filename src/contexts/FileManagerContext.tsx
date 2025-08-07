@@ -7,6 +7,7 @@ export type FileManagerState = {
   isLoading: boolean
   error: string | null
   isInRecentlyDeleted: boolean
+  refreshTrigger: number
 }
 
 export type FileManagerActions = {
@@ -20,6 +21,7 @@ export type FileManagerActions = {
   getCurrentPathString: () => string
   getFullPath: () => string
   getIsInRecentlyDeleted: () => boolean
+  refreshCurrentDirectory: () => void
 }
 
 export type FileManagerContextType = FileManagerState & FileManagerActions
@@ -35,6 +37,7 @@ export function FileManagerProvider({ children }: FileManagerProviderProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isInRecentlyDeleted, setIsInRecentlyDeleted] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const navigateToFolder = useCallback((folderName: string) => {
     setCurrentPath(prev => [...prev, folderName])
@@ -97,12 +100,18 @@ export function FileManagerProvider({ children }: FileManagerProviderProps) {
     return isInRecentlyDeleted
   }, [isInRecentlyDeleted])
 
+  const refreshCurrentDirectory = useCallback(() => {
+    console.log('🔄 FileManagerContext: refreshCurrentDirectory triggered')
+    setRefreshTrigger(prev => prev + 1)
+  }, [])
+
   const value: FileManagerContextType = {
     // State
     currentPath,
     isLoading,
     error,
     isInRecentlyDeleted,
+    refreshTrigger,
 
     // Actions
     navigateToFolder,
@@ -115,13 +124,10 @@ export function FileManagerProvider({ children }: FileManagerProviderProps) {
     getCurrentPathString,
     getFullPath,
     getIsInRecentlyDeleted,
+    refreshCurrentDirectory,
   }
 
-  return (
-    <FileManagerContext.Provider value={value}>
-      {children}
-    </FileManagerContext.Provider>
-  )
+  return <FileManagerContext.Provider value={value}>{children}</FileManagerContext.Provider>
 }
 
 export function useFileManager(): FileManagerContextType {

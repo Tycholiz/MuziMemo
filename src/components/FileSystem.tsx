@@ -85,10 +85,10 @@ export function FileSystemComponent() {
     return sortAudioFiles(audioFiles, sortOption)
   }, [audioFiles, sortOption])
 
-  // Load folder contents when path changes
+  // Load folder contents when path changes or refresh is triggered
   useEffect(() => {
     loadFolderContents()
-  }, [fileManager.currentPath])
+  }, [fileManager.currentPath, fileManager.refreshTrigger])
 
   // Load saved sort preference on mount
   useEffect(() => {

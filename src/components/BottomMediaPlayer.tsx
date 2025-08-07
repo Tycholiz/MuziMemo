@@ -3,6 +3,7 @@ import { View, StyleSheet, ViewStyle } from 'react-native'
 
 import { MediaCard } from './Card'
 import { AudioProgressBar } from './AudioProgressBar'
+import { FileContextMenuModal } from './FileContextMenuModal'
 import { theme } from '@utils/theme'
 
 export type BottomMediaPlayerProps = {
@@ -17,8 +18,10 @@ export type BottomMediaPlayerProps = {
   onPlayPause?: () => void
   onSkipForward?: () => void
   onSkipBackward?: () => void
-  onMore?: () => void
   onSeek?: (position: number) => void
+  onRename?: () => void
+  onMove?: () => void
+  onDelete?: () => void
   style?: ViewStyle
 }
 
@@ -38,8 +41,10 @@ export function BottomMediaPlayer({
   onPlayPause,
   onSkipForward,
   onSkipBackward,
-  onMore,
   onSeek,
+  onRename,
+  onMove,
+  onDelete,
   style,
 }: BottomMediaPlayerProps) {
   if (!isVisible) {
@@ -60,17 +65,31 @@ export function BottomMediaPlayer({
 
   return (
     <View style={[styles.container, style]}>
-      <MediaCard
-        title={title}
-        artist={formatArtistDisplay()}
-        duration={duration}
-        isPlaying={isPlaying}
-        onPlayPause={onPlayPause}
-        onSkipForward={onSkipForward}
-        onSkipBackward={onSkipBackward}
-        onMore={onMore}
-        style={styles.mediaCard}
-      />
+      <View style={[styles.mediaCard]}>
+        <MediaCard
+          title={title}
+          artist={formatArtistDisplay()}
+          duration={duration}
+          isPlaying={isPlaying}
+          onPlayPause={onPlayPause}
+          onSkipForward={onSkipForward}
+          onSkipBackward={onSkipBackward}
+          onMore={undefined} // We'll handle the menu separately
+          style={styles.mediaCardInner}
+        />
+
+        {/* File Context Menu */}
+        {(onRename || onMove || onDelete) && (
+          <View style={styles.menuContainer}>
+            <FileContextMenuModal
+              onRename={onRename || (() => {})}
+              onMove={onMove}
+              onDelete={onDelete || (() => {})}
+              isInRecentlyDeleted={false} // Bottom player is never for recently deleted files
+            />
+          </View>
+        )}
+      </View>
 
       {/* Audio Progress Bar */}
       {onSeek && (
@@ -98,6 +117,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.secondary, // Match tab bar background for seamless integration
     borderTopLeftRadius: theme.borderRadius.md,
     borderTopRightRadius: theme.borderRadius.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mediaCardInner: {
+    flex: 1,
+    borderRadius: 0,
+    backgroundColor: theme.colors.background.secondary,
+  },
+  menuContainer: {
+    paddingRight: 8,
   },
   progressBar: {
     backgroundColor: theme.colors.background.secondary,

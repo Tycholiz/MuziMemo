@@ -110,4 +110,34 @@ describe('BottomMediaPlayer', () => {
     fireEvent.press(skipForwardButton)
     expect(mockOnSkipForward).toHaveBeenCalledTimes(1)
   })
+
+  it('should render FileContextMenuModal when file operation callbacks are provided', () => {
+    const mockOnRename = jest.fn()
+    const mockOnMove = jest.fn()
+    const mockOnDelete = jest.fn()
+
+    const { getByText, UNSAFE_getAllByType } = render(
+      <BottomMediaPlayer {...defaultProps} onRename={mockOnRename} onMove={mockOnMove} onDelete={mockOnDelete} />
+    )
+
+    // Component should render with the title
+    expect(getByText('Test Audio')).toBeTruthy()
+
+    // Should have more TouchableOpacity components (including the ellipsis button)
+    const TouchableOpacity = require('react-native').TouchableOpacity
+    const buttons = UNSAFE_getAllByType(TouchableOpacity)
+    expect(buttons.length).toBeGreaterThan(4) // Skip buttons + play/pause + ellipsis
+  })
+
+  it('should not render ellipsis menu when no file operation callbacks are provided', () => {
+    const { getByText, UNSAFE_getAllByType } = render(<BottomMediaPlayer {...defaultProps} />)
+
+    // Component should still render normally
+    expect(getByText('Test Audio')).toBeTruthy()
+
+    // Should have fewer TouchableOpacity components (no ellipsis button)
+    const TouchableOpacity = require('react-native').TouchableOpacity
+    const buttons = UNSAFE_getAllByType(TouchableOpacity)
+    expect(buttons.length).toBe(4) // Only skip buttons + play/pause, no ellipsis
+  })
 })
