@@ -220,27 +220,31 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
   const skipForward = useCallback(
     (jumpSeconds = 10) => {
-      const currentPos = currentPosition || 0
+      // Use the actual audio player current time for more accurate positioning
+      const currentPos = audioPlayer.currentTime || 0
       const duration = audioPlayer.duration || currentClip?.duration || 0
       const newPosition = Math.min(currentPos + jumpSeconds, duration)
 
+      console.log(`🎵 AudioPlayerContext: skipForward ${jumpSeconds}s from ${currentPos} to ${newPosition}`)
       setCurrentPosition(newPosition) // Update tracked position immediately
       audioPlayer.seekTo(newPosition)
       setHasCompleted(false) // Reset completion state when seeking
     },
-    [audioPlayer, currentPosition, currentClip]
+    [audioPlayer, currentClip]
   )
 
   const skipBackward = useCallback(
     (jumpSeconds = 10) => {
-      const currentPos = currentPosition || 0
+      // Use the actual audio player current time for more accurate positioning
+      const currentPos = audioPlayer.currentTime || 0
       const newPosition = Math.max(currentPos - jumpSeconds, 0)
 
+      console.log(`🎵 AudioPlayerContext: skipBackward ${jumpSeconds}s from ${currentPos} to ${newPosition}`)
       setCurrentPosition(newPosition) // Update tracked position immediately
       audioPlayer.seekTo(newPosition)
       setHasCompleted(false) // Reset completion state when seeking
     },
-    [audioPlayer, currentPosition]
+    [audioPlayer]
   )
 
   const cleanup = useCallback(() => {

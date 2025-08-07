@@ -23,7 +23,6 @@ jest.mock('../../utils/moveUtils', () => ({
 const mockUseAudioPlayerContext = useAudioPlayerContext as jest.MockedFunction<typeof useAudioPlayerContext>
 const mockUseFileManager = useFileManager as jest.MockedFunction<typeof useFileManager>
 const mockMoveAsync = FileSystem.moveAsync as jest.MockedFunction<typeof FileSystem.moveAsync>
-const mockDeleteAsync = FileSystem.deleteAsync as jest.MockedFunction<typeof FileSystem.deleteAsync>
 const mockShowMoveSuccessToast = moveUtils.showMoveSuccessToast as jest.MockedFunction<typeof moveUtils.showMoveSuccessToast>
 const mockGetRelativePathFromRecordings = moveUtils.getRelativePathFromRecordings as jest.MockedFunction<typeof moveUtils.getRelativePathFromRecordings>
 const mockPathToNavigationArray = moveUtils.pathToNavigationArray as jest.MockedFunction<typeof moveUtils.pathToNavigationArray>
