@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'rea
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import * as FileSystem from 'expo-file-system'
+import * as Sharing from 'expo-sharing'
 import Toast from 'react-native-toast-message'
 
 import { useFileManager } from '../contexts/FileManagerContext'
@@ -458,6 +459,26 @@ export function FileSystemComponent() {
     setShowRestoreModal(true)
   }, [])
 
+  const handleShareAudioFile = useCallback(async (audioFile: AudioFileData) => {
+    try {
+      // Check if sharing is available on this platform
+      const isAvailable = await Sharing.isAvailableAsync()
+      if (!isAvailable) {
+        Alert.alert('Sharing Not Available', 'Sharing is not available on this device.')
+        return
+      }
+
+      // Share the audio file
+      await Sharing.shareAsync(audioFile.uri, {
+        mimeType: 'audio/m4a',
+        dialogTitle: `Share ${audioFile.name}`,
+      })
+    } catch (error) {
+      console.error('Failed to share audio file:', error)
+      Alert.alert('Share Error', 'Failed to share the audio file. Please try again.')
+    }
+  }, [])
+
   const handleMoveConfirm = async (destinationPath: string) => {
     try {
       const recordingsBasePath = fileManager
@@ -765,6 +786,7 @@ export function FileSystemComponent() {
           const handleRename = () => handleRenameAudioFile(audioFile)
           const handleMove = () => handleMoveAudioFile(audioFile)
           const handleRestore = () => handleRestoreAudioFile(audioFile)
+          const handleShare = () => handleShareAudioFile(audioFile)
           const handleDelete = () => handleDeleteAudioFile(audioFile)
           const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
           const isSelected = selectedItems.has(audioFile.id)
@@ -780,6 +802,7 @@ export function FileSystemComponent() {
               onRename={handleRename}
               onMove={isInRecentlyDeletedFolder ? undefined : handleMove}
               onRestore={isInRecentlyDeletedFolder ? handleRestore : undefined}
+              onShare={handleShare}
               onDelete={handleDelete}
               isInRecentlyDeleted={isInRecentlyDeletedFolder}
               isMultiSelectMode={isMultiSelectMode}
