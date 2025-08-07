@@ -85,8 +85,8 @@ export function MediaCard({
   artist,
   duration,
   onPlayPause,
-  onNext,
-  onPrevious,
+  onSkipForward,
+  onSkipBackward,
   onMore,
   isPlaying = false,
   style,
@@ -95,8 +95,8 @@ export function MediaCard({
   artist?: string
   duration?: string
   onPlayPause?: () => void
-  onNext?: () => void
-  onPrevious?: () => void
+  onSkipForward?: () => void
+  onSkipBackward?: () => void
   onMore?: () => void
   isPlaying?: boolean
   style?: ViewStyle
@@ -116,16 +116,16 @@ export function MediaCard({
         </View>
 
         <View style={styles.mediaCardControls}>
-          <TouchableOpacity onPress={onPrevious} style={styles.mediaControlButton}>
-            <Ionicons name="play-skip-back" size={20} color={theme.colors.text.primary} />
+          <TouchableOpacity onPress={onSkipBackward} style={styles.mediaControlButton}>
+            <Ionicons name="play-back" size={20} color={theme.colors.text.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onPlayPause} style={styles.mediaControlButton}>
             <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={theme.colors.text.primary} />
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={onNext} style={styles.mediaControlButton}>
-            <Ionicons name="play-skip-forward" size={20} color={theme.colors.text.primary} />
+          <TouchableOpacity onPress={onSkipForward} style={styles.mediaControlButton}>
+            <Ionicons name="play-forward" size={20} color={theme.colors.text.primary} />
           </TouchableOpacity>
 
           <TouchableOpacity onPress={onMore} style={styles.mediaControlButton}>

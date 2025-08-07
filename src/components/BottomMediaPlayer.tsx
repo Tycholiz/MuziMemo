@@ -15,8 +15,8 @@ export type BottomMediaPlayerProps = {
   isPlaying?: boolean
   isVisible?: boolean
   onPlayPause?: () => void
-  onNext?: () => void
-  onPrevious?: () => void
+  onSkipForward?: () => void
+  onSkipBackward?: () => void
   onMore?: () => void
   onSeek?: (position: number) => void
   style?: ViewStyle
@@ -36,8 +36,8 @@ export function BottomMediaPlayer({
   isPlaying = false,
   isVisible = false,
   onPlayPause,
-  onNext,
-  onPrevious,
+  onSkipForward,
+  onSkipBackward,
   onMore,
   onSeek,
   style,
@@ -66,8 +66,8 @@ export function BottomMediaPlayer({
         duration={duration}
         isPlaying={isPlaying}
         onPlayPause={onPlayPause}
-        onNext={onNext}
-        onPrevious={onPrevious}
+        onSkipForward={onSkipForward}
+        onSkipBackward={onSkipBackward}
         onMore={onMore}
         style={styles.mediaCard}
       />

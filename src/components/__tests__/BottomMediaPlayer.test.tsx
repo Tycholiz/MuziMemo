@@ -1,5 +1,5 @@
 import React from 'react'
-import { render } from '@testing-library/react-native'
+import { render, fireEvent } from '@testing-library/react-native'
 import { BottomMediaPlayer } from '../BottomMediaPlayer'
 
 // Mock react-native-reanimated
@@ -86,5 +86,28 @@ describe('BottomMediaPlayer', () => {
 
     // Should still render the media card
     expect(getByText('Test Audio')).toBeTruthy()
+  })
+
+  it('should call skip callbacks when skip buttons are pressed', () => {
+    const mockOnSkipForward = jest.fn()
+    const mockOnSkipBackward = jest.fn()
+
+    const { UNSAFE_getAllByType } = render(
+      <BottomMediaPlayer {...defaultProps} onSkipForward={mockOnSkipForward} onSkipBackward={mockOnSkipBackward} />
+    )
+
+    // Get all TouchableOpacity components (buttons)
+    const TouchableOpacity = require('react-native').TouchableOpacity
+    const buttons = UNSAFE_getAllByType(TouchableOpacity)
+
+    // Find skip backward button (first button)
+    const skipBackwardButton = buttons[0]
+    fireEvent.press(skipBackwardButton)
+    expect(mockOnSkipBackward).toHaveBeenCalledTimes(1)
+
+    // Find skip forward button (third button, after play/pause)
+    const skipForwardButton = buttons[2]
+    fireEvent.press(skipForwardButton)
+    expect(mockOnSkipForward).toHaveBeenCalledTimes(1)
   })
 })
