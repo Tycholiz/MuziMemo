@@ -514,7 +514,6 @@ export function FileSystemComponent() {
       const result = await Promise.race([sharePromise, timeoutPromise])
       console.log('🧪 Test sharing result:', result)
       Alert.alert('Test Result', 'Basic sharing test completed successfully!')
-
     } catch (error) {
       console.error('🧪 Test sharing failed:', error)
       Alert.alert('Test Result', `Test failed: ${error.message}`)
@@ -530,7 +529,10 @@ export function FileSystemComponent() {
       // Web platform doesn't support expo-sharing
       if (Platform.OS === 'web') {
         console.log('❌ Sharing not supported on web platform')
-        Alert.alert('Sharing Not Available', 'File sharing is not available on the web version. Please use the mobile app.')
+        Alert.alert(
+          'Sharing Not Available',
+          'File sharing is not available on the web version. Please use the mobile app.'
+        )
         return
       }
 
@@ -595,7 +597,6 @@ export function FileSystemComponent() {
 
         const result = await Promise.race([sharePromise, timeoutPromise])
         console.log('✅ Sharing completed successfully:', JSON.stringify(result, null, 2))
-
       } catch (shareError) {
         console.log('❌ First sharing attempt failed, trying fallback...')
         console.error('Share error details:', shareError)
@@ -616,7 +617,6 @@ export function FileSystemComponent() {
         const fallbackResult = await Promise.race([fallbackPromise, fallbackTimeoutPromise])
         console.log('✅ Fallback sharing completed:', JSON.stringify(fallbackResult, null, 2))
       }
-
     } catch (error) {
       console.error('❌ expo-sharing failed, trying React Native Share fallback:', error)
       console.error('❌ Error details:', JSON.stringify(error, null, 2))
@@ -927,29 +927,6 @@ export function FileSystemComponent() {
             <TouchableOpacity style={[styles.actionButton, styles.recordButton]} onPress={handleRecordButtonPress}>
               <Ionicons name="mic" size={20} color="white" />
               <Text style={[styles.actionButtonText, styles.recordButtonText]}>Record</Text>
-            </TouchableOpacity>
-
-            {/* Temporary test buttons for debugging sharing */}
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#FF9800', flex: 0.5 }]}
-              onPress={testSharing}
-            >
-              <Ionicons name="share-outline" size={16} color="white" />
-              <Text style={[styles.actionButtonText, { color: 'white', fontSize: 12 }]}>Test Expo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, { backgroundColor: '#9C27B0', flex: 0.5 }]}
-              onPress={() => {
-                if (sortedAudioFiles.length > 0) {
-                  shareWithReactNative(sortedAudioFiles[0])
-                } else {
-                  Alert.alert('No Files', 'No audio files available to test sharing')
-                }
-              }}
-            >
-              <Ionicons name="logo-react" size={16} color="white" />
-              <Text style={[styles.actionButtonText, { color: 'white', fontSize: 12 }]}>Test RN</Text>
             </TouchableOpacity>
           </View>
         )}
