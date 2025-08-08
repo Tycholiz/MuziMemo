@@ -9,6 +9,9 @@ type: 'always_apply'
 - Use TypeScript type system effectively
 - Implement proper error handling
 - Follow framework best practices
+- Avoid long files. If a file is getting to a point where it's too big (e.g.
+  150-200 lines), then ask yourself if this code can be refactored to live in
+  multiple files with an emphasis on maintainability.
 
 ## Coding Guidelines
 
