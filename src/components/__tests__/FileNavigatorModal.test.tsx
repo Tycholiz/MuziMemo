@@ -165,9 +165,6 @@ describe('FileNavigatorModal - Move Validation', () => {
       // Should show empty state text
       const emptyStateText = await findByText('This folder is empty')
       expect(emptyStateText).toBeTruthy()
-
-      const emptyStateSubtext = await findByText('Create a new folder to get started')
-      expect(emptyStateSubtext).toBeTruthy()
     })
   })
 })

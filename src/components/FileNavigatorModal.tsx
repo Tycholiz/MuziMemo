@@ -261,7 +261,6 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
                 style={styles.emptyStateIcon}
               />
               <Text style={styles.emptyStateText}>This folder is empty</Text>
-              <Text style={styles.emptyStateSubtext}>Create a new folder to get started</Text>
             </View>
           ) : (
             <FlatList
@@ -443,16 +442,10 @@ const styles = StyleSheet.create({
   },
 
   emptyStateText: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.sm,
     fontWeight: theme.typography.fontWeight.medium,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: theme.spacing.xs,
-  },
-
-  emptyStateSubtext: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.text.tertiary,
-    textAlign: 'center',
   },
 })
