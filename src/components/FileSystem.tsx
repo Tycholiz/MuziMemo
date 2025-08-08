@@ -874,9 +874,8 @@ export function FileSystemComponent() {
         {/* Folders Empty State */}
         {sortedFolders.length === 0 && !fileManager.getIsInRecentlyDeleted() && (
           <View style={styles.emptyState}>
-            <Ionicons name="folder-open-outline" size={64} color={theme.colors.text.secondary} />
+            <Ionicons name="folder-open-outline" size={32} color={theme.colors.text.secondary} />
             <Text style={styles.emptyStateText}>No folders yet</Text>
-            <Text style={styles.emptyStateSubtext}>Create your first folder to organize recordings</Text>
           </View>
         )}
 
@@ -1169,16 +1168,16 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 64,
+    paddingVertical: 16,
   },
   emptyStateText: {
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: theme.typography.fontFamily.medium,
-    color: theme.colors.text.secondary,
-    marginTop: 16,
+    color: theme.colors.text.primary,
+    marginTop: 8,
   },
   emptyStateSubtext: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: theme.typography.fontFamily.regular,
     color: theme.colors.text.secondary,
     marginTop: 8,
