@@ -6,10 +6,12 @@ import * as FileSystem from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 import { Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
+import { DraxProvider, DraxView } from 'react-native-drax'
 
 import { useFileManager } from '../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
 import { useMediaPlayerSpacing } from '../hooks/useMediaPlayerSpacing'
+import { useDraxDragNDrop, DragItem } from '../hooks/useDraxDragNDrop'
 import { AudioMetadataService } from '../services/AudioMetadataService'
 import { Breadcrumbs } from './Breadcrumbs'
 import { AudioClipCard } from './AudioClipCard'
@@ -57,6 +59,9 @@ export function FileSystemComponent() {
   const fileManager = useFileManager()
   const audioPlayer = useAudioPlayerContext()
   const { bottomPadding } = useMediaPlayerSpacing()
+
+  // Drag and drop functionality
+  const dragNDrop = useDraxDragNDrop()
 
   const [folders, setFolders] = useState<FolderData[]>([])
   const [audioFiles, setAudioFiles] = useState<AudioFileData[]>([])
@@ -789,7 +794,8 @@ export function FileSystemComponent() {
   }
 
   return (
-    <View style={styles.container}>
+    <DraxProvider>
+      <View style={styles.container}>
       {/* Header with Breadcrumbs and Menu */}
       <View style={styles.header}>
         <View style={styles.breadcrumbsContainer}>
@@ -823,6 +829,7 @@ export function FileSystemComponent() {
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
+        scrollEnabled={!dragNDrop.isDragActive}
       >
         {/* Folders Grid */}
         {sortedFolders.length > 0 && (
@@ -833,8 +840,45 @@ export function FileSystemComponent() {
                 ? () => toggleItemSelection(folder.id)
                 : () => handleFolderPress(folder)
 
+              const isDropTarget = dragNDrop.dropTargetId === folder.id
+              const dragItem: DragItem = {
+                id: folder.id,
+                type: 'folder',
+                name: folder.name,
+              }
+
               return (
-                <View key={folder.id} style={styles.folderCard}>
+                <DraxView
+                  key={folder.id}
+                  style={[
+                    styles.folderCard,
+                    isDropTarget && styles.folderCardDropTarget
+                  ]}
+                  draggingStyle={styles.folderCardDragging}
+                  dragPayload={dragItem}
+                  longPressDelay={500}
+                  onDragStart={() => {
+                    if (!isMultiSelectMode) {
+                      dragNDrop.handleDragStart(dragItem)
+                    }
+                  }}
+                  onDragEnd={() => {
+                    dragNDrop.handleDragEnd()
+                  }}
+                  onReceiveDragEnter={() => {
+                    if (dragNDrop.isDragActive && dragNDrop.draggedItem?.id !== folder.id) {
+                      dragNDrop.handleReceiveDragEnter(folder.id)
+                    }
+                  }}
+                  onReceiveDragExit={() => {
+                    dragNDrop.handleReceiveDragExit()
+                  }}
+                  onReceiveDragDrop={() => {
+                    // TODO: Implement actual drop logic in next phase
+                    console.log('🎯 Drop completed on folder:', folder.name)
+                    dragNDrop.handleDragEnd()
+                  }}
+                >
                   <TouchableOpacity style={styles.folderContent} onPress={handlePress} activeOpacity={0.7}>
                     <View style={styles.folderIcon}>
                       <Ionicons name="folder" size={40} color="#FF4444" />
@@ -865,7 +909,7 @@ export function FileSystemComponent() {
                       />
                     </View>
                   )}
-                </View>
+                </DraxView>
               )
             })}
           </View>
@@ -917,6 +961,17 @@ export function FileSystemComponent() {
           const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
           const isSelected = selectedItems.has(audioFile.id)
           const handleToggleSelection = () => toggleItemSelection(audioFile.id)
+          const handleDragStart = () => {
+            const dragItem: DragItem = {
+              id: audioFile.id,
+              type: 'audioFile',
+              name: audioFile.name,
+            }
+            dragNDrop.handleDragStart(dragItem)
+          }
+          const handleDragEnd = () => {
+            dragNDrop.handleDragEnd()
+          }
 
           return (
             <AudioClipCard
@@ -934,6 +989,8 @@ export function FileSystemComponent() {
               isMultiSelectMode={isMultiSelectMode}
               isSelected={isSelected}
               onToggleSelection={handleToggleSelection}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
             />
           )
         })}
@@ -1010,6 +1067,7 @@ export function FileSystemComponent() {
         onClose={() => setShowSortDropdown(false)}
       />
     </View>
+    </DraxProvider>
   )
 }
 
@@ -1131,6 +1189,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border.light,
     position: 'relative',
+  },
+  folderCardDropTarget: {
+    borderColor: '#FF4444', // Red border for drop target
+    borderWidth: 2,
+    backgroundColor: 'rgba(255, 68, 68, 0.1)', // Light red background
+  },
+  folderCardDragging: {
+    opacity: 0.7,
+    transform: [{ scale: 1.05 }],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   folderContent: {
     flex: 1,

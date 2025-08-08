@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { DraxView } from 'react-native-drax'
 
 import { theme } from '../utils/theme'
 import { FileContextMenuModal } from './FileContextMenuModal'
@@ -29,6 +30,8 @@ export type AudioClipCardProps = {
   isMultiSelectMode?: boolean
   isSelected?: boolean
   onToggleSelection?: () => void
+  onDragStart?: () => void
+  onDragEnd?: () => void
 }
 
 export const AudioClipCard = React.memo(function AudioClipCard({
@@ -45,6 +48,8 @@ export const AudioClipCard = React.memo(function AudioClipCard({
   isMultiSelectMode = false,
   isSelected = false,
   onToggleSelection,
+  onDragStart,
+  onDragEnd,
 }: AudioClipCardProps) {
   const handlePress = () => {
     if (isMultiSelectMode && onToggleSelection) {
@@ -63,8 +68,29 @@ export const AudioClipCard = React.memo(function AudioClipCard({
     }
   }
 
+  const dragPayload = {
+    id: clip.id,
+    type: 'audioFile' as const,
+    name: clip.name,
+  }
+
   return (
-    <View style={[styles.container, isPlaying && styles.containerPlaying]}>
+    <DraxView
+      style={[styles.container, isPlaying && styles.containerPlaying]}
+      draggingStyle={styles.containerDragging}
+      dragPayload={dragPayload}
+      longPressDelay={500}
+      onDragStart={() => {
+        if (!isMultiSelectMode && onDragStart) {
+          onDragStart()
+        }
+      }}
+      onDragEnd={() => {
+        if (onDragEnd) {
+          onDragEnd()
+        }
+      }}
+    >
       <TouchableOpacity style={styles.content} onPress={handlePress} activeOpacity={0.7} testID="audio-clip-card-content">
         <View style={[styles.playButton, isMultiSelectMode && isSelected && styles.playButtonSelected]}>
           <Ionicons
@@ -106,7 +132,7 @@ export const AudioClipCard = React.memo(function AudioClipCard({
           />
         </View>
       )}
-    </View>
+    </DraxView>
   )
 })
 
@@ -123,6 +149,15 @@ const styles = StyleSheet.create({
   containerPlaying: {
     borderColor: theme.colors.primary,
     backgroundColor: theme.colors.surface.primary,
+  },
+  containerDragging: {
+    opacity: 0.7,
+    transform: [{ scale: 1.05 }],
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   content: {
     flex: 1,
