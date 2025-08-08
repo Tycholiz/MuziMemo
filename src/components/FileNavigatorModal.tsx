@@ -67,6 +67,7 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
 
   const loadFolderContents = useCallback(async () => {
     // Set up delayed loading indicator
+    // @ts-expect-error
     loadingTimeoutRef.current = setTimeout(() => {
       setShowLoading(true)
     }, 250) // 250ms delay before showing loading indicator
@@ -165,9 +166,7 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   // Check if the current directory is invalid for move operations
   const isCurrentDirectoryInvalid = useMemo(() => {
     const allExcludePaths = excludePaths || (excludePath ? [excludePath] : [])
-    return allExcludePaths.some(path =>
-      currentFolderPath === path || currentFolderPath.startsWith(path + '/')
-    )
+    return allExcludePaths.some(path => currentFolderPath === path || currentFolderPath.startsWith(path + '/'))
   }, [excludePath, excludePaths, currentFolderPath])
 
   const handleNewFolder = useCallback(() => {
