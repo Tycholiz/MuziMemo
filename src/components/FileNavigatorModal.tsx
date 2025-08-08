@@ -67,7 +67,7 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
 
   const loadFolderContents = useCallback(async () => {
     // Set up delayed loading indicator
-    // @ts-expect-error
+    // @ts-ignore
     loadingTimeoutRef.current = setTimeout(() => {
       setShowLoading(true)
     }, 250) // 250ms delay before showing loading indicator
