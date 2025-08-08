@@ -149,4 +149,22 @@ describe('FileNavigatorModal - Move Validation', () => {
       expect(selectButton).not.toBeDisabled()
     })
   })
+
+  describe('Empty State', () => {
+    it('should show empty state when no folders are present', async () => {
+      const { findByText } = renderWithProvider(
+        <FileNavigatorModal
+          visible={true}
+          onClose={jest.fn()}
+          onSelectFolder={jest.fn()}
+          title="Select Folder"
+          primaryButtonText="Select"
+        />
+      )
+
+      // Should show empty state text
+      const emptyStateText = await findByText('This folder is empty')
+      expect(emptyStateText).toBeTruthy()
+    })
+  })
 })
