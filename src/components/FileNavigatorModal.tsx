@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Alert, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import * as FileSystem from 'expo-file-system'
@@ -46,7 +46,8 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   excludePaths,
 }: FileNavigatorModalProps) {
   const [folders, setFolders] = useState<FileNavigatorFolder[]>([])
-  const [loading, setLoading] = useState(false)
+  const [showLoading, setShowLoading] = useState(false)
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Memoize the recordings directory function
   const getRecordingsDirectory = useMemo(() => {
@@ -65,7 +66,11 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
   }, [initialDirectory]) // Remove currentFolderPath to avoid circular dependency
 
   const loadFolderContents = useCallback(async () => {
-    setLoading(true)
+    // Set up delayed loading indicator
+    loadingTimeoutRef.current = setTimeout(() => {
+      setShowLoading(true)
+    }, 250) // 250ms delay before showing loading indicator
+
     try {
       // Ensure the directory exists
       const dirInfo = await FileSystem.getInfoAsync(currentFolderPath)
@@ -108,7 +113,12 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
       console.error('Failed to load folder contents:', error)
       Alert.alert('Error', 'Failed to load folders')
     } finally {
-      setLoading(false)
+      // Clear the loading timeout if it hasn't fired yet
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+      setShowLoading(false)
     }
   }, [currentFolderPath, excludePath, excludePaths])
 
@@ -118,6 +128,16 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
       loadFolderContents()
     }
   }, [visible, loadFolderContents])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   const handleConfirmSelection = useCallback(() => {
     if (onPrimaryAction) {
@@ -228,10 +248,21 @@ export const FileNavigatorModal = React.memo(function FileNavigatorModal({
             </TouchableOpacity>
           </View>
 
-          {loading ? (
+          {showLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
               <Text style={styles.loadingText}>Loading folders...</Text>
+            </View>
+          ) : folders.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <Ionicons
+                name="folder-open-outline"
+                size={48}
+                color={theme.colors.text.tertiary}
+                style={styles.emptyStateIcon}
+              />
+              <Text style={styles.emptyStateText}>This folder is empty</Text>
+              <Text style={styles.emptyStateSubtext}>Create a new folder to get started</Text>
             </View>
           ) : (
             <FlatList
@@ -398,5 +429,31 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.text.secondary,
+  },
+
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+  },
+
+  emptyStateIcon: {
+    marginBottom: theme.spacing.md,
+  },
+
+  emptyStateText: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.medium,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+
+  emptyStateSubtext: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.tertiary,
+    textAlign: 'center',
   },
 })
