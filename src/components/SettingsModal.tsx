@@ -15,10 +15,7 @@ export type SettingsModalProps = {
  * SettingsModal for app configuration options
  * Follows the same architectural patterns as FileNavigatorModal
  */
-export const SettingsModal = React.memo(function SettingsModal({
-  visible,
-  onClose,
-}: SettingsModalProps) {
+export const SettingsModal = React.memo(function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const syncContext = useSyncContext()
 
   const handleBackdropPress = () => {
@@ -34,11 +31,7 @@ export const SettingsModal = React.memo(function SettingsModal({
       }
     } catch (error) {
       console.error('Failed to toggle sync:', error)
-      Alert.alert(
-        'Sync Error',
-        'Failed to update sync settings. Please try again.',
-        [{ text: 'OK' }]
-      )
+      Alert.alert('Sync Error', 'Failed to update sync settings. Please try again.', [{ text: 'OK' }])
     }
   }
 
@@ -84,9 +77,11 @@ export const SettingsModal = React.memo(function SettingsModal({
                     <View style={styles.syncStatus}>
                       <View style={styles.statusRow}>
                         <Ionicons
-                          name={syncContext.networkState.isConnected ? "wifi" : "wifi-outline"}
+                          name={syncContext.networkState.isConnected ? 'wifi' : 'wifi-outline'}
                           size={16}
-                          color={syncContext.networkState.isConnected ? theme.colors.success : theme.colors.text.tertiary}
+                          color={
+                            syncContext.networkState.isConnected ? theme.colors.success : theme.colors.text.tertiary
+                          }
                         />
                         <Text style={styles.statusText}>
                           {syncContext.networkState.isConnected ? 'Connected' : 'Offline'}
@@ -95,13 +90,14 @@ export const SettingsModal = React.memo(function SettingsModal({
 
                       {syncContext.syncQueue.length > 0 && (
                         <View style={styles.statusRow}>
-                          <Ionicons
-                            name="cloud-upload-outline"
-                            size={16}
-                            color={theme.colors.text.tertiary}
-                          />
+                          <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.text.tertiary} />
                           <Text style={styles.statusText}>
-                            {syncContext.syncQueue.filter(item => item.status === 'pending' || item.status === 'syncing').length} files pending
+                            {
+                              syncContext.syncQueue.filter(
+                                item => item.status === 'pending' || item.status === 'syncing'
+                              ).length
+                            }{' '}
+                            files pending
                           </Text>
                         </View>
                       )}
@@ -159,7 +155,6 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    flex: 1,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
   },
