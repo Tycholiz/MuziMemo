@@ -45,6 +45,12 @@
     "plugins": [
       "expo-router",
       [
+        "react-native-cloud-storage",
+        {
+          "iCloudContainerEnvironment": "Development"
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
