@@ -115,10 +115,7 @@ export default function BrowseScreen() {
       </View>
 
       {/* Settings Modal */}
-      <SettingsModal
-        visible={showSettingsModal}
-        onClose={handleSettingsClose}
-      />
+      <SettingsModal visible={showSettingsModal} onClose={handleSettingsClose} />
     </Screen>
   )
 }
@@ -134,7 +131,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 4,
-    backgroundColor: theme.colors.background.secondary,
   },
   settingsButton: {
     padding: 8,
