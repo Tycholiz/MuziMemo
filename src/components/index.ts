@@ -55,6 +55,9 @@ export type { FileNavigatorModalProps, FileNavigatorFolder } from './FileNavigat
 export { SettingsModal } from './SettingsModal'
 export type { SettingsModalProps } from './SettingsModal'
 
+export { Toggle } from './Toggle'
+export type { ToggleProps } from './Toggle'
+
 export { TextInputDialogModal, ConfirmationDialogModal } from './DialogModal'
 export type { TextInputDialogModalProps, ConfirmationDialogModalProps } from './DialogModal'
 

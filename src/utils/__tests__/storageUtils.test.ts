@@ -6,6 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   saveSortPreference,
   loadSortPreference,
+  saveSyncEnabled,
+  loadSyncEnabled,
   clearAllPreferences,
   isStorageAvailable,
   STORAGE_KEYS,
@@ -105,6 +107,7 @@ describe('storageUtils', () => {
 
       expect(mockAsyncStorage.multiRemove).toHaveBeenCalledWith([
         STORAGE_KEYS.SORT_PREFERENCE,
+        STORAGE_KEYS.SYNC_ENABLED,
       ])
     })
 
@@ -169,9 +172,62 @@ describe('storageUtils', () => {
     })
   })
 
+  describe('sync preferences', () => {
+    describe('saveSyncEnabled', () => {
+      it('should save sync enabled preference', async () => {
+        await saveSyncEnabled(true)
+        expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(STORAGE_KEYS.SYNC_ENABLED, 'true')
+      })
+
+      it('should save sync disabled preference', async () => {
+        await saveSyncEnabled(false)
+        expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(STORAGE_KEYS.SYNC_ENABLED, 'false')
+      })
+
+      it('should handle storage errors gracefully', async () => {
+        mockAsyncStorage.setItem.mockRejectedValueOnce(new Error('Storage error'))
+
+        // Should not throw
+        await expect(saveSyncEnabled(true)).resolves.toBeUndefined()
+      })
+    })
+
+    describe('loadSyncEnabled', () => {
+      it('should load sync enabled preference', async () => {
+        mockAsyncStorage.getItem.mockResolvedValueOnce('true')
+
+        const result = await loadSyncEnabled()
+        expect(result).toBe(true)
+        expect(mockAsyncStorage.getItem).toHaveBeenCalledWith(STORAGE_KEYS.SYNC_ENABLED)
+      })
+
+      it('should load sync disabled preference', async () => {
+        mockAsyncStorage.getItem.mockResolvedValueOnce('false')
+
+        const result = await loadSyncEnabled()
+        expect(result).toBe(false)
+      })
+
+      it('should return false when no preference is stored', async () => {
+        mockAsyncStorage.getItem.mockResolvedValueOnce(null)
+
+        const result = await loadSyncEnabled()
+        expect(result).toBe(false)
+      })
+
+      it('should return false on storage errors', async () => {
+        mockAsyncStorage.getItem.mockRejectedValueOnce(new Error('Storage error'))
+
+        const result = await loadSyncEnabled()
+        expect(result).toBe(false)
+      })
+    })
+  })
+
   describe('STORAGE_KEYS', () => {
     it('should have correct storage keys', () => {
       expect(STORAGE_KEYS.SORT_PREFERENCE).toBe('@muzimemo:sort_preference')
+      expect(STORAGE_KEYS.SYNC_ENABLED).toBe('@muzimemo:sync_enabled')
     })
   })
 })

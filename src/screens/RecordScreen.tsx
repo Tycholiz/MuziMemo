@@ -17,6 +17,7 @@ import {
 import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/index'
 import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
 import { useFileManager } from '../contexts/FileManagerContext'
+import { useSyncContext } from '../contexts/SyncContext'
 import { useMediaPlayerSpacing } from '../hooks/useMediaPlayerSpacing'
 import { theme } from '../utils/theme'
 import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
@@ -40,6 +41,7 @@ export default function RecordScreen() {
   const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
 
   const fileManager = useFileManager()
+  const syncContext = useSyncContext()
   const { bottomPadding } = useMediaPlayerSpacing()
 
   // State for audio quality
@@ -301,6 +303,14 @@ export default function RecordScreen() {
           to: targetFilePath,
         })
         // Recording saved successfully - no dialog popup needed
+      }
+
+      // Add to sync queue if sync is enabled
+      try {
+        await syncContext.addToSyncQueue(targetFilePath)
+      } catch (syncError) {
+        console.warn('Failed to add recording to sync queue:', syncError)
+        // Don't show error to user - sync failure shouldn't block recording save
       }
     } catch (error) {
       console.error('Failed to save recording:', error)

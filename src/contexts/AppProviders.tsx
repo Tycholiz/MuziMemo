@@ -2,6 +2,7 @@ import React, { ReactNode } from 'react'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { FileManagerProvider } from './FileManagerContext'
 import { AudioPlayerProvider } from './AudioPlayerContext'
+import { SyncProvider } from './SyncContext'
 
 type AppProvidersProps = {
   children: ReactNode
@@ -14,11 +15,13 @@ type AppProvidersProps = {
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ErrorBoundary>
-      <FileManagerProvider>
-        <AudioPlayerProvider>
-          {children}
-        </AudioPlayerProvider>
-      </FileManagerProvider>
+      <SyncProvider>
+        <FileManagerProvider>
+          <AudioPlayerProvider>
+            {children}
+          </AudioPlayerProvider>
+        </FileManagerProvider>
+      </SyncProvider>
     </ErrorBoundary>
   )
 }
