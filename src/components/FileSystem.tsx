@@ -16,7 +16,6 @@ import { AudioClipCard } from './AudioClipCard'
 import { FolderContextMenuModal } from './FolderContextMenuModal'
 import { CreateFolderModal } from './CreateFolderModal'
 import { FileNavigatorModal } from './FileNavigatorModal'
-import { SettingsModal } from './SettingsModal'
 import { HomeScreenMenuModal } from './HomeScreenMenuModal'
 import { MultiSelectToolbar } from './MultiSelectToolbar'
 import { SortModal } from './SortModal'
@@ -64,7 +63,6 @@ export function FileSystemComponent() {
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false)
   const [showMoveModal, setShowMoveModal] = useState(false)
   const [showRestoreModal, setShowRestoreModal] = useState(false)
-  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [selectedFolderForMove, setSelectedFolderForMove] = useState<FolderData | null>(null)
   const [selectedFileForMove, setSelectedFileForMove] = useState<AudioFileData | null>(null)
   const [selectedFileForRestore, setSelectedFileForRestore] = useState<AudioFileData | null>(null)
@@ -771,10 +769,6 @@ export function FileSystemComponent() {
     setShowMoveModal(true)
   }, [selectedItems, fileManager])
 
-  // Settings modal handlers
-  const handleSettingsPress = useCallback(() => setShowSettingsModal(true), [])
-  const handleSettingsClose = useCallback(() => setShowSettingsModal(false), [])
-
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -803,9 +797,6 @@ export function FileSystemComponent() {
         </View>
         {!fileManager.getIsInRecentlyDeleted() && (
           <View style={styles.headerMenuContainer}>
-            <TouchableOpacity onPress={handleSettingsPress} style={styles.settingsButton}>
-              <Ionicons name="settings-outline" size={24} color={theme.colors.text.secondary} />
-            </TouchableOpacity>
             <HomeScreenMenuModal
               onRecentlyDeleted={handleNavigateToRecentlyDeleted}
               onMultiSelect={handleMultiSelectMode}
@@ -1019,11 +1010,6 @@ export function FileSystemComponent() {
         onClose={() => setShowSortDropdown(false)}
       />
 
-      {/* Settings Modal */}
-      <SettingsModal
-        visible={showSettingsModal}
-        onClose={handleSettingsClose}
-      />
     </View>
   )
 }
@@ -1043,13 +1029,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerMenuContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginLeft: 8,
-    gap: 8,
-  },
-  settingsButton: {
-    padding: 4,
   },
   centerContainer: {
     flex: 1,

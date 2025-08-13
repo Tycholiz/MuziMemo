@@ -1,9 +1,12 @@
-import React, { useCallback, useRef } from 'react'
-import { StyleSheet, View, Animated } from 'react-native'
+import React, { useCallback, useRef, useState } from 'react'
+import { StyleSheet, View, Animated, TouchableOpacity } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 
 import { Screen } from '../components/Layout'
 import { FileSystemComponent } from '../components/FileSystem'
 import { SearchBar, SearchBarRef } from '../components/SearchBar'
+import { SettingsModal } from '../components/SettingsModal'
+import { theme } from '../utils/theme'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'
 import { useFileManager } from '../contexts/FileManagerContext'
 import { getParentDirectoryPath } from '../utils/searchUtils'
@@ -17,6 +20,7 @@ import { getParentDirectoryPath } from '../utils/searchUtils'
 export default function BrowseScreen() {
   const audioPlayer = useAudioPlayerContext()
   const fileManager = useFileManager()
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
 
   // Animation for highlighting selected items
   const glowAnim = useRef(new Animated.Value(0)).current
@@ -78,9 +82,20 @@ export default function BrowseScreen() {
     [audioPlayer]
   )
 
+  // Settings modal handlers
+  const handleSettingsPress = useCallback(() => setShowSettingsModal(true), [])
+  const handleSettingsClose = useCallback(() => setShowSettingsModal(false), [])
+
   return (
     <Screen padding={false}>
       <View style={styles.container}>
+        {/* Header with Settings Button */}
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={handleSettingsPress} style={styles.settingsButton}>
+            <Ionicons name="settings-outline" size={24} color={theme.colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <SearchBar
@@ -98,6 +113,12 @@ export default function BrowseScreen() {
           <FileSystemComponent />
         </View>
       </View>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        visible={showSettingsModal}
+        onClose={handleSettingsClose}
+      />
     </Screen>
   )
 }
@@ -105,6 +126,18 @@ export default function BrowseScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 4,
+    backgroundColor: theme.colors.background.secondary,
+  },
+  settingsButton: {
+    padding: 8,
   },
   searchContainer: {
     paddingHorizontal: 16,
