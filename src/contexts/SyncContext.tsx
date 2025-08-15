@@ -98,16 +98,20 @@ export function SyncProvider({ children }: SyncProviderProps) {
     }
   }, [])
 
-  const addToSyncQueue = useCallback(async (filePath: string) => {
-    if (!isSyncEnabled) {
-      console.log('📤 Sync disabled, skipping file (UI only):', filePath)
-      return
-    }
+  const addToSyncQueue = useCallback(
+    async (filePath: string) => {
+      if (!isSyncEnabled) {
+        console.log('📤 Sync disabled, skipping file (UI only):', filePath)
+        return
+      }
 
-    // UI only - no actual sync operations
-    console.log('📤 Would add to sync queue (UI only):', filePath)
-  }, [isSyncEnabled])
+      // UI only - no actual sync operations
+      console.log('📤 Would add to sync queue (UI only):', filePath)
+    },
+    [isSyncEnabled]
+  )
 
+  // @ts-expect-error
   const getSyncStatus = useCallback((filePath: string) => {
     // UI only - always return null (no sync status)
     return null
