@@ -9,13 +9,22 @@ declare module 'react-native-cloud-storage' {
     encoding?: 'utf8' | 'base64'
   }
 
+  export enum CloudStorageProvider {
+    iCloud = 'iCloud',
+    GoogleDrive = 'GoogleDrive'
+  }
+
   export class CloudStorage {
     static writeFile(path: string, content: string, options?: WriteFileOptions): Promise<void>
     static readFile(path: string, options?: ReadFileOptions): Promise<string>
     static exists(path: string): Promise<boolean>
     static deleteFile(path: string): Promise<void>
     static listFiles(path?: string): Promise<string[]>
+    static getProvider(): CloudStorageProvider
+    static setProviderOptions(options: any): void
   }
+
+  export function useIsCloudAvailable(): boolean
 }
 
 declare module '@react-native-community/netinfo' {
