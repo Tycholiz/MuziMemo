@@ -17,6 +17,7 @@ import {
 import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/index'
 import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
 import { useFileManager } from '../contexts/FileManagerContext'
+import { useSyncContext } from '../contexts/SyncContext'
 import { useMediaPlayerSpacing } from '../hooks/useMediaPlayerSpacing'
 import { theme } from '../utils/theme'
 import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
@@ -40,6 +41,7 @@ export default function RecordScreen() {
   const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
 
   const fileManager = useFileManager()
+  const syncContext = useSyncContext()
   const { bottomPadding } = useMediaPlayerSpacing()
 
   // State for audio quality
@@ -124,6 +126,8 @@ export default function RecordScreen() {
   const loadFolders = useCallback(async () => {
     setLoading(true)
     try {
+      // Set sync state in FileSystemService
+      fileSystemService.setSyncEnabled(syncContext.isSyncEnabled)
       await fileSystemService.initialize()
 
       // Recursively load all folders to handle nested folder paths
@@ -180,7 +184,7 @@ export default function RecordScreen() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [syncContext.isSyncEnabled])
 
   // Audio quality options (expo-audio only supports HIGH_QUALITY and LOW_QUALITY presets)
   const audioQualityOptions: DropdownOption[] = [
@@ -293,14 +297,25 @@ export default function RecordScreen() {
           from: recordingUri,
           to: targetFilePath,
         })
-        // Recording saved successfully - no dialog popup needed
+        console.log('✅ Recording saved locally:', targetFilePath)
       } catch (copyError) {
         // If copy fails, try moving the file instead
         await FileSystem.moveAsync({
           from: recordingUri,
           to: targetFilePath,
         })
-        // Recording saved successfully - no dialog popup needed
+        console.log('✅ Recording moved locally:', targetFilePath)
+      }
+
+      // Add to sync queue if sync is enabled
+      if (syncContext.isSyncEnabled) {
+        try {
+          await syncContext.addToSyncQueue(targetFilePath)
+          console.log('☁️ Recording added to sync queue:', targetFilePath)
+        } catch (syncError) {
+          console.error('❌ Failed to add recording to sync queue:', syncError)
+          // Don't show error to user - sync will retry later
+        }
       }
     } catch (error) {
       console.error('Failed to save recording:', error)

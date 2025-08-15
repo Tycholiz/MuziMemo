@@ -18,11 +18,20 @@
     },
     "ios": {
       "supportsTablet": true,
+      "usesIcloudStorage": true,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "This app needs access to the microphone to record audio memos.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.tycholiz.muzimemo"
+      "bundleIdentifier": "com.tycholiz.muzimemo",
+      "entitlements": {
+        "com.apple.developer.icloud-container-identifiers": [
+          "iCloud.com.tycholiz.muzimemo"
+        ],
+        "com.apple.developer.ubiquity-container-identifiers": [
+          "iCloud.com.tycholiz.muzimemo"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -46,6 +55,13 @@
         "expo-audio",
         {
           "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ],
+      [
+        "react-native-cloud-storage",
+        {
+          "iCloudContainerEnvironment": "Production",
+          "iCloudContainerIdentifier": "iCloud.com.tycholiz.muzimemo"
         }
       ]
     ],
