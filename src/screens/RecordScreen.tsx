@@ -310,6 +310,9 @@ export default function RecordScreen() {
       // Add to sync queue if sync is enabled
       if (syncContext.isSyncEnabled) {
         try {
+          // Add a small delay to ensure file is completely written and stable
+          await new Promise(resolve => setTimeout(resolve, 500))
+
           await syncContext.addToSyncQueue(targetFilePath)
           console.log('☁️ Recording added to sync queue:', targetFilePath)
         } catch (syncError) {

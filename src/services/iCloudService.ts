@@ -79,6 +79,9 @@ class iCloudServiceClass {
 
   /**
    * Copy file from local storage to iCloud
+   *
+   * CRITICAL: This method handles binary audio files (.m4a) which must preserve
+   * their exact binary structure to maintain playability and metadata.
    */
   async copyFileToCloud(localPath: string, cloudPath: string): Promise<void> {
     try {
@@ -88,13 +91,38 @@ class iCloudServiceClass {
         throw new Error('iCloud is only available on iOS')
       }
 
-      // Read file from local storage
+      console.log('🔄 Starting iCloud copy process:', { localPath, cloudPath })
+
+      // Verify the local file exists and is readable
+      const fileInfo = await FileSystem.getInfoAsync(localPath)
+      if (!fileInfo.exists) {
+        throw new Error(`Local file does not exist: ${localPath}`)
+      }
+
+      console.log('📁 Local file info:', {
+        exists: fileInfo.exists,
+        size: fileInfo.size,
+        isDirectory: fileInfo.isDirectory
+      })
+
+      // Add a small delay to ensure file is completely written
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // Read the audio file as Base64 to preserve binary data integrity
       const fileContent = await FileSystem.readAsStringAsync(localPath, {
         encoding: FileSystem.EncodingType.Base64,
       })
 
-      // Write to iCloud with base64 encoding and documents scope
-      await CloudStorage.writeFile(cloudPath, fileContent, 'documents', { encoding: 'base64' })
+      console.log('📖 Read file content, Base64 length:', fileContent.length)
+
+      // Validate that we got valid Base64 content
+      if (!fileContent || fileContent.length === 0) {
+        throw new Error('Failed to read file content or file is empty')
+      }
+
+      // Write to iCloud - let the library handle the Base64 content natively
+      await CloudStorage.writeFile(cloudPath, fileContent, 'documents')
+
       console.log('☁️ Successfully copied file to iCloud:', { localPath, cloudPath })
     } catch (error) {
       console.error('❌ Failed to copy file to iCloud:', error)
