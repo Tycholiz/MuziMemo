@@ -22,15 +22,7 @@
         "NSMicrophoneUsageDescription": "This app needs access to the microphone to record audio memos.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.tycholiz.muzimemo",
-      "entitlements": {
-        "com.apple.developer.icloud-container-identifiers": [
-          "iCloud.com.tycholiz.muzimemo"
-        ],
-        "com.apple.developer.ubiquity-container-identifiers": [
-          "iCloud.com.tycholiz.muzimemo"
-        ]
-      }
+      "bundleIdentifier": "com.tycholiz.muzimemo"
     },
     "android": {
       "adaptiveIcon": {
@@ -50,13 +42,6 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "react-native-cloud-storage",
-        {
-          "iCloudContainerEnvironment": "Development",
-          "iCloudContainerIdentifier": "iCloud.com.tycholiz.muzimemo"
-        }
-      ],
       [
         "expo-audio",
         {

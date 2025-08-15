@@ -1,7 +1,17 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
-import { syncManager } from '../services/SyncManager'
 import { saveSyncEnabled, loadSyncEnabled } from '../utils/storageUtils'
-import type { NetworkState, SyncQueueItem } from '../services/SyncManager'
+
+// Simplified types for UI-only sync context
+type NetworkState = { isConnected: boolean; isInternetReachable: boolean | null }
+type SyncQueueItem = {
+  id: string
+  localPath: string
+  relativePath: string
+  retryCount: number
+  lastAttempt?: Date
+  status: 'pending' | 'syncing' | 'synced' | 'failed'
+  error?: string
+}
 
 export type SyncContextState = {
   isSyncEnabled: boolean
@@ -28,35 +38,31 @@ type SyncProviderProps = {
 }
 
 /**
- * SyncProvider manages iCloud synchronization state and integrates with SyncManager
- * 
+ * SyncProvider manages sync UI state without actual cloud operations
+ *
  * Features:
  * - Manages sync enabled/disabled preference with persistence
- * - Integrates with singleton SyncManager instance
- * - Provides sync queue status and network state
- * - Handles enabling/disabling sync functionality
+ * - Provides UI state for sync toggle and status display
+ * - No actual file synchronization or cloud operations
+ * - Maintains interface compatibility for UI components
  */
 export function SyncProvider({ children }: SyncProviderProps) {
   const [isSyncEnabled, setIsSyncEnabled] = useState(false)
-  const [networkState, setNetworkState] = useState<NetworkState>({ isConnected: false, isInternetReachable: null })
-  const [syncQueue, setSyncQueue] = useState<SyncQueueItem[]>([])
+  const [networkState] = useState<NetworkState>({ isConnected: true, isInternetReachable: true })
+  const [syncQueue] = useState<SyncQueueItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load initial sync preference and sync queue
+  // Load initial sync preference (UI only)
   useEffect(() => {
     const initializeSync = async () => {
       try {
         setIsLoading(true)
-        
+
         // Load sync preference from storage
         const syncEnabled = await loadSyncEnabled()
         setIsSyncEnabled(syncEnabled)
-        
-        // Get initial network state and sync queue from SyncManager
-        setNetworkState(syncManager.getNetworkState())
-        setSyncQueue(syncManager.getSyncQueue())
-        
-        console.log('🔄 SyncContext initialized:', { syncEnabled })
+
+        console.log('🔄 SyncContext initialized (UI only):', { syncEnabled })
       } catch (error) {
         console.error('❌ Failed to initialize sync context:', error)
       } finally {
@@ -66,22 +72,11 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
     initializeSync()
   }, [])
-
-  // Periodically refresh sync queue and network state
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNetworkState(syncManager.getNetworkState())
-      setSyncQueue(syncManager.getSyncQueue())
-    }, 2000) // Update every 2 seconds
-
-    return () => clearInterval(interval)
-  }, [])
-
   const enableSync = useCallback(async () => {
     try {
       setIsSyncEnabled(true)
       await saveSyncEnabled(true)
-      console.log('✅ Sync enabled')
+      console.log('✅ Sync enabled (UI only - no actual sync operations)')
     } catch (error) {
       console.error('❌ Failed to enable sync:', error)
       // Revert state on error
@@ -94,7 +89,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
     try {
       setIsSyncEnabled(false)
       await saveSyncEnabled(false)
-      console.log('🚫 Sync disabled')
+      console.log('🚫 Sync disabled (UI only)')
     } catch (error) {
       console.error('❌ Failed to disable sync:', error)
       // Revert state on error
@@ -105,34 +100,27 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
   const addToSyncQueue = useCallback(async (filePath: string) => {
     if (!isSyncEnabled) {
-      console.log('📤 Sync disabled, skipping file:', filePath)
+      console.log('📤 Sync disabled, skipping file (UI only):', filePath)
       return
     }
 
-    try {
-      await syncManager.addToSyncQueue(filePath)
-      // Refresh sync queue to reflect the new item
-      setSyncQueue(syncManager.getSyncQueue())
-      console.log('📤 Added to sync queue:', filePath)
-    } catch (error) {
-      console.error('❌ Failed to add file to sync queue:', error)
-      throw error
-    }
+    // UI only - no actual sync operations
+    console.log('📤 Would add to sync queue (UI only):', filePath)
   }, [isSyncEnabled])
 
   const getSyncStatus = useCallback((filePath: string) => {
-    return syncManager.getSyncStatus(filePath)
+    // UI only - always return null (no sync status)
+    return null
   }, [])
 
   const clearCompletedItems = useCallback(() => {
-    syncManager.clearCompletedItems()
-    setSyncQueue(syncManager.getSyncQueue())
-    console.log('🧹 Cleared completed sync items')
+    // UI only - no actual items to clear
+    console.log('🧹 Would clear completed sync items (UI only)')
   }, [])
 
   const refreshSyncQueue = useCallback(() => {
-    setSyncQueue(syncManager.getSyncQueue())
-    setNetworkState(syncManager.getNetworkState())
+    // UI only - no actual queue to refresh
+    console.log('🔄 Would refresh sync queue (UI only)')
   }, [])
 
   const value: SyncContextType = {
