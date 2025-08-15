@@ -35,11 +35,6 @@ export const SettingsModal = React.memo(function SettingsModal({ visible, onClos
     }
   }
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> eacd67c (refactor: Remove all cloud sync operations, keep UI components only)
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={handleBackdropPress}>
@@ -108,11 +103,6 @@ export const SettingsModal = React.memo(function SettingsModal({ visible, onClos
                       )}
                     </View>
                   )}
-<<<<<<< HEAD
-=======
-
-
->>>>>>> eacd67c (refactor: Remove all cloud sync operations, keep UI components only)
                 </View>
 
                 {/* Future sections can be added here */}
@@ -220,9 +210,4 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     marginLeft: theme.spacing.sm,
   },
-<<<<<<< HEAD
-=======
-
-
->>>>>>> eacd67c (refactor: Remove all cloud sync operations, keep UI components only)
 })
