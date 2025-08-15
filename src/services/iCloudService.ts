@@ -63,12 +63,13 @@ class iCloudServiceClass {
   async writeFile(cloudPath: string, content: string): Promise<void> {
     try {
       await this.initialize()
-      
+
       if (Platform.OS !== 'ios') {
         throw new Error('iCloud is only available on iOS')
       }
 
-      await CloudStorage.writeFile(cloudPath, content)
+      // Use 'documents' scope for iCloud Documents directory
+      await CloudStorage.writeFile(cloudPath, content, 'documents')
       console.log('☁️ Successfully wrote file to iCloud:', cloudPath)
     } catch (error) {
       console.error('❌ Failed to write file to iCloud:', error)
@@ -82,7 +83,7 @@ class iCloudServiceClass {
   async copyFileToCloud(localPath: string, cloudPath: string): Promise<void> {
     try {
       await this.initialize()
-      
+
       if (Platform.OS !== 'ios') {
         throw new Error('iCloud is only available on iOS')
       }
@@ -92,8 +93,8 @@ class iCloudServiceClass {
         encoding: FileSystem.EncodingType.Base64,
       })
 
-      // Write to iCloud with base64 encoding
-      await CloudStorage.writeFile(cloudPath, fileContent, { encoding: 'base64' })
+      // Write to iCloud with base64 encoding and documents scope
+      await CloudStorage.writeFile(cloudPath, fileContent, 'documents', { encoding: 'base64' })
       console.log('☁️ Successfully copied file to iCloud:', { localPath, cloudPath })
     } catch (error) {
       console.error('❌ Failed to copy file to iCloud:', error)
@@ -107,10 +108,10 @@ class iCloudServiceClass {
   async exists(cloudPath: string): Promise<boolean> {
     try {
       await this.initialize()
-      
+
       if (Platform.OS !== 'ios') return false
 
-      return await CloudStorage.exists(cloudPath)
+      return await CloudStorage.exists(cloudPath, 'documents')
     } catch (error) {
       console.error('❌ Error checking file existence in iCloud:', error)
       return false
@@ -123,10 +124,10 @@ class iCloudServiceClass {
   async listFiles(cloudPath?: string): Promise<string[]> {
     try {
       await this.initialize()
-      
+
       if (Platform.OS !== 'ios') return []
 
-      return await CloudStorage.listFiles(cloudPath)
+      return await CloudStorage.listFiles(cloudPath || '', 'documents')
     } catch (error) {
       console.error('❌ Error listing iCloud files:', error)
       return []
@@ -139,12 +140,12 @@ class iCloudServiceClass {
   async deleteFile(cloudPath: string): Promise<void> {
     try {
       await this.initialize()
-      
+
       if (Platform.OS !== 'ios') {
         throw new Error('iCloud is only available on iOS')
       }
 
-      await CloudStorage.deleteFile(cloudPath)
+      await CloudStorage.deleteFile(cloudPath, 'documents')
       console.log('☁️ Successfully deleted file from iCloud:', cloudPath)
     } catch (error) {
       console.error('❌ Failed to delete file from iCloud:', error)
