@@ -11,6 +11,7 @@ import { SortOption, DEFAULT_SORT_OPTION, isValidSortOption } from './sortUtils'
  */
 export const STORAGE_KEYS = {
   SORT_PREFERENCE: '@muzimemo:sort_preference',
+  SYNC_ENABLED: '@muzimemo:sync_enabled',
 } as const
 
 /**
@@ -58,17 +59,49 @@ export async function clearAllPreferences(): Promise<void> {
 }
 
 /**
+ * Save sync enabled preference to storage
+ */
+export async function saveSyncEnabled(enabled: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.SYNC_ENABLED, enabled.toString())
+  } catch (error) {
+    console.error('Failed to save sync enabled preference:', error)
+    // Don't throw - gracefully handle storage failures
+  }
+}
+
+/**
+ * Load sync enabled preference from storage
+ * Returns false by default (sync disabled)
+ */
+export async function loadSyncEnabled(): Promise<boolean> {
+  try {
+    const stored = await AsyncStorage.getItem(STORAGE_KEYS.SYNC_ENABLED)
+
+    if (stored !== null) {
+      return stored === 'true'
+    }
+
+    // Return false by default (sync disabled)
+    return false
+  } catch (error) {
+    console.error('Failed to load sync enabled preference:', error)
+    return false
+  }
+}
+
+/**
  * Check if storage is available
  */
 export async function isStorageAvailable(): Promise<boolean> {
   try {
     const testKey = '@muzimemo:storage_test'
     const testValue = 'test'
-    
+
     await AsyncStorage.setItem(testKey, testValue)
     const retrieved = await AsyncStorage.getItem(testKey)
     await AsyncStorage.removeItem(testKey)
-    
+
     return retrieved === testValue
   } catch (error) {
     console.error('Storage availability check failed:', error)

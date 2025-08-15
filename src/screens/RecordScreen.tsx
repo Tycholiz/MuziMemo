@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { StyleSheet, Text, View, Alert } from 'react-native'
+import { StyleSheet, Text, View, Alert, TouchableOpacity } from 'react-native'
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router'
 
 import { Screen, Container, Spacer } from '../components/Layout'
@@ -7,6 +7,7 @@ import { Icon } from '../components/Icon'
 import {
   Dropdown,
   FileNavigatorModal,
+  SettingsModal,
   Button,
   SoundWave,
   RecordingStatusBadge,
@@ -60,6 +61,7 @@ export default function RecordScreen() {
   } = useAudioRecording(audioQuality)
   const [selectedFolderPath, setSelectedFolderPath] = useState<string>('') // Store the full path for nested folders
   const [showFileNavigator, setShowFileNavigator] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [folders, setFolders] = useState<Folder[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -456,13 +458,19 @@ export default function RecordScreen() {
   const fileNavigatorOnClose = useCallback(() => setShowFileNavigator(false), [])
   const fileNavigatorInitialDirectory = useMemo(() => getAbsolutePath(selectedFolderPath), [selectedFolderPath])
 
+  // Settings modal handlers
+  const handleSettingsPress = useCallback(() => setShowSettingsModal(true), [])
+  const handleSettingsClose = useCallback(() => setShowSettingsModal(false), [])
+
   return (
     <Screen backgroundColor={theme.colors.background.primary}>
       <Container flex style={{ paddingBottom: bottomPadding }}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>New Recording</Text>
-          <Icon name="settings-outline" size="lg" color="secondary" />
+          <TouchableOpacity onPress={handleSettingsPress}>
+            <Icon name="settings-outline" size="lg" color="secondary" />
+          </TouchableOpacity>
         </View>
 
         <Spacer size="md" />
@@ -568,6 +576,12 @@ export default function RecordScreen() {
         onClose={fileNavigatorOnClose}
         onSelectFolder={handleFileNavigatorSelect}
         initialDirectory={fileNavigatorInitialDirectory}
+      />
+
+      {/* Settings Modal */}
+      <SettingsModal
+        visible={showSettingsModal}
+        onClose={handleSettingsClose}
       />
     </Screen>
   )

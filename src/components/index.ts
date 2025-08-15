@@ -52,6 +52,12 @@ export type { FolderSelectorProps, Folder } from './FolderSelector'
 export { FileNavigatorModal } from './FileNavigatorModal'
 export type { FileNavigatorModalProps, FileNavigatorFolder } from './FileNavigatorModal'
 
+export { SettingsModal } from './SettingsModal'
+export type { SettingsModalProps } from './SettingsModal'
+
+export { Toggle } from './Toggle'
+export type { ToggleProps } from './Toggle'
+
 export { TextInputDialogModal, ConfirmationDialogModal } from './DialogModal'
 export type { TextInputDialogModalProps, ConfirmationDialogModalProps } from './DialogModal'
 
