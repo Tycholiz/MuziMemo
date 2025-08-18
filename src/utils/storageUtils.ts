@@ -1,10 +1,53 @@
 /**
  * Storage utilities for persisting user preferences
- * Uses AsyncStorage for cross-platform persistence
+ * Uses AsyncStorage for cross-platform persistence with web fallback
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import { Platform } from 'react-native'
 import { SortOption, DEFAULT_SORT_OPTION, isValidSortOption } from './sortUtils'
+
+// Conditionally import AsyncStorage with web fallback
+let AsyncStorage: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    AsyncStorage = require('@react-native-async-storage/async-storage').default
+  } catch (error) {
+    console.warn('@react-native-async-storage/async-storage not available:', error)
+  }
+} else {
+  // Web fallback using localStorage
+  AsyncStorage = {
+    async getItem(key: string): Promise<string | null> {
+      try {
+        return localStorage.getItem(key)
+      } catch {
+        return null
+      }
+    },
+    async setItem(key: string, value: string): Promise<void> {
+      try {
+        localStorage.setItem(key, value)
+      } catch {
+        // Ignore storage errors on web
+      }
+    },
+    async removeItem(key: string): Promise<void> {
+      try {
+        localStorage.removeItem(key)
+      } catch {
+        // Ignore storage errors on web
+      }
+    },
+    async multiRemove(keys: string[]): Promise<void> {
+      try {
+        keys.forEach(key => localStorage.removeItem(key))
+      } catch {
+        // Ignore storage errors on web
+      }
+    },
+  }
+}
 
 /**
  * Storage keys for different preferences

@@ -2,10 +2,51 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
-import * as FileSystem from 'expo-file-system'
-import * as Sharing from 'expo-sharing'
 import { Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
+
+// Conditionally import expo modules with web fallbacks
+let FileSystem: any = null
+let Sharing: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    FileSystem = require('expo-file-system')
+    Sharing = require('expo-sharing')
+  } catch (error) {
+    console.warn('expo modules not available:', error)
+  }
+} else {
+  // Web fallbacks
+  FileSystem = {
+    documentDirectory: '/muzimemo/',
+    async getInfoAsync(path: string) {
+      return { exists: true, isDirectory: path.endsWith('/') }
+    },
+    async readDirectoryAsync(_path: string) {
+      return []
+    },
+    async makeDirectoryAsync(_path: string, _options?: any) {
+      return Promise.resolve()
+    },
+    async deleteAsync(_path: string, _options?: any) {
+      return Promise.resolve()
+    },
+    async moveAsync(_options: any) {
+      return Promise.resolve()
+    },
+  }
+
+  Sharing = {
+    async shareAsync(uri: string, _options?: any) {
+      // Web fallback - could implement web sharing API here
+      console.log('Sharing not available on web:', uri)
+    },
+    async isAvailableAsync() {
+      return false
+    },
+  }
+}
 
 import { useFileManager } from '../contexts/FileManagerContext'
 import { useAudioPlayerContext } from '../contexts/AudioPlayerContext'

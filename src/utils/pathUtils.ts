@@ -1,7 +1,33 @@
 import { Platform } from 'react-native'
-import * as FileSystem from 'expo-file-system'
-
 import type { BreadcrumbItem } from '../customTypes/FileSystem'
+
+// Conditionally import expo-file-system with web fallback
+let FileSystem: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    FileSystem = require('expo-file-system')
+  } catch (error) {
+    console.warn('expo-file-system not available:', error)
+  }
+} else {
+  // Web fallback for FileSystem
+  FileSystem = {
+    documentDirectory: '/muzimemo/',
+    async getInfoAsync(path: string) {
+      // Web fallback - assume paths exist for basic functionality
+      return { exists: true, isDirectory: path.endsWith('/') }
+    },
+    async readDirectoryAsync(_path: string) {
+      // Web fallback - return empty array
+      return []
+    },
+    async makeDirectoryAsync(_path: string, _options?: any) {
+      // Web fallback - no-op
+      return Promise.resolve()
+    },
+  }
+}
 
 /**
  * Path utilities for file system operations
