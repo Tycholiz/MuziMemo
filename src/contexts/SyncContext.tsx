@@ -5,6 +5,9 @@ import { useIsCloudAvailable } from 'react-native-cloud-storage'
 import { saveSyncEnabled, loadSyncEnabled } from '../utils/storageUtils'
 import { iCloudService } from '../services/iCloudService'
 
+// Constants
+const MAX_RETRY_COUNT = 3 // Maximum number of retry attempts before giving up
+
 // Network and sync state types
 type NetworkState = { isConnected: boolean; isInternetReachable: boolean | null }
 type SyncQueueItem = {
@@ -207,9 +210,26 @@ export function SyncProvider({ children }: SyncProviderProps) {
   const refreshSyncQueue = useCallback(async () => {
     if (!isSyncEnabled || !networkState.isConnected) return
 
+    // Filter items that haven't exceeded max retry count
     const pendingItems = syncQueue.filter(item =>
-      item.status === 'pending' || item.status === 'failed'
+      (item.status === 'pending' || item.status === 'failed') &&
+      item.retryCount < MAX_RETRY_COUNT
     )
+
+    // Remove items that have exceeded max retry count
+    const itemsToRemove = syncQueue.filter(item =>
+      item.status === 'failed' && item.retryCount >= MAX_RETRY_COUNT
+    )
+
+    if (itemsToRemove.length > 0) {
+      console.warn(`🗑️ Removing ${itemsToRemove.length} permanently failed items from sync queue:`,
+        itemsToRemove.map(item => ({ path: item.localPath, retries: item.retryCount, error: item.error }))
+      )
+
+      setSyncQueue(prev => prev.filter(item =>
+        !(item.status === 'failed' && item.retryCount >= MAX_RETRY_COUNT)
+      ))
+    }
 
     for (const item of pendingItems) {
       try {
@@ -229,16 +249,27 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
         console.log('✅ Synced queued file:', item.localPath)
       } catch (error) {
-        console.error('❌ Failed to sync queued file:', error)
+        const newRetryCount = item.retryCount + 1
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+        console.error(`❌ Failed to sync queued file (attempt ${newRetryCount}/${MAX_RETRY_COUNT}):`, {
+          path: item.localPath,
+          error: errorMessage,
+          retryCount: newRetryCount
+        })
+
+        if (newRetryCount >= MAX_RETRY_COUNT) {
+          console.error(`🚫 File permanently failed after ${MAX_RETRY_COUNT} attempts:`, item.localPath)
+        }
 
         setSyncQueue(prev => prev.map(queueItem =>
           queueItem.id === item.id
             ? {
                 ...queueItem,
                 status: 'failed' as const,
-                retryCount: queueItem.retryCount + 1,
+                retryCount: newRetryCount,
                 lastAttempt: new Date(),
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: errorMessage
               }
             : queueItem
         ))
@@ -278,13 +309,22 @@ export function SyncProvider({ children }: SyncProviderProps) {
       setIsBackgroundSyncing(true)
       console.log('🔄 Starting background sync...')
 
-      // First, retry any failed or pending items in the sync queue
+      // First, retry any failed or pending items in the sync queue (within retry limits)
       const pendingItems = syncQueue.filter(item =>
-        item.status === 'pending' || item.status === 'failed'
+        (item.status === 'pending' || item.status === 'failed') &&
+        item.retryCount < MAX_RETRY_COUNT
       )
 
+      const permanentlyFailedItems = syncQueue.filter(item =>
+        item.status === 'failed' && item.retryCount >= MAX_RETRY_COUNT
+      )
+
+      if (permanentlyFailedItems.length > 0) {
+        console.log(`🗑️ Found ${permanentlyFailedItems.length} permanently failed items to clean up`)
+      }
+
       if (pendingItems.length > 0) {
-        console.log(`🔄 Retrying ${pendingItems.length} pending/failed sync items`)
+        console.log(`🔄 Retrying ${pendingItems.length} pending/failed sync items (within retry limits)`)
         await refreshSyncQueue()
       }
 
@@ -306,6 +346,21 @@ export function SyncProvider({ children }: SyncProviderProps) {
       console.error('❌ Background sync failed:', error)
     } finally {
       setIsBackgroundSyncing(false)
+
+      // Periodic cleanup: Remove old completed and permanently failed items
+      // This prevents the sync queue from growing indefinitely
+      const now = new Date()
+      const oldItems = syncQueue.filter(item => {
+        if (!item.lastAttempt) return false
+        const hoursSinceLastAttempt = (now.getTime() - item.lastAttempt.getTime()) / (1000 * 60 * 60)
+        return (item.status === 'synced' || (item.status === 'failed' && item.retryCount >= MAX_RETRY_COUNT))
+               && hoursSinceLastAttempt > 1 // Remove items older than 1 hour
+      })
+
+      if (oldItems.length > 0) {
+        console.log(`🧹 Auto-cleaning ${oldItems.length} old sync queue items`)
+        setSyncQueue(prev => prev.filter(item => !oldItems.includes(item)))
+      }
     }
   }, [isSyncEnabled, networkState.isConnected, isBackgroundSyncing, syncQueue, refreshSyncQueue])
 
@@ -411,9 +466,18 @@ export function SyncProvider({ children }: SyncProviderProps) {
   }, [syncQueue])
 
   const clearCompletedItems = useCallback(() => {
-    setSyncQueue(prev => prev.filter(item => item.status !== 'synced'))
-    console.log('🧹 Cleared completed sync items')
-  }, [])
+    const itemsToRemove = syncQueue.filter(item =>
+      item.status === 'synced' || (item.status === 'failed' && item.retryCount >= MAX_RETRY_COUNT)
+    )
+
+    if (itemsToRemove.length > 0) {
+      console.log(`🧹 Clearing ${itemsToRemove.length} completed/permanently failed items from sync queue`)
+    }
+
+    setSyncQueue(prev => prev.filter(item =>
+      item.status !== 'synced' && !(item.status === 'failed' && item.retryCount >= MAX_RETRY_COUNT)
+    ))
+  }, [syncQueue])
 
   // Auto-refresh sync queue when network comes back online
   useEffect(() => {

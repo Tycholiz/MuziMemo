@@ -95,6 +95,14 @@ class iCloudServiceClass {
 
       console.log('🔄 Starting iCloud copy process:', { localPath, cloudPath })
 
+      // CRITICAL FIX: Convert file:// URI to plain file system path
+      // react-native-cloud-storage expects plain paths, not file:// URIs
+      const plainFilePath = localPath.startsWith('file://')
+        ? localPath.replace('file://', '')
+        : localPath
+
+      console.log('🔧 Converted file path:', { original: localPath, converted: plainFilePath })
+
       // Verify the local file exists and is readable
       const fileInfo = await FileSystem.getInfoAsync(localPath)
       if (!fileInfo.exists) {
@@ -112,9 +120,10 @@ class iCloudServiceClass {
 
       // CRITICAL FIX: Use uploadFile() for binary files instead of writeFile()
       // This preserves binary integrity and handles MIME types correctly
+      // Use the converted plain file path for react-native-cloud-storage
       await CloudStorage.uploadFile(
         cloudPath,           // remotePath
-        localPath,           // localPath
+        plainFilePath,       // localPath (converted from file:// URI)
         { mimeType: 'audio/mp4' }, // options with correct MIME type for M4A
         'documents'          // scope
       )
