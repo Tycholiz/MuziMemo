@@ -609,45 +609,86 @@ export function FileSystemComponent() {
 
   const handleMoveConfirm = async (destinationPath: string) => {
     try {
-      const recordingsBasePath = fileManager
-        .getFullPath()
-        .replace(fileManager.getCurrentPathString(), '')
-        .replace(/\/$/, '')
+      const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+      // Get the recordings base path correctly (not from recently-deleted directory)
+      const documentsDirectory = FileSystem.documentDirectory
+      const recordingsBasePath = documentsDirectory ? `${documentsDirectory}recordings` : ''
 
       if (isMultiSelectMode && selectedItems.size > 0) {
-        // Batch move for multi-select
+        // Batch move/restore for multi-select
         let successCount = 0
         const failedItems: string[] = []
+        const itemsToRemoveFromView: string[] = []
 
         for (const itemId of selectedItems) {
           try {
             if (itemId.startsWith('folder-')) {
               const folderName = itemId.replace('folder-', '')
               const sourcePath = `${fileManager.getFullPath()}/${folderName}`
-              await moveItem(sourcePath, destinationPath, folderName)
+
+              if (isInRecentlyDeletedFolder) {
+                await restoreFromRecentlyDeleted(sourcePath, destinationPath, folderName)
+              } else {
+                await moveItem(sourcePath, destinationPath, folderName)
+              }
+              itemsToRemoveFromView.push(itemId)
             } else if (itemId.startsWith('audio-')) {
               const fileName = itemId.replace('audio-', '')
               const sourcePath = `${fileManager.getFullPath()}/${fileName}`
-              await moveItem(sourcePath, destinationPath, fileName)
+
+              if (isInRecentlyDeletedFolder) {
+                await restoreFromRecentlyDeleted(sourcePath, destinationPath, fileName)
+              } else {
+                await moveItem(sourcePath, destinationPath, fileName)
+              }
+              itemsToRemoveFromView.push(itemId)
             }
             successCount++
           } catch (error: any) {
-            console.error(`Failed to move item ${itemId}:`, error)
+            console.error(`Failed to ${isInRecentlyDeletedFolder ? 'restore' : 'move'} item ${itemId}:`, error)
             failedItems.push(itemId.replace(/^(folder-|audio-)/, ''))
+          }
+        }
+
+        // Remove successfully moved/restored items from current view
+        if (itemsToRemoveFromView.length > 0) {
+          const foldersToRemove = itemsToRemoveFromView
+            .filter(itemId => itemId.startsWith('folder-'))
+            .map(itemId => itemId.replace('folder-', ''))
+          const audioFilesToRemove = itemsToRemoveFromView
+            .filter(itemId => itemId.startsWith('audio-'))
+            .map(itemId => itemId.replace('audio-', ''))
+
+          if (foldersToRemove.length > 0) {
+            setFolders(prev => prev.filter(folder => !foldersToRemove.includes(folder.name)))
+          }
+          if (audioFilesToRemove.length > 0) {
+            setAudioFiles(prev => prev.filter(file => !audioFilesToRemove.includes(file.name)))
           }
         }
 
         // Show appropriate toast messages
         if (successCount > 0) {
           const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
-          showMoveSuccessToast(`${successCount} item${successCount !== 1 ? 's' : ''}`, () => {
-            const navigationPath = pathToNavigationArray(relativePath)
-            fileManager.navigateToPath(navigationPath)
-          })
+          if (isInRecentlyDeletedFolder) {
+            showRestoreSuccessToast(`${successCount} item${successCount !== 1 ? 's' : ''}`, () => {
+              const navigationPath = pathToNavigationArray(relativePath)
+              fileManager.navigateToPath(navigationPath)
+            })
+          } else {
+            showMoveSuccessToast(`${successCount} item${successCount !== 1 ? 's' : ''}`, () => {
+              const navigationPath = pathToNavigationArray(relativePath)
+              fileManager.navigateToPath(navigationPath)
+            })
+          }
         }
 
         if (failedItems.length > 0) {
-          showMoveErrorToast(`Failed to move: ${failedItems.join(', ')}`)
+          if (isInRecentlyDeletedFolder) {
+            showRestoreErrorToast(`Failed to restore: ${failedItems.join(', ')}`)
+          } else {
+            showMoveErrorToast(`Failed to move: ${failedItems.join(', ')}`)
+          }
         }
 
         // Exit multi-select mode
@@ -656,32 +697,66 @@ export function FileSystemComponent() {
       } else if (selectedFolderForMove) {
         // Moving a single folder
         const sourcePath = `${fileManager.getFullPath()}/${selectedFolderForMove.name}`
-        await moveItem(sourcePath, destinationPath, selectedFolderForMove.name)
+
+        if (isInRecentlyDeletedFolder) {
+          await restoreFromRecentlyDeleted(sourcePath, destinationPath, selectedFolderForMove.name)
+          // Remove from current view
+          setFolders(prev => prev.filter(folder => folder.id !== selectedFolderForMove.id))
+        } else {
+          await moveItem(sourcePath, destinationPath, selectedFolderForMove.name)
+        }
 
         // Show success toast with navigation
         const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
-        showMoveSuccessToast(selectedFolderForMove.name, () => {
-          const navigationPath = pathToNavigationArray(relativePath)
-          fileManager.navigateToPath(navigationPath)
-        })
+        if (isInRecentlyDeletedFolder) {
+          showRestoreSuccessToast(selectedFolderForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        } else {
+          showMoveSuccessToast(selectedFolderForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        }
       } else if (selectedFileForMove) {
         // Moving a single file
         const sourcePath = `${fileManager.getFullPath()}/${selectedFileForMove.name}`
-        await moveItem(sourcePath, destinationPath, selectedFileForMove.name)
+
+        if (isInRecentlyDeletedFolder) {
+          await restoreFromRecentlyDeleted(sourcePath, destinationPath, selectedFileForMove.name)
+          // Remove from current view
+          setAudioFiles(prev => prev.filter(file => file.id !== selectedFileForMove.id))
+        } else {
+          await moveItem(sourcePath, destinationPath, selectedFileForMove.name)
+        }
 
         // Show success toast with navigation
         const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
-        showMoveSuccessToast(selectedFileForMove.name, () => {
-          const navigationPath = pathToNavigationArray(relativePath)
-          fileManager.navigateToPath(navigationPath)
-        })
+        if (isInRecentlyDeletedFolder) {
+          showRestoreSuccessToast(selectedFileForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        } else {
+          showMoveSuccessToast(selectedFileForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        }
       }
 
       // Refresh the current folder contents
       await loadFolderContents()
     } catch (error: any) {
-      console.error('Failed to move item:', error)
-      showMoveErrorToast(error.message || 'Failed to move item')
+      const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+      console.error(`Failed to ${isInRecentlyDeletedFolder ? 'restore' : 'move'} item:`, error)
+
+      if (isInRecentlyDeletedFolder) {
+        showRestoreErrorToast(error.message || 'Failed to restore item')
+      } else {
+        showMoveErrorToast(error.message || 'Failed to move item')
+      }
     } finally {
       setShowMoveModal(false)
       setSelectedFolderForMove(null)
@@ -1257,14 +1332,20 @@ export function FileSystemComponent() {
         onClose={handleMoveCancelOrClose}
         onSelectFolder={() => {}} // Not used for move operations
         title={
-          isMultiSelectMode && selectedItems.size > 0
+          fileManager.getIsInRecentlyDeleted() && isMultiSelectMode && selectedItems.size > 0
+            ? `Restore ${selectedItems.size} item${selectedItems.size !== 1 ? 's' : ''}`
+            : isMultiSelectMode && selectedItems.size > 0
             ? `Move ${selectedItems.size} item${selectedItems.size !== 1 ? 's' : ''}`
             : `Move ${selectedFolderForMove ? selectedFolderForMove.name : selectedFileForMove?.name || ''}`
         }
-        primaryButtonText="Move Here"
-        primaryButtonIcon="arrow-forward"
+        primaryButtonText={fileManager.getIsInRecentlyDeleted() ? "Restore Here" : "Move Here"}
+        primaryButtonIcon={fileManager.getIsInRecentlyDeleted() ? "refresh" : "arrow-forward"}
         onPrimaryAction={handleMoveConfirm}
-        initialDirectory={fileManager.getFullPath()}
+        initialDirectory={
+          fileManager.getIsInRecentlyDeleted()
+            ? `${FileSystem.documentDirectory}recordings`
+            : fileManager.getFullPath()
+        }
         excludePath={selectedFolderForMove ? `${fileManager.getFullPath()}/${selectedFolderForMove.name}` : undefined}
         excludePaths={
           isMultiSelectMode && selectedItems.size > 0
