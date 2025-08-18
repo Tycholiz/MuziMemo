@@ -1,10 +1,33 @@
 import React, { useState, useCallback, useEffect, memo } from 'react'
-import { View, Text, StyleSheet, ViewStyle } from 'react-native'
-import { Slider } from 'react-native-awesome-slider'
-import { useSharedValue, runOnUI } from 'react-native-reanimated'
+import { View, Text, StyleSheet, ViewStyle, Platform } from 'react-native'
 
 import { theme } from '@utils/theme'
 import { formatAudioDuration } from '@utils/formatUtils'
+
+// Conditionally import react-native-awesome-slider and reanimated with proper web support
+let Slider: any = null
+let useSharedValue: any = null
+let withTiming: any = null
+
+// Modern reanimated imports with web support
+try {
+  const awesomeSlider = require('react-native-awesome-slider')
+  Slider = awesomeSlider.Slider
+} catch (error) {
+  if (Platform.OS !== 'web') {
+    console.warn('react-native-awesome-slider not available:', error)
+  }
+}
+
+try {
+  const reanimated = require('react-native-reanimated')
+  useSharedValue = reanimated.useSharedValue
+  withTiming = reanimated.withTiming
+} catch (error) {
+  if (Platform.OS !== 'web') {
+    console.warn('react-native-reanimated not available:', error)
+  }
+}
 
 export type AudioProgressBarProps = {
   currentTime: number
@@ -16,20 +39,22 @@ export type AudioProgressBarProps = {
 
 /**
  * AudioProgressBar Component
- * Interactive progress bar for audio playback with scrubbing support
+ * Interactive progress bar for audio playbook with scrubbing support
  *
  * Features:
- * - Real-time position updates during playback (60 FPS)
+ * - Real-time position updates during playback with smooth animations
  * - Interactive scrubbing with immediate visual feedback
  * - Time labels that update during scrubbing
  * - Proper handling of edge cases (zero duration, invalid positions)
  * - Theme integration and accessibility support
- * - Optimized for smooth UI thread animations using React Native Reanimated
+ * - Cross-platform support (iOS, Android, Web) with proper fallbacks
+ * - Modern React Native Reanimated v4+ API usage
  *
  * Performance Optimizations:
- * - Uses runOnUI for smooth progress updates on UI thread
+ * - Uses modern reanimated withTiming for smooth progress updates
  * - Memoized component to prevent unnecessary re-renders
- * - Hardware acceleration enabled for smooth animations
+ * - Hardware acceleration enabled for smooth animations on native
+ * - Graceful fallbacks for web platform
  * - Optimized touch targets and gesture handling
  */
 export const AudioProgressBar = memo(function AudioProgressBar({
@@ -44,24 +69,33 @@ export const AudioProgressBar = memo(function AudioProgressBar({
   // State for the position while user is dragging (for time label updates)
   const [scrubPosition, setScrubPosition] = useState(0)
 
-  // Shared values for react-native-awesome-slider
-  const progress = useSharedValue(0)
-  const min = useSharedValue(0)
-  const max = useSharedValue(duration || 1)
+  // Shared values for react-native-awesome-slider with proper web fallbacks
+  const progress = useSharedValue ? useSharedValue(currentTime || 0) : { value: currentTime || 0 }
+  const min = useSharedValue ? useSharedValue(0) : { value: 0 }
+  const max = useSharedValue ? useSharedValue(Math.max(duration || 1, 1)) : { value: Math.max(duration || 1, 1) }
 
   // Update slider values when duration or currentTime changes
   useEffect(() => {
     if (!isScrubbing) {
-      // Update max value immediately
-      max.value = duration || 1
+      // Update max value
+      if (max) {
+        max.value = Math.max(duration || 1, 1)
+      }
 
-      // Use runOnUI for smooth UI thread updates of progress
-      runOnUI(() => {
-        'worklet'
-        progress.value = currentTime || 0
-      })()
+      // Update progress value using modern reanimated approach
+      if (progress) {
+        if (withTiming && useSharedValue) {
+          // Modern reanimated with smooth timing animation
+          progress.value = withTiming(currentTime || 0, {
+            duration: 100, // Short duration for responsive updates
+          })
+        } else {
+          // Direct assignment for web or fallback
+          progress.value = currentTime || 0
+        }
+      }
     }
-  }, [currentTime, duration, isScrubbing, max, progress])
+  }, [currentTime, duration, isScrubbing, max, progress, withTiming])
 
   // Handle slider value changes (while dragging)
   const handleValueChange = useCallback((value: number) => {
@@ -102,29 +136,43 @@ export const AudioProgressBar = memo(function AudioProgressBar({
     <View style={[styles.container, style]}>
       {/* Progress Slider */}
       <View style={styles.sliderContainer}>
-        <Slider
-          style={styles.slider}
-          progress={progress}
-          minimumValue={min}
-          maximumValue={max}
-          onValueChange={handleValueChange}
-          onSlidingStart={handleSlidingStart}
-          onSlidingComplete={handleSlidingComplete}
-          disable={sliderDisabled}
-          theme={{
-            disableMinTrackTintColor: theme.colors.gray[600],
-            maximumTrackTintColor: theme.colors.gray[600],
-            minimumTrackTintColor: theme.colors.primary,
-            cacheTrackTintColor: theme.colors.gray[700],
-            bubbleBackgroundColor: theme.colors.primary,
-            heartbeatColor: theme.colors.primary,
-          }}
-          thumbWidth={16}
-          renderBubble={() => null} // Hide the bubble for cleaner look
-          // Performance optimizations
-          panHitSlop={{ top: 20, bottom: 20, left: 0, right: 0 }} // Better touch area
-          containerStyle={styles.sliderContainer}
-        />
+        {Slider ? (
+          <Slider
+            style={styles.slider}
+            progress={progress}
+            minimumValue={min}
+            maximumValue={max}
+            onValueChange={handleValueChange}
+            onSlidingStart={handleSlidingStart}
+            onSlidingComplete={handleSlidingComplete}
+            disable={sliderDisabled}
+            theme={{
+              disableMinTrackTintColor: theme.colors.gray[600],
+              maximumTrackTintColor: theme.colors.gray[600],
+              minimumTrackTintColor: theme.colors.primary,
+              cacheTrackTintColor: theme.colors.gray[700],
+              bubbleBackgroundColor: theme.colors.primary,
+              heartbeatColor: theme.colors.primary,
+            }}
+            thumbWidth={16}
+            renderBubble={() => null} // Hide the bubble for cleaner look
+            // Performance optimizations
+            panHitSlop={{ top: 20, bottom: 20, left: 0, right: 0 }} // Better touch area
+            containerStyle={styles.sliderContainer}
+          />
+        ) : (
+          // Fallback for web - simple progress bar
+          <View style={styles.webProgressContainer}>
+            <View
+              style={[
+                styles.webProgressBar,
+                {
+                  width: `${isValidDuration ? (displayCurrentTime / displayDuration) * 100 : 0}%`
+                }
+              ]}
+            />
+          </View>
+        )}
       </View>
 
       {/* Time Labels */}
@@ -157,5 +205,17 @@ const styles = StyleSheet.create({
     color: theme.colors.text.tertiary,
     fontFamily: theme.typography.fontFamily.regular,
     fontWeight: theme.typography.fontWeight.normal,
+  },
+  // Web fallback styles
+  webProgressContainer: {
+    height: 4,
+    backgroundColor: theme.colors.gray[600],
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  webProgressBar: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
   },
 })
