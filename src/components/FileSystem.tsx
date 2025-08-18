@@ -17,6 +17,7 @@ import { FolderContextMenuModal } from './FolderContextMenuModal'
 import { CreateFolderModal } from './CreateFolderModal'
 import { FileNavigatorModal } from './FileNavigatorModal'
 import { HomeScreenMenuModal } from './HomeScreenMenuModal'
+import { RecentlyDeletedMenuModal } from './RecentlyDeletedMenuModal'
 import { MultiSelectToolbar } from './MultiSelectToolbar'
 import { SortModal } from './SortModal'
 import { theme } from '../utils/theme'
@@ -885,6 +886,76 @@ export function FileSystemComponent() {
     ])
   }, [selectedItems, folders, audioFiles, fileManager, audioPlayer])
 
+  const handleEmptyRecyclingBin = useCallback(async () => {
+    if (audioFiles.length === 0) return
+
+    Alert.alert(
+      'Empty Recycling Bin',
+      'Are you sure you want to permanently delete all items? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Empty Bin',
+          style: 'destructive',
+          onPress: async () => {
+            // Store original state for potential rollback
+            const originalAudioFiles = [...audioFiles]
+
+            // Optimistic update: clear the state immediately
+            setAudioFiles([])
+
+            try {
+              const fullPath = fileManager.getFullPath()
+              const failedDeletions: string[] = []
+
+              // Delete all audio files permanently
+              for (const audioFile of originalAudioFiles) {
+                try {
+                  const filePath = `${fullPath}/${audioFile.name}`
+                  await FileSystem.deleteAsync(filePath)
+                } catch (error) {
+                  console.error(`Failed to delete ${audioFile.name}:`, error)
+                  failedDeletions.push(audioFile.name)
+                }
+              }
+
+              // Handle partial failures
+              if (failedDeletions.length > 0) {
+                // Rollback failed deletions
+                const successfullyDeleted = originalAudioFiles.filter(
+                  file => !failedDeletions.includes(file.name)
+                )
+                const failedFiles = originalAudioFiles.filter(
+                  file => failedDeletions.includes(file.name)
+                )
+
+                setAudioFiles(failedFiles)
+
+                Alert.alert(
+                  'Partial Success',
+                  `${successfullyDeleted.length} items deleted successfully. Failed to delete: ${failedDeletions.join(', ')}`
+                )
+              } else {
+                // Complete success
+                Toast.show({
+                  type: 'success',
+                  text1: 'Recycling bin emptied',
+                  text2: `${originalAudioFiles.length} item${originalAudioFiles.length !== 1 ? 's' : ''} permanently deleted`,
+                  visibilityTime: 4000,
+                })
+              }
+            } catch (error) {
+              console.error('Failed to empty recycling bin:', error)
+              // Rollback: restore original state
+              setAudioFiles(originalAudioFiles)
+              Alert.alert('Error', 'Failed to empty recycling bin')
+            }
+          },
+        },
+      ]
+    )
+  }, [audioFiles, fileManager])
+
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -917,6 +988,11 @@ export function FileSystemComponent() {
               onRecentlyDeleted={handleNavigateToRecentlyDeleted}
               onMultiSelect={handleMultiSelectMode}
             />
+          </View>
+        )}
+        {fileManager.getIsInRecentlyDeleted() && audioFiles.length > 0 && (
+          <View style={styles.headerMenuContainer}>
+            <RecentlyDeletedMenuModal onEmptyRecyclingBin={handleEmptyRecyclingBin} />
           </View>
         )}
       </View>
