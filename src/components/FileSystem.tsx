@@ -17,6 +17,7 @@ import { FolderContextMenuModal } from './FolderContextMenuModal'
 import { CreateFolderModal } from './CreateFolderModal'
 import { FileNavigatorModal } from './FileNavigatorModal'
 import { HomeScreenMenuModal } from './HomeScreenMenuModal'
+import { RecentlyDeletedMenuModal } from './RecentlyDeletedMenuModal'
 import { MultiSelectToolbar } from './MultiSelectToolbar'
 import { SortModal } from './SortModal'
 import { theme } from '../utils/theme'
@@ -608,45 +609,86 @@ export function FileSystemComponent() {
 
   const handleMoveConfirm = async (destinationPath: string) => {
     try {
-      const recordingsBasePath = fileManager
-        .getFullPath()
-        .replace(fileManager.getCurrentPathString(), '')
-        .replace(/\/$/, '')
+      const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+      // Get the recordings base path correctly (not from recently-deleted directory)
+      const documentsDirectory = FileSystem.documentDirectory
+      const recordingsBasePath = documentsDirectory ? `${documentsDirectory}recordings` : ''
 
       if (isMultiSelectMode && selectedItems.size > 0) {
-        // Batch move for multi-select
+        // Batch move/restore for multi-select
         let successCount = 0
         const failedItems: string[] = []
+        const itemsToRemoveFromView: string[] = []
 
         for (const itemId of selectedItems) {
           try {
             if (itemId.startsWith('folder-')) {
               const folderName = itemId.replace('folder-', '')
               const sourcePath = `${fileManager.getFullPath()}/${folderName}`
-              await moveItem(sourcePath, destinationPath, folderName)
+
+              if (isInRecentlyDeletedFolder) {
+                await restoreFromRecentlyDeleted(sourcePath, destinationPath, folderName)
+              } else {
+                await moveItem(sourcePath, destinationPath, folderName)
+              }
+              itemsToRemoveFromView.push(itemId)
             } else if (itemId.startsWith('audio-')) {
               const fileName = itemId.replace('audio-', '')
               const sourcePath = `${fileManager.getFullPath()}/${fileName}`
-              await moveItem(sourcePath, destinationPath, fileName)
+
+              if (isInRecentlyDeletedFolder) {
+                await restoreFromRecentlyDeleted(sourcePath, destinationPath, fileName)
+              } else {
+                await moveItem(sourcePath, destinationPath, fileName)
+              }
+              itemsToRemoveFromView.push(itemId)
             }
             successCount++
           } catch (error: any) {
-            console.error(`Failed to move item ${itemId}:`, error)
+            console.error(`Failed to ${isInRecentlyDeletedFolder ? 'restore' : 'move'} item ${itemId}:`, error)
             failedItems.push(itemId.replace(/^(folder-|audio-)/, ''))
+          }
+        }
+
+        // Remove successfully moved/restored items from current view
+        if (itemsToRemoveFromView.length > 0) {
+          const foldersToRemove = itemsToRemoveFromView
+            .filter(itemId => itemId.startsWith('folder-'))
+            .map(itemId => itemId.replace('folder-', ''))
+          const audioFilesToRemove = itemsToRemoveFromView
+            .filter(itemId => itemId.startsWith('audio-'))
+            .map(itemId => itemId.replace('audio-', ''))
+
+          if (foldersToRemove.length > 0) {
+            setFolders(prev => prev.filter(folder => !foldersToRemove.includes(folder.name)))
+          }
+          if (audioFilesToRemove.length > 0) {
+            setAudioFiles(prev => prev.filter(file => !audioFilesToRemove.includes(file.name)))
           }
         }
 
         // Show appropriate toast messages
         if (successCount > 0) {
           const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
-          showMoveSuccessToast(`${successCount} item${successCount !== 1 ? 's' : ''}`, () => {
-            const navigationPath = pathToNavigationArray(relativePath)
-            fileManager.navigateToPath(navigationPath)
-          })
+          if (isInRecentlyDeletedFolder) {
+            showRestoreSuccessToast(`${successCount} item${successCount !== 1 ? 's' : ''}`, () => {
+              const navigationPath = pathToNavigationArray(relativePath)
+              fileManager.navigateToPath(navigationPath)
+            })
+          } else {
+            showMoveSuccessToast(`${successCount} item${successCount !== 1 ? 's' : ''}`, () => {
+              const navigationPath = pathToNavigationArray(relativePath)
+              fileManager.navigateToPath(navigationPath)
+            })
+          }
         }
 
         if (failedItems.length > 0) {
-          showMoveErrorToast(`Failed to move: ${failedItems.join(', ')}`)
+          if (isInRecentlyDeletedFolder) {
+            showRestoreErrorToast(`Failed to restore: ${failedItems.join(', ')}`)
+          } else {
+            showMoveErrorToast(`Failed to move: ${failedItems.join(', ')}`)
+          }
         }
 
         // Exit multi-select mode
@@ -655,32 +697,66 @@ export function FileSystemComponent() {
       } else if (selectedFolderForMove) {
         // Moving a single folder
         const sourcePath = `${fileManager.getFullPath()}/${selectedFolderForMove.name}`
-        await moveItem(sourcePath, destinationPath, selectedFolderForMove.name)
+
+        if (isInRecentlyDeletedFolder) {
+          await restoreFromRecentlyDeleted(sourcePath, destinationPath, selectedFolderForMove.name)
+          // Remove from current view
+          setFolders(prev => prev.filter(folder => folder.id !== selectedFolderForMove.id))
+        } else {
+          await moveItem(sourcePath, destinationPath, selectedFolderForMove.name)
+        }
 
         // Show success toast with navigation
         const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
-        showMoveSuccessToast(selectedFolderForMove.name, () => {
-          const navigationPath = pathToNavigationArray(relativePath)
-          fileManager.navigateToPath(navigationPath)
-        })
+        if (isInRecentlyDeletedFolder) {
+          showRestoreSuccessToast(selectedFolderForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        } else {
+          showMoveSuccessToast(selectedFolderForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        }
       } else if (selectedFileForMove) {
         // Moving a single file
         const sourcePath = `${fileManager.getFullPath()}/${selectedFileForMove.name}`
-        await moveItem(sourcePath, destinationPath, selectedFileForMove.name)
+
+        if (isInRecentlyDeletedFolder) {
+          await restoreFromRecentlyDeleted(sourcePath, destinationPath, selectedFileForMove.name)
+          // Remove from current view
+          setAudioFiles(prev => prev.filter(file => file.id !== selectedFileForMove.id))
+        } else {
+          await moveItem(sourcePath, destinationPath, selectedFileForMove.name)
+        }
 
         // Show success toast with navigation
         const relativePath = getRelativePathFromRecordings(destinationPath, recordingsBasePath)
-        showMoveSuccessToast(selectedFileForMove.name, () => {
-          const navigationPath = pathToNavigationArray(relativePath)
-          fileManager.navigateToPath(navigationPath)
-        })
+        if (isInRecentlyDeletedFolder) {
+          showRestoreSuccessToast(selectedFileForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        } else {
+          showMoveSuccessToast(selectedFileForMove.name, () => {
+            const navigationPath = pathToNavigationArray(relativePath)
+            fileManager.navigateToPath(navigationPath)
+          })
+        }
       }
 
       // Refresh the current folder contents
       await loadFolderContents()
     } catch (error: any) {
-      console.error('Failed to move item:', error)
-      showMoveErrorToast(error.message || 'Failed to move item')
+      const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+      console.error(`Failed to ${isInRecentlyDeletedFolder ? 'restore' : 'move'} item:`, error)
+
+      if (isInRecentlyDeletedFolder) {
+        showRestoreErrorToast(error.message || 'Failed to restore item')
+      } else {
+        showMoveErrorToast(error.message || 'Failed to move item')
+      }
     } finally {
       setShowMoveModal(false)
       setSelectedFolderForMove(null)
@@ -885,6 +961,162 @@ export function FileSystemComponent() {
     ])
   }, [selectedItems, folders, audioFiles, fileManager, audioPlayer])
 
+  const handleMultiSelectRestore = useCallback(() => {
+    if (selectedItems.size === 0) return
+    setShowMoveModal(true)
+  }, [selectedItems])
+
+  const handleMultiSelectPermanentlyDelete = useCallback(() => {
+    if (selectedItems.size === 0) return
+
+    // Build list of items to permanently delete
+    const itemsToDelete: { name: string; type: 'audio'; data: AudioFileData }[] = []
+
+    selectedItems.forEach(itemId => {
+      if (itemId.startsWith('audio-')) {
+        const fileName = itemId.replace('audio-', '')
+        const audioFile = audioFiles.find(f => f.name === fileName)
+        if (audioFile) {
+          itemsToDelete.push({ name: fileName, type: 'audio', data: audioFile })
+        }
+      }
+    })
+
+    if (itemsToDelete.length === 0) return
+
+    // Build confirmation message
+    const itemCount = itemsToDelete.length
+    const itemText = itemCount === 1 ? 'item' : 'items'
+
+    let message = `Are you sure you want to permanently delete ${itemCount === 1 ? 'this' : 'these'} ${itemText}? This action cannot be undone.\n\n`
+
+    itemsToDelete.forEach(item => {
+      message += `• ${item.name}\n`
+    })
+
+    Alert.alert('Permanently Delete Items', message.trim(), [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Permanently Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const fullPath = fileManager.getFullPath()
+          const failedItems: string[] = []
+
+          // Optimistic update: remove items from state immediately
+          const audioFilesToRemove = itemsToDelete.map(item => item.data as AudioFileData)
+          setAudioFiles(prev => prev.filter(file => !audioFilesToRemove.some(removed => removed.id === file.id)))
+
+          // Stop playback if any of the selected files are currently playing
+          const playingFileId = audioPlayer.currentClip?.id
+          if (playingFileId && selectedItems.has(`audio-${audioPlayer.currentClip?.name}`)) {
+            audioPlayer.cleanup()
+          }
+
+          // Delete each item
+          for (const item of itemsToDelete) {
+            try {
+              const filePath = `${fullPath}/${item.name}`
+              await FileSystem.deleteAsync(filePath)
+            } catch (error) {
+              console.error(`Failed to permanently delete ${item.name}:`, error)
+              failedItems.push(item.name)
+            }
+          }
+
+          // Handle failed items by rolling back their state
+          if (failedItems.length > 0) {
+            const failedAudioFiles = audioFilesToRemove.filter(audioFile => failedItems.includes(audioFile.name))
+            setAudioFiles(prev => [...prev, ...failedAudioFiles])
+            Alert.alert('Error', `Failed to permanently delete ${failedItems.length} item(s): ${failedItems.join(', ')}`)
+          } else {
+            // Show success toast
+            Toast.show({
+              type: 'success',
+              text1: 'Items permanently deleted',
+              text2: `${itemCount} ${itemText} permanently deleted`,
+              visibilityTime: 4000,
+            })
+          }
+
+          // Exit multi-select mode
+          setIsMultiSelectMode(false)
+          setSelectedItems(new Set())
+        },
+      },
+    ])
+  }, [selectedItems, audioFiles, fileManager, audioPlayer])
+
+  const handleEmptyRecyclingBin = useCallback(async () => {
+    if (audioFiles.length === 0) return
+
+    Alert.alert(
+      'Empty Recycling Bin',
+      'Are you sure you want to permanently delete all items? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Empty Bin',
+          style: 'destructive',
+          onPress: async () => {
+            // Store original state for potential rollback
+            const originalAudioFiles = [...audioFiles]
+
+            // Optimistic update: clear the state immediately
+            setAudioFiles([])
+
+            try {
+              const fullPath = fileManager.getFullPath()
+              const failedDeletions: string[] = []
+
+              // Delete all audio files permanently
+              for (const audioFile of originalAudioFiles) {
+                try {
+                  const filePath = `${fullPath}/${audioFile.name}`
+                  await FileSystem.deleteAsync(filePath)
+                } catch (error) {
+                  console.error(`Failed to delete ${audioFile.name}:`, error)
+                  failedDeletions.push(audioFile.name)
+                }
+              }
+
+              // Handle partial failures
+              if (failedDeletions.length > 0) {
+                // Rollback failed deletions
+                const successfullyDeleted = originalAudioFiles.filter(
+                  file => !failedDeletions.includes(file.name)
+                )
+                const failedFiles = originalAudioFiles.filter(
+                  file => failedDeletions.includes(file.name)
+                )
+
+                setAudioFiles(failedFiles)
+
+                Alert.alert(
+                  'Partial Success',
+                  `${successfullyDeleted.length} items deleted successfully. Failed to delete: ${failedDeletions.join(', ')}`
+                )
+              } else {
+                // Complete success
+                Toast.show({
+                  type: 'success',
+                  text1: 'Recycling bin emptied',
+                  text2: `${originalAudioFiles.length} item${originalAudioFiles.length !== 1 ? 's' : ''} permanently deleted`,
+                  visibilityTime: 4000,
+                })
+              }
+            } catch (error) {
+              console.error('Failed to empty recycling bin:', error)
+              // Rollback: restore original state
+              setAudioFiles(originalAudioFiles)
+              Alert.alert('Error', 'Failed to empty recycling bin')
+            }
+          },
+        },
+      ]
+    )
+  }, [audioFiles, fileManager])
+
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -919,6 +1151,14 @@ export function FileSystemComponent() {
             />
           </View>
         )}
+        {fileManager.getIsInRecentlyDeleted() && audioFiles.length > 0 && (
+          <View style={styles.headerMenuContainer}>
+            <RecentlyDeletedMenuModal
+              onEmptyRecyclingBin={handleEmptyRecyclingBin}
+              onMultiSelect={handleMultiSelectMode}
+            />
+          </View>
+        )}
       </View>
 
       {/* Multi-Select Toolbar */}
@@ -928,6 +1168,9 @@ export function FileSystemComponent() {
           onCancel={handleMultiSelectCancel}
           onMove={handleMultiSelectMove}
           onDelete={handleMultiSelectDelete}
+          isInRecentlyDeleted={fileManager.getIsInRecentlyDeleted()}
+          onRestore={handleMultiSelectRestore}
+          onPermanentlyDelete={handleMultiSelectPermanentlyDelete}
         />
       )}
 
@@ -1089,14 +1332,20 @@ export function FileSystemComponent() {
         onClose={handleMoveCancelOrClose}
         onSelectFolder={() => {}} // Not used for move operations
         title={
-          isMultiSelectMode && selectedItems.size > 0
+          fileManager.getIsInRecentlyDeleted() && isMultiSelectMode && selectedItems.size > 0
+            ? `Restore ${selectedItems.size} item${selectedItems.size !== 1 ? 's' : ''}`
+            : isMultiSelectMode && selectedItems.size > 0
             ? `Move ${selectedItems.size} item${selectedItems.size !== 1 ? 's' : ''}`
             : `Move ${selectedFolderForMove ? selectedFolderForMove.name : selectedFileForMove?.name || ''}`
         }
-        primaryButtonText="Move Here"
-        primaryButtonIcon="arrow-forward"
+        primaryButtonText={fileManager.getIsInRecentlyDeleted() ? "Restore Here" : "Move Here"}
+        primaryButtonIcon={fileManager.getIsInRecentlyDeleted() ? "refresh" : "arrow-forward"}
         onPrimaryAction={handleMoveConfirm}
-        initialDirectory={fileManager.getFullPath()}
+        initialDirectory={
+          fileManager.getIsInRecentlyDeleted()
+            ? `${FileSystem.documentDirectory}recordings`
+            : fileManager.getFullPath()
+        }
         excludePath={selectedFolderForMove ? `${fileManager.getFullPath()}/${selectedFolderForMove.name}` : undefined}
         excludePaths={
           isMultiSelectMode && selectedItems.size > 0
