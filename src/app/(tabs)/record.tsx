@@ -1,3 +1,3 @@
-import RecordScreen from '@screens/RecordScreen'
+import RecordScreen from '../../screens/RecordScreen'
 
 export default RecordScreen

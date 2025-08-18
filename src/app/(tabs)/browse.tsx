@@ -1,3 +1,3 @@
-import BrowseScreen from '@screens/BrowseScreen'
+import BrowseScreen from '../../screens/BrowseScreen'
 
 export default BrowseScreen
