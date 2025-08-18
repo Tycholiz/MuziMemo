@@ -34,6 +34,7 @@ export type SyncContextActions = {
   clearCompletedItems: () => void
   refreshSyncQueue: () => void
   migrateToCloud: () => Promise<void>
+  syncAllPendingFiles: () => Promise<void>
 }
 
 export type SyncContextType = SyncContextState & SyncContextActions
@@ -195,6 +196,28 @@ export function SyncProvider({ children }: SyncProviderProps) {
     }
   }, [isMigrating])
 
+  const syncAllPendingFiles = useCallback(async () => {
+    if (!isSyncEnabled || !networkState.isConnected) {
+      console.log('📤 Sync not available - disabled or offline')
+      return
+    }
+
+    try {
+      console.log('🔄 Starting sync of all pending files...')
+
+      // Get all local recordings that haven't been synced yet
+      const results = await iCloudService.migrateLocalRecordingsToCloud()
+
+      console.log(`✅ Sync completed: ${results.success} files synced, ${results.failed.length} failed`)
+
+      if (results.failed.length > 0) {
+        console.warn('❌ Some files failed to sync:', results.failed)
+      }
+    } catch (error) {
+      console.error('❌ Failed to sync pending files:', error)
+    }
+  }, [isSyncEnabled, networkState.isConnected])
+
   const addToSyncQueue = useCallback(
     async (filePath: string) => {
       if (!isSyncEnabled) {
@@ -321,6 +344,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
     clearCompletedItems,
     refreshSyncQueue,
     migrateToCloud,
+    syncAllPendingFiles,
   }
 
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>

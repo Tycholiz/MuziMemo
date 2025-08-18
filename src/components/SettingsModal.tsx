@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 
 import { theme } from '../utils/theme'
 import { Toggle } from './Toggle'
+import { Button } from './Button'
 import { useSyncContext } from '../contexts/SyncContext'
 
 export type SettingsModalProps = {
@@ -17,6 +18,7 @@ export type SettingsModalProps = {
  */
 export const SettingsModal = React.memo(function SettingsModal({ visible, onClose }: SettingsModalProps) {
   const syncContext = useSyncContext()
+  const [isSyncing, setIsSyncing] = useState(false)
 
   const handleBackdropPress = () => {
     onClose()
@@ -32,6 +34,30 @@ export const SettingsModal = React.memo(function SettingsModal({ visible, onClos
     } catch (error) {
       console.error('Failed to toggle sync:', error)
       Alert.alert('Sync Error', 'Failed to update sync settings. Please try again.', [{ text: 'OK' }])
+    }
+  }
+
+  const handleManualSync = async () => {
+    if (!syncContext.isSyncEnabled || !syncContext.networkState.isConnected) {
+      Alert.alert(
+        'Sync Unavailable',
+        syncContext.isSyncEnabled
+          ? 'Please connect to the internet to sync your recordings.'
+          : 'Please enable iCloud sync first.',
+        [{ text: 'OK' }]
+      )
+      return
+    }
+
+    try {
+      setIsSyncing(true)
+      await syncContext.syncAllPendingFiles()
+      Alert.alert('Sync Complete', 'All recordings have been synced to iCloud.', [{ text: 'OK' }])
+    } catch (error) {
+      console.error('Manual sync failed:', error)
+      Alert.alert('Sync Failed', 'Failed to sync recordings. Please try again.', [{ text: 'OK' }])
+    } finally {
+      setIsSyncing(false)
     }
   }
 
@@ -72,7 +98,7 @@ export const SettingsModal = React.memo(function SettingsModal({ visible, onClos
                     testID="icloud-sync-toggle"
                   />
 
-                  {/* Sync Status */}
+                  {/* Sync Status and Manual Sync */}
                   {syncContext.isSyncEnabled && (
                     <View style={styles.syncStatus}>
                       <View style={styles.statusRow}>
@@ -101,6 +127,20 @@ export const SettingsModal = React.memo(function SettingsModal({ visible, onClos
                           </Text>
                         </View>
                       )}
+
+                      {/* Manual Sync Button */}
+                      <View style={styles.syncButtonContainer}>
+                        <Button
+                          title="Sync All Recordings"
+                          variant="secondary"
+                          size="small"
+                          icon="cloud-upload-outline"
+                          loading={isSyncing}
+                          disabled={!syncContext.networkState.isConnected || isSyncing}
+                          onPress={handleManualSync}
+                          fullWidth
+                        />
+                      </View>
                     </View>
                   )}
                 </View>
@@ -209,5 +249,12 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.text.secondary,
     marginLeft: theme.spacing.sm,
+  },
+
+  syncButtonContainer: {
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border.light,
   },
 })
