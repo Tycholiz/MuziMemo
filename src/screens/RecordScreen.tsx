@@ -307,18 +307,12 @@ export default function RecordScreen() {
         console.log('✅ Recording moved locally:', targetFilePath)
       }
 
-      // Add to sync queue if sync is enabled
+      // CRITICAL FIX: Do NOT sync immediately after recording
+      // This prevents file corruption during metadata extraction
+      // Files will be synced later when the user navigates or manually triggers sync
       if (syncContext.isSyncEnabled) {
-        try {
-          // Add a small delay to ensure file is completely written and stable
-          await new Promise(resolve => setTimeout(resolve, 500))
-
-          await syncContext.addToSyncQueue(targetFilePath)
-          console.log('☁️ Recording added to sync queue:', targetFilePath)
-        } catch (syncError) {
-          console.error('❌ Failed to add recording to sync queue:', syncError)
-          // Don't show error to user - sync will retry later
-        }
+        console.log('📝 Recording saved with sync enabled - will sync later to prevent corruption')
+        console.log('💡 File will be synced when user navigates or manually triggers sync')
       }
     } catch (error) {
       console.error('Failed to save recording:', error)
