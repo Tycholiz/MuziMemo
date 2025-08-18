@@ -6,7 +6,7 @@ import { getRecordingsDirectory, joinPath } from '../utils/pathUtils'
 // Enhanced file lock mechanism to prevent race conditions with audio player
 class FileLockManager {
   private locks = new Set<string>()
-  private audioPlayerFiles = new Set<string>() // Track files being used by audio player
+  private audioPlayerFiles = new Map<string, number>() // Track files with timestamps
 
   async withLock<T>(filePath: string, operation: () => Promise<T>): Promise<T> {
     const normalizedPath = filePath.replace('file://', '')
@@ -15,7 +15,8 @@ class FileLockManager {
       throw new Error(`File is currently locked: ${normalizedPath}`)
     }
 
-    if (this.audioPlayerFiles.has(normalizedPath)) {
+    // Check if file is locked by audio player with timeout
+    if (this.isAudioPlayerLocked(normalizedPath)) {
       throw new Error(`File is currently being used by audio player: ${normalizedPath}`)
     }
 
@@ -29,13 +30,32 @@ class FileLockManager {
 
   isLocked(filePath: string): boolean {
     const normalizedPath = filePath.replace('file://', '')
-    return this.locks.has(normalizedPath) || this.audioPlayerFiles.has(normalizedPath)
+    return this.locks.has(normalizedPath) || this.isAudioPlayerLocked(normalizedPath)
+  }
+
+  private isAudioPlayerLocked(normalizedPath: string): boolean {
+    if (!this.audioPlayerFiles.has(normalizedPath)) {
+      return false
+    }
+
+    const lockTime = this.audioPlayerFiles.get(normalizedPath)!
+    const now = Date.now()
+    const lockDuration = now - lockTime
+
+    // TIMEOUT FIX: Auto-release audio locks after 5 minutes
+    if (lockDuration > 5 * 60 * 1000) { // 5 minutes
+      console.warn(`⏰ Audio player lock timeout for file: ${normalizedPath} (${lockDuration}ms)`)
+      this.audioPlayerFiles.delete(normalizedPath)
+      return false
+    }
+
+    return true
   }
 
   // Methods for audio player to register/unregister file usage
   registerAudioPlayerFile(filePath: string): void {
     const normalizedPath = filePath.replace('file://', '')
-    this.audioPlayerFiles.add(normalizedPath)
+    this.audioPlayerFiles.set(normalizedPath, Date.now())
     console.log('🔒 Audio player registered file:', normalizedPath)
   }
 
@@ -46,7 +66,14 @@ class FileLockManager {
   }
 
   getAudioPlayerFiles(): string[] {
-    return Array.from(this.audioPlayerFiles)
+    // Clean up expired locks before returning
+    const now = Date.now()
+    for (const [path, lockTime] of this.audioPlayerFiles.entries()) {
+      if (now - lockTime > 5 * 60 * 1000) { // 5 minutes
+        this.audioPlayerFiles.delete(path)
+      }
+    }
+    return Array.from(this.audioPlayerFiles.keys())
   }
 }
 
@@ -272,7 +299,7 @@ class iCloudServiceClass {
       if (exists) {
         try {
           const directory = cloudPath.substring(0, cloudPath.lastIndexOf('/'))
-          const files = await CloudStorage.listFiles(directory || '', 'documents')
+          const files = await CloudStorage.readdir(directory || '/', 'documents')
           const fileName = cloudPath.substring(cloudPath.lastIndexOf('/') + 1)
           const actuallyExists = files.includes(fileName)
           console.log(`🔍 Directory listing verification for "${fileName}": ${actuallyExists}`, files)
@@ -301,7 +328,7 @@ class iCloudServiceClass {
 
       if (Platform.OS !== 'ios') return []
 
-      return await CloudStorage.listFiles(cloudPath || '', 'documents')
+      return await CloudStorage.readdir(cloudPath || '/', 'documents')
     } catch (error) {
       console.error('❌ Error listing iCloud files:', error)
       return []

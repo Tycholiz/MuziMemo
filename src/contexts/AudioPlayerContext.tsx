@@ -79,6 +79,18 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
             console.log('🎵 AudioPlayerContext: Audio completed - setting hasCompleted=true, isPlayingOverride=false')
             setHasCompleted(true)
             setIsPlayingOverride(false) // Stop playing when audio completes
+
+            // CRITICAL FIX: Release file lock when audio completes
+            if (currentClip) {
+              fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+              console.log('🔓 Released file lock after audio completion:', currentClip.uri)
+
+              // Trigger sync retry for this file after a short delay
+              setTimeout(() => {
+                console.log('🔄 Triggering sync retry after audio completion:', currentClip.uri)
+                // Note: We'll implement this trigger in the sync context
+              }, 1000)
+            }
           }
         }, 16) // 16ms = ~60 FPS for smooth animation
       }
@@ -332,6 +344,18 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         console.log('🎵 AudioPlayerContext: Audio completion detected via playing state change')
         setHasCompleted(true)
         setIsPlayingOverride(false)
+
+        // CRITICAL FIX: Release file lock when audio completes via state change
+        if (currentClip) {
+          fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+          console.log('🔓 Released file lock after audio completion (state change):', currentClip.uri)
+
+          // Trigger sync retry for this file after a short delay
+          setTimeout(() => {
+            console.log('🔄 Triggering sync retry after audio completion (state change):', currentClip.uri)
+            // Note: We'll implement this trigger in the sync context
+          }, 1000)
+        }
       }
     }
 

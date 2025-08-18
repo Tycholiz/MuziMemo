@@ -20,7 +20,7 @@ declare module 'react-native-cloud-storage' {
     static readFile(path: string, scope: string, options?: ReadFileOptions): Promise<string>
     static exists(path: string, scope: string): Promise<boolean>
     static deleteFile(path: string, scope: string): Promise<void>
-    static listFiles(path: string, scope: string): Promise<string[]>
+    static readdir(path: string, scope: string): Promise<string[]>
     static getProvider(): CloudStorageProvider
     static setProviderOptions(options: any): void
   }
