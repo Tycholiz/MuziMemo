@@ -62,6 +62,7 @@ export { fileLockManager }
 class iCloudServiceClass {
   private static instance: iCloudServiceClass
   private isInitialized = false
+  private isMigrating = false // Prevent concurrent migrations
 
   private constructor() {}
 
@@ -264,7 +265,27 @@ class iCloudServiceClass {
 
       if (Platform.OS !== 'ios') return false
 
-      return await CloudStorage.exists(cloudPath, 'documents')
+      const exists = await CloudStorage.exists(cloudPath, 'documents')
+      console.log(`🔍 iCloud exists check for "${cloudPath}": ${exists}`)
+
+      // DEBUGGING: If file exists, also list the directory to verify
+      if (exists) {
+        try {
+          const directory = cloudPath.substring(0, cloudPath.lastIndexOf('/'))
+          const files = await CloudStorage.listFiles(directory || '', 'documents')
+          const fileName = cloudPath.substring(cloudPath.lastIndexOf('/') + 1)
+          const actuallyExists = files.includes(fileName)
+          console.log(`🔍 Directory listing verification for "${fileName}": ${actuallyExists}`, files)
+
+          if (exists !== actuallyExists) {
+            console.warn(`⚠️ INCONSISTENCY: exists() returned ${exists} but file not in directory listing!`)
+          }
+        } catch (listError) {
+          console.warn('🔍 Could not verify with directory listing:', listError)
+        }
+      }
+
+      return exists
     } catch (error) {
       console.error('❌ Error checking file existence in iCloud:', error)
       return false
@@ -332,11 +353,18 @@ class iCloudServiceClass {
    * Migrate all local recordings to iCloud
    */
   async migrateLocalRecordingsToCloud(): Promise<{ success: number; failed: string[] }> {
+    // CRITICAL FIX: Prevent concurrent migrations that could interfere with each other
+    if (this.isMigrating) {
+      console.log('☁️ Migration already in progress, skipping concurrent request')
+      return { success: 0, failed: [] }
+    }
+
+    this.isMigrating = true
     const results = { success: 0, failed: [] as string[] }
 
     try {
       await this.initialize()
-      
+
       if (Platform.OS !== 'ios') {
         throw new Error('iCloud migration is only available on iOS')
       }
@@ -351,12 +379,26 @@ class iCloudServiceClass {
       for (const localPath of filesToMigrate) {
         try {
           const cloudPath = this.getCloudPath(localPath)
-          
+
+          // CRITICAL FIX: Check if file is currently being synced by another process
+          if (fileLockManager.isLocked(localPath)) {
+            console.log('🔒 File is currently being synced by another process, skipping:', localPath)
+            continue
+          }
+
           // Check if file already exists in iCloud
           const existsInCloud = await this.exists(cloudPath)
           if (existsInCloud) {
             console.log('☁️ File already exists in iCloud, skipping:', cloudPath)
             results.success++
+            continue
+          }
+
+          // CRITICAL FIX: Verify local file still exists before attempting sync
+          const localFileInfo = await FileSystem.getInfoAsync(localPath)
+          if (!localFileInfo.exists) {
+            console.warn('📁 Local file disappeared before migration, skipping:', localPath)
+            results.failed.push(localPath)
             continue
           }
 
@@ -374,6 +416,8 @@ class iCloudServiceClass {
     } catch (error) {
       console.error('❌ Migration failed:', error)
       throw error
+    } finally {
+      this.isMigrating = false // Always reset migration flag
     }
   }
 
