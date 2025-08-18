@@ -117,9 +117,19 @@ describe('formatUtils', () => {
     })
 
     it('should return formatted date for older dates', () => {
-      const oldDate = new Date('2023-01-15')
+      // Use timezone-agnostic date creation to avoid CI/local environment differences
+      const oldDate = new Date(2023, 0, 15) // January 15, 2023 (month is 0-indexed)
       const result = formatDateSmart(oldDate)
-      expect(result).toBe('Jan 14, 2023')
+      expect(result).toBe('Jan 15, 2023')
+    })
+
+    it('should handle different months and years correctly', () => {
+      // Test various dates using timezone-agnostic constructor
+      const marchDate = new Date(2022, 2, 10) // March 10, 2022
+      expect(formatDateSmart(marchDate)).toBe('Mar 10, 2022')
+
+      const decemberDate = new Date(2021, 11, 25) // December 25, 2021
+      expect(formatDateSmart(decemberDate)).toBe('Dec 25, 2021')
     })
 
     it('should handle different times on same day as today', () => {

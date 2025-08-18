@@ -769,6 +769,122 @@ export function FileSystemComponent() {
     setShowMoveModal(true)
   }, [selectedItems, fileManager])
 
+  const handleMultiSelectDelete = useCallback(() => {
+    if (selectedItems.size === 0) return
+
+    // Build list of items to delete
+    const itemsToDelete: { name: string; type: 'folder' | 'audio'; data: FolderData | AudioFileData }[] = []
+
+    selectedItems.forEach(itemId => {
+      if (itemId.startsWith('folder-')) {
+        const folderName = itemId.replace('folder-', '')
+        const folder = folders.find(f => f.name === folderName)
+        if (folder) {
+          itemsToDelete.push({ name: folderName, type: 'folder', data: folder })
+        }
+      } else if (itemId.startsWith('audio-')) {
+        const fileName = itemId.replace('audio-', '')
+        const audioFile = audioFiles.find(f => f.name === fileName)
+        if (audioFile) {
+          itemsToDelete.push({ name: fileName, type: 'audio', data: audioFile })
+        }
+      }
+    })
+
+    // Build confirmation message
+    const itemCount = itemsToDelete.length
+    const itemText = itemCount === 1 ? 'item' : 'items'
+    const actionText = fileManager.getIsInRecentlyDeleted() ? 'permanently delete' : 'delete'
+
+    let message = `Are you sure you want to ${actionText} ${itemCount === 1 ? 'this' : 'these'} ${itemText}:\n\n`
+
+    itemsToDelete.forEach(item => {
+      const suffix = item.type === 'folder' ? ' (and all its contents)' : ''
+      message += `• ${item.name}${suffix}\n`
+    })
+
+    const alertTitle = fileManager.getIsInRecentlyDeleted() ? 'Permanently Delete Items' : 'Delete Items'
+    const buttonText = fileManager.getIsInRecentlyDeleted() ? 'Permanently Delete' : 'Delete'
+
+    Alert.alert(alertTitle, message.trim(), [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: buttonText,
+        style: 'destructive',
+        onPress: async () => {
+          const isInRecentlyDeletedFolder = fileManager.getIsInRecentlyDeleted()
+          const fullPath = fileManager.getFullPath()
+          let totalMovedAudioFiles = 0
+
+          // Optimistic updates: remove items from state immediately
+          const foldersToRemove = itemsToDelete.filter(item => item.type === 'folder').map(item => item.data as FolderData)
+          const audioFilesToRemove = itemsToDelete.filter(item => item.type === 'audio').map(item => item.data as AudioFileData)
+
+          setFolders(prev => prev.filter(f => !foldersToRemove.some(folder => folder.id === f.id)))
+          setAudioFiles(prev => prev.filter(f => !audioFilesToRemove.some(audioFile => audioFile.id === f.id)))
+
+          // Process deletions
+          const failedItems: string[] = []
+
+          for (const item of itemsToDelete) {
+            try {
+              if (item.type === 'folder') {
+                const folderPath = `${fullPath}/${item.name}`
+                const movedAudioCount = await deleteFolderAndMoveAudioFiles(folderPath, item.name)
+                totalMovedAudioFiles += movedAudioCount
+              } else {
+                const audioFile = item.data as AudioFileData
+                const filePath = `${fullPath}/${item.name}`
+
+                // Stop playback if this file is currently playing
+                if (audioPlayer.currentClip?.id === audioFile.id) {
+                  audioPlayer.cleanup()
+                }
+
+                if (isInRecentlyDeletedFolder) {
+                  // Permanently delete from recently-deleted
+                  await FileSystem.deleteAsync(filePath)
+                } else {
+                  // Move to recently-deleted instead of permanent deletion
+                  await moveToRecentlyDeleted(filePath, item.name)
+                }
+              }
+            } catch (error) {
+              console.error(`Failed to delete ${item.type} ${item.name}:`, error)
+              failedItems.push(item.name)
+            }
+          }
+
+          // Show success message if audio files were moved
+          if (totalMovedAudioFiles > 0) {
+            const fileText = totalMovedAudioFiles === 1 ? 'audio file' : 'audio files'
+            Toast.show({
+              type: 'success',
+              text1: `Items deleted`,
+              text2: `${totalMovedAudioFiles} ${fileText} moved to Recently Deleted`,
+              visibilityTime: 4000,
+            })
+          }
+
+          // Handle failed items by rolling back their state
+          if (failedItems.length > 0) {
+            const failedFolders = foldersToRemove.filter(folder => failedItems.includes(folder.name))
+            const failedAudioFiles = audioFilesToRemove.filter(audioFile => failedItems.includes(audioFile.name))
+
+            setFolders(prev => [...prev, ...failedFolders])
+            setAudioFiles(prev => [...prev, ...failedAudioFiles])
+
+            Alert.alert('Error', `Failed to delete ${failedItems.length} item(s): ${failedItems.join(', ')}`)
+          }
+
+          // Exit multi-select mode
+          setIsMultiSelectMode(false)
+          setSelectedItems(new Set())
+        },
+      },
+    ])
+  }, [selectedItems, folders, audioFiles, fileManager, audioPlayer])
+
   if (fileManager.isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -811,6 +927,7 @@ export function FileSystemComponent() {
           selectedCount={selectedItems.size}
           onCancel={handleMultiSelectCancel}
           onMove={handleMultiSelectMove}
+          onDelete={handleMultiSelectDelete}
         />
       )}
 
