@@ -307,12 +307,22 @@ export default function RecordScreen() {
         console.log('✅ Recording moved locally:', targetFilePath)
       }
 
-      // CRITICAL FIX: Do NOT sync immediately after recording
-      // This prevents file corruption during metadata extraction
-      // Files will be synced later when the user navigates or manually triggers sync
+      // Automatic background sync with delay to prevent corruption
       if (syncContext.isSyncEnabled) {
-        console.log('📝 Recording saved with sync enabled - will sync later to prevent corruption')
-        console.log('💡 File will be synced when user navigates or manually triggers sync')
+        console.log('📝 Recording saved with sync enabled - scheduling automatic sync in 5 seconds')
+
+        // Schedule automatic sync after 5-second delay
+        // This ensures AudioMetadataService has time to extract metadata
+        // and the file is fully written before sync begins
+        setTimeout(async () => {
+          try {
+            await syncContext.addToSyncQueue(targetFilePath)
+            console.log('☁️ Recording automatically added to sync queue:', targetFilePath)
+          } catch (syncError) {
+            console.error('❌ Failed to add recording to automatic sync queue:', syncError)
+            // Don't show error to user - periodic background sync will retry
+          }
+        }, 5000) // 5-second delay
       }
     } catch (error) {
       console.error('Failed to save recording:', error)

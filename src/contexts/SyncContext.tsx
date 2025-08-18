@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
-import { Platform, Alert } from 'react-native'
+import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
+import { Platform, Alert, AppState, AppStateStatus } from 'react-native'
 import NetInfo from '@react-native-community/netinfo'
 import { useIsCloudAvailable } from 'react-native-cloud-storage'
 import { saveSyncEnabled, loadSyncEnabled } from '../utils/storageUtils'
@@ -24,6 +24,7 @@ export type SyncContextState = {
   isLoading: boolean
   isCloudAvailable: boolean
   isMigrating: boolean
+  isBackgroundSyncing: boolean
 }
 
 export type SyncContextActions = {
@@ -61,9 +62,16 @@ export function SyncProvider({ children }: SyncProviderProps) {
   const [syncQueue, setSyncQueue] = useState<SyncQueueItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isMigrating, setIsMigrating] = useState(false)
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false)
 
   // Use the cloud availability hook
   const isCloudAvailable = useIsCloudAvailable()
+
+  // Ref to store the background sync interval
+  const backgroundSyncIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Track app state for background sync management
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState)
 
   // Initialize sync context with network monitoring and iCloud setup
   useEffect(() => {
@@ -196,6 +204,48 @@ export function SyncProvider({ children }: SyncProviderProps) {
     }
   }, [isMigrating])
 
+  const refreshSyncQueue = useCallback(async () => {
+    if (!isSyncEnabled || !networkState.isConnected) return
+
+    const pendingItems = syncQueue.filter(item =>
+      item.status === 'pending' || item.status === 'failed'
+    )
+
+    for (const item of pendingItems) {
+      try {
+        setSyncQueue(prev => prev.map(queueItem =>
+          queueItem.id === item.id
+            ? { ...queueItem, status: 'syncing' as const }
+            : queueItem
+        ))
+
+        await iCloudService.copyFileToCloud(item.localPath, item.relativePath)
+
+        setSyncQueue(prev => prev.map(queueItem =>
+          queueItem.id === item.id
+            ? { ...queueItem, status: 'synced' as const }
+            : queueItem
+        ))
+
+        console.log('✅ Synced queued file:', item.localPath)
+      } catch (error) {
+        console.error('❌ Failed to sync queued file:', error)
+
+        setSyncQueue(prev => prev.map(queueItem =>
+          queueItem.id === item.id
+            ? {
+                ...queueItem,
+                status: 'failed' as const,
+                retryCount: queueItem.retryCount + 1,
+                lastAttempt: new Date(),
+                error: error instanceof Error ? error.message : 'Unknown error'
+              }
+            : queueItem
+        ))
+      }
+    }
+  }, [isSyncEnabled, networkState.isConnected, syncQueue])
+
   const syncAllPendingFiles = useCallback(async () => {
     if (!isSyncEnabled || !networkState.isConnected) {
       console.log('📤 Sync not available - disabled or offline')
@@ -217,6 +267,97 @@ export function SyncProvider({ children }: SyncProviderProps) {
       console.error('❌ Failed to sync pending files:', error)
     }
   }, [isSyncEnabled, networkState.isConnected])
+
+  // Background sync function - scans for unsynced files and retries failed syncs
+  const performBackgroundSync = useCallback(async () => {
+    if (!isSyncEnabled || !networkState.isConnected || isBackgroundSyncing) {
+      return
+    }
+
+    try {
+      setIsBackgroundSyncing(true)
+      console.log('🔄 Starting background sync...')
+
+      // First, retry any failed or pending items in the sync queue
+      const pendingItems = syncQueue.filter(item =>
+        item.status === 'pending' || item.status === 'failed'
+      )
+
+      if (pendingItems.length > 0) {
+        console.log(`🔄 Retrying ${pendingItems.length} pending/failed sync items`)
+        await refreshSyncQueue()
+      }
+
+      // Then, scan for any unsynced files that might have been missed
+      // This is a fallback to catch any files that weren't added to the queue
+      try {
+        const results = await iCloudService.migrateLocalRecordingsToCloud()
+        if (results.success > 0) {
+          console.log(`✅ Background sync: ${results.success} additional files synced`)
+        }
+        if (results.failed.length > 0) {
+          console.warn(`❌ Background sync: ${results.failed.length} files failed`)
+        }
+      } catch (migrationError) {
+        console.warn('Background sync migration check failed:', migrationError)
+      }
+
+    } catch (error) {
+      console.error('❌ Background sync failed:', error)
+    } finally {
+      setIsBackgroundSyncing(false)
+    }
+  }, [isSyncEnabled, networkState.isConnected, isBackgroundSyncing, syncQueue, refreshSyncQueue])
+
+  // Handle app state changes for background sync management
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      const previousAppState = appStateRef.current
+      appStateRef.current = nextAppState
+
+      if (previousAppState === 'background' && nextAppState === 'active') {
+        // App came to foreground - trigger immediate background sync
+        console.log('📱 App came to foreground - triggering sync check')
+        if (isSyncEnabled && networkState.isConnected) {
+          // Small delay to let the app settle
+          setTimeout(() => {
+            performBackgroundSync()
+          }, 1000)
+        }
+      }
+    }
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange)
+
+    return () => {
+      subscription?.remove()
+    }
+  }, [isSyncEnabled, networkState.isConnected, performBackgroundSync])
+
+  // Setup periodic background sync
+  useEffect(() => {
+    // Clear any existing interval
+    if (backgroundSyncIntervalRef.current) {
+      clearInterval(backgroundSyncIntervalRef.current)
+    }
+
+    // Start background sync if conditions are met
+    if (isSyncEnabled && networkState.isConnected) {
+      console.log('🔄 Starting periodic background sync (every 10 seconds)')
+
+      backgroundSyncIntervalRef.current = setInterval(() => {
+        performBackgroundSync()
+      }, 10000) // 10 seconds
+    }
+
+    // Cleanup function
+    return () => {
+      if (backgroundSyncIntervalRef.current) {
+        clearInterval(backgroundSyncIntervalRef.current)
+        backgroundSyncIntervalRef.current = null
+      }
+    }
+  }, [isSyncEnabled, networkState.isConnected, performBackgroundSync])
 
   const addToSyncQueue = useCallback(
     async (filePath: string) => {
@@ -274,48 +415,6 @@ export function SyncProvider({ children }: SyncProviderProps) {
     console.log('🧹 Cleared completed sync items')
   }, [])
 
-  const refreshSyncQueue = useCallback(async () => {
-    if (!isSyncEnabled || !networkState.isConnected) return
-
-    const pendingItems = syncQueue.filter(item =>
-      item.status === 'pending' || item.status === 'failed'
-    )
-
-    for (const item of pendingItems) {
-      try {
-        setSyncQueue(prev => prev.map(queueItem =>
-          queueItem.id === item.id
-            ? { ...queueItem, status: 'syncing' as const }
-            : queueItem
-        ))
-
-        await iCloudService.copyFileToCloud(item.localPath, item.relativePath)
-
-        setSyncQueue(prev => prev.map(queueItem =>
-          queueItem.id === item.id
-            ? { ...queueItem, status: 'synced' as const }
-            : queueItem
-        ))
-
-        console.log('✅ Synced queued file:', item.localPath)
-      } catch (error) {
-        console.error('❌ Failed to sync queued file:', error)
-
-        setSyncQueue(prev => prev.map(queueItem =>
-          queueItem.id === item.id
-            ? {
-                ...queueItem,
-                status: 'failed' as const,
-                retryCount: queueItem.retryCount + 1,
-                lastAttempt: new Date(),
-                error: error instanceof Error ? error.message : 'Unknown error'
-              }
-            : queueItem
-        ))
-      }
-    }
-  }, [isSyncEnabled, networkState.isConnected, syncQueue])
-
   // Auto-refresh sync queue when network comes back online
   useEffect(() => {
     if (networkState.isConnected && isSyncEnabled && syncQueue.length > 0) {
@@ -335,6 +434,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
     isLoading,
     isCloudAvailable,
     isMigrating,
+    isBackgroundSyncing,
 
     // Actions
     enableSync,

@@ -114,6 +114,17 @@ export const SettingsModal = React.memo(function SettingsModal({ visible, onClos
                         </Text>
                       </View>
 
+                      {/* Background sync status */}
+                      {syncContext.isBackgroundSyncing && (
+                        <View style={styles.statusRow}>
+                          <Ionicons name="sync-outline" size={16} color={theme.colors.primary} />
+                          <Text style={[styles.statusText, { color: theme.colors.primary }]}>
+                            Background sync active
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Pending files count */}
                       {syncContext.syncQueue.length > 0 && (
                         <View style={styles.statusRow}>
                           <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.text.tertiary} />
@@ -128,10 +139,13 @@ export const SettingsModal = React.memo(function SettingsModal({ visible, onClos
                         </View>
                       )}
 
-                      {/* Manual Sync Button */}
+                      {/* Manual Sync Button - Backup option */}
                       <View style={styles.syncButtonContainer}>
+                        <Text style={styles.syncButtonDescription}>
+                          Recordings sync automatically. Use this button if you need to force sync all files immediately.
+                        </Text>
                         <Button
-                          title="Sync All Recordings"
+                          title="Force Sync All"
                           variant="secondary"
                           size="small"
                           icon="cloud-upload-outline"
@@ -256,5 +270,12 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border.light,
+  },
+
+  syncButtonDescription: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.text.tertiary,
+    marginBottom: theme.spacing.sm,
+    lineHeight: theme.typography.lineHeight.normal * theme.typography.fontSize.sm,
   },
 })
