@@ -171,6 +171,20 @@ class iCloudServiceClass {
           // Try checking the plain file path as well
           fileInfo = await FileSystem.getInfoAsync(plainFilePath)
           if (!fileInfo.exists) {
+            // DEBUGGING: List directory contents to see what files actually exist
+            try {
+              const directory = plainFilePath.substring(0, plainFilePath.lastIndexOf('/'))
+              const dirContents = await FileSystem.readDirectoryAsync(directory)
+              console.log(`🔍 Directory contents for ${directory}:`, dirContents)
+
+              // Check if file exists with a different name
+              const fileName = plainFilePath.substring(plainFilePath.lastIndexOf('/') + 1)
+              const similarFiles = dirContents.filter(file => file.includes('Recording'))
+              console.log(`🔍 Looking for file: ${fileName}, similar files found:`, similarFiles)
+            } catch (dirError) {
+              console.log('🔍 Could not read directory for debugging:', dirError)
+            }
+
             throw new Error(`Local file does not exist at either path: ${localPath} or ${plainFilePath}`)
           }
         }

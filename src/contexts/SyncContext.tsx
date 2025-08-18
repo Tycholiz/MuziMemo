@@ -433,6 +433,13 @@ export function SyncProvider({ children }: SyncProviderProps) {
         return
       }
 
+      // CRITICAL FIX: Check if file is already in sync queue to prevent duplicates
+      const existingItem = syncQueue.find(item => item.localPath === filePath)
+      if (existingItem) {
+        console.log('📤 File already in sync queue, skipping:', filePath, 'Status:', existingItem.status)
+        return
+      }
+
       if (!networkState.isConnected) {
         // Add to queue for later sync when network is available
         const queueItem: SyncQueueItem = {

@@ -285,6 +285,7 @@ export default function RecordScreen() {
       const targetFilePath = joinPath(targetFolderPath, fileName)
 
       console.log('🎵 saveRecordingToFolder:', {
+        recordingUri,
         selectedFolderPath,
         targetFolderPath,
         targetFilePath,
@@ -307,6 +308,20 @@ export default function RecordScreen() {
         console.log('✅ Recording moved locally:', targetFilePath)
       }
 
+      // CRITICAL FIX: Add small delay to ensure file system operations complete
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // CRITICAL FIX: Verify the file was actually saved before proceeding
+      const savedFileInfo = await FileSystem.getInfoAsync(targetFilePath)
+      if (!savedFileInfo.exists) {
+        throw new Error(`Failed to save recording - file does not exist at target path: ${targetFilePath}`)
+      }
+      console.log('✅ Verified file saved successfully:', {
+        path: targetFilePath,
+        size: savedFileInfo.size,
+        exists: savedFileInfo.exists
+      })
+
       // Automatic background sync with delay to prevent corruption
       if (syncContext.isSyncEnabled) {
         console.log('📝 Recording saved with sync enabled - scheduling automatic sync in 5 seconds')
@@ -316,6 +331,18 @@ export default function RecordScreen() {
         // and the file is fully written before sync begins
         setTimeout(async () => {
           try {
+            // CRITICAL FIX: Verify file still exists before attempting sync
+            const preSyncFileInfo = await FileSystem.getInfoAsync(targetFilePath)
+            if (!preSyncFileInfo.exists) {
+              console.error('❌ File disappeared before sync could start:', targetFilePath)
+              return
+            }
+            console.log('✅ File verified before sync:', {
+              path: targetFilePath,
+              size: preSyncFileInfo.size,
+              exists: preSyncFileInfo.exists
+            })
+
             await syncContext.addToSyncQueue(targetFilePath)
             console.log('☁️ Recording automatically added to sync queue:', targetFilePath)
           } catch (syncError) {
