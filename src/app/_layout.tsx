@@ -1,10 +1,29 @@
 import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import Toast from 'react-native-toast-message'
 import { StyleSheet, View, Platform } from 'react-native'
 
 import { AppProviders } from '../contexts/AppProviders'
 import { toastConfig } from '../components/CustomToast'
+
+// Conditionally import Toast with web fallback
+let Toast: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    Toast = require('react-native-toast-message').default
+  } catch (error) {
+    console.warn('react-native-toast-message not available:', error)
+  }
+} else {
+  // Web fallback for Toast
+  Toast = {
+    show: (_options: any) => {
+      // Web fallback - could implement web toast here
+      console.log('Toast not available on web')
+    },
+    hide: () => {},
+  }
+}
 
 // Conditionally import GestureHandlerRootView only on native platforms
 let GestureHandlerRootView: any = View
@@ -28,7 +47,7 @@ export default function RootLayout() {
       <AppProviders>
         <StatusBar style="auto" />
         <Slot />
-        <Toast config={toastConfig} />
+        {Toast && <Toast config={toastConfig} />}
       </AppProviders>
     </GestureHandlerRootView>
   )

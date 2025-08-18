@@ -1,6 +1,35 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
-import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
+
+// Conditionally import expo-audio with web fallbacks
+let useAudioPlayer: any = null
+let setAudioModeAsync: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    const expoAudio = require('expo-audio')
+    useAudioPlayer = expoAudio.useAudioPlayer
+    setAudioModeAsync = expoAudio.setAudioModeAsync
+  } catch (error) {
+    console.warn('expo-audio not available:', error)
+  }
+} else {
+  // Web fallbacks for audio functionality
+  useAudioPlayer = () => ({
+    playing: false,
+    duration: 0,
+    currentTime: 0,
+    play: async () => {},
+    pause: () => {},
+    stop: () => {},
+    seekTo: (_position: number) => {},
+    replace: async (_source: any) => {},
+  })
+
+  setAudioModeAsync = async (_options: any) => {
+    // Web fallback - no-op
+  }
+}
 
 export type AudioClip = {
   id: string

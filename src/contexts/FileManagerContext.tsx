@@ -1,6 +1,22 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react'
-import * as FileSystem from 'expo-file-system'
+import { Platform } from 'react-native'
 import { getRecentlyDeletedDirectory } from '../utils/recentlyDeletedUtils'
+
+// Conditionally import expo-file-system with web fallback
+let FileSystem: any = null
+
+if (Platform.OS !== 'web') {
+  try {
+    FileSystem = require('expo-file-system')
+  } catch (error) {
+    console.warn('expo-file-system not available:', error)
+  }
+} else {
+  // Web fallback for FileSystem
+  FileSystem = {
+    documentDirectory: '/muzimemo/',
+  }
+}
 
 export type FileManagerState = {
   currentPath: string[]
