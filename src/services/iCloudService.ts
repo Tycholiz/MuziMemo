@@ -82,6 +82,8 @@ class iCloudServiceClass {
    *
    * CRITICAL: This method handles binary audio files (.m4a) which must preserve
    * their exact binary structure to maintain playability and metadata.
+   *
+   * FIXED: Use uploadFile() instead of writeFile() for binary files to prevent corruption.
    */
   async copyFileToCloud(localPath: string, cloudPath: string): Promise<void> {
     try {
@@ -108,24 +110,18 @@ class iCloudServiceClass {
       // Add a small delay to ensure file is completely written
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // Read the audio file as Base64 to preserve binary data integrity
-      const fileContent = await FileSystem.readAsStringAsync(localPath, {
-        encoding: FileSystem.EncodingType.Base64,
-      })
+      // CRITICAL FIX: Use uploadFile() for binary files instead of writeFile()
+      // This preserves binary integrity and handles MIME types correctly
+      await CloudStorage.uploadFile(
+        cloudPath,           // remotePath
+        localPath,           // localPath
+        { mimeType: 'audio/mp4' }, // options with correct MIME type for M4A
+        'documents'          // scope
+      )
 
-      console.log('📖 Read file content, Base64 length:', fileContent.length)
-
-      // Validate that we got valid Base64 content
-      if (!fileContent || fileContent.length === 0) {
-        throw new Error('Failed to read file content or file is empty')
-      }
-
-      // Write to iCloud - let the library handle the Base64 content natively
-      await CloudStorage.writeFile(cloudPath, fileContent, 'documents')
-
-      console.log('☁️ Successfully copied file to iCloud:', { localPath, cloudPath })
+      console.log('☁️ Successfully uploaded file to iCloud:', { localPath, cloudPath })
     } catch (error) {
-      console.error('❌ Failed to copy file to iCloud:', error)
+      console.error('❌ Failed to upload file to iCloud:', error)
       throw error
     }
   }
