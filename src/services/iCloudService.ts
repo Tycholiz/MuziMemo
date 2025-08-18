@@ -3,6 +3,33 @@ import { CloudStorage } from 'react-native-cloud-storage'
 import * as FileSystem from 'expo-file-system'
 import { getRecordingsDirectory, joinPath } from '../utils/pathUtils'
 
+// Simple file lock mechanism to prevent race conditions
+class FileLockManager {
+  private locks = new Set<string>()
+
+  async withLock<T>(filePath: string, operation: () => Promise<T>): Promise<T> {
+    const normalizedPath = filePath.replace('file://', '')
+
+    if (this.locks.has(normalizedPath)) {
+      throw new Error(`File is currently locked: ${normalizedPath}`)
+    }
+
+    this.locks.add(normalizedPath)
+    try {
+      return await operation()
+    } finally {
+      this.locks.delete(normalizedPath)
+    }
+  }
+
+  isLocked(filePath: string): boolean {
+    const normalizedPath = filePath.replace('file://', '')
+    return this.locks.has(normalizedPath)
+  }
+}
+
+const fileLockManager = new FileLockManager()
+
 /**
  * iCloud Service for managing cloud storage operations
  * Provides abstraction layer for iCloud file operations
@@ -84,55 +111,100 @@ class iCloudServiceClass {
    * their exact binary structure to maintain playability and metadata.
    *
    * FIXED: Use uploadFile() instead of writeFile() for binary files to prevent corruption.
+   * FIXED: Handle race conditions with audio player and file locking.
+   * FIXED: Implement file locking to prevent concurrent access conflicts.
    */
   async copyFileToCloud(localPath: string, cloudPath: string): Promise<void> {
-    try {
-      await this.initialize()
+    // Use file lock to prevent race conditions with audio player
+    return fileLockManager.withLock(localPath, async () => {
+    const maxRetries = 3
+    let lastError: Error | null = null
 
-      if (Platform.OS !== 'ios') {
-        throw new Error('iCloud is only available on iOS')
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.initialize()
+
+        if (Platform.OS !== 'ios') {
+          throw new Error('iCloud is only available on iOS')
+        }
+
+        console.log(`🔄 Starting iCloud copy process (attempt ${attempt}/${maxRetries}):`, { localPath, cloudPath })
+
+        // CRITICAL FIX: Convert file:// URI to plain file system path
+        // react-native-cloud-storage expects plain paths, not file:// URIs
+        const plainFilePath = localPath.startsWith('file://')
+          ? localPath.replace('file://', '')
+          : localPath
+
+        console.log('🔧 Converted file path:', { original: localPath, converted: plainFilePath })
+
+        // RACE CONDITION FIX: Verify file exists with multiple checks
+        // This handles cases where audio player may temporarily lock the file
+        let fileInfo = await FileSystem.getInfoAsync(localPath)
+
+        if (!fileInfo.exists) {
+          // Try checking the plain file path as well
+          fileInfo = await FileSystem.getInfoAsync(plainFilePath)
+          if (!fileInfo.exists) {
+            throw new Error(`Local file does not exist at either path: ${localPath} or ${plainFilePath}`)
+          }
+        }
+
+        console.log('📁 Local file info:', {
+          exists: fileInfo.exists,
+          size: fileInfo.size,
+          isDirectory: fileInfo.isDirectory,
+          attempt
+        })
+
+        // RACE CONDITION FIX: Add progressive delay to avoid conflicts with audio player
+        const delay = attempt * 200 // 200ms, 400ms, 600ms
+        await new Promise(resolve => setTimeout(resolve, delay))
+
+        // RACE CONDITION FIX: Verify file is still accessible before upload
+        const finalCheck = await FileSystem.getInfoAsync(plainFilePath)
+        if (!finalCheck.exists) {
+          throw new Error(`File disappeared before upload: ${plainFilePath}`)
+        }
+
+        // CRITICAL FIX: Use uploadFile() for binary files instead of writeFile()
+        // This preserves binary integrity and handles MIME types correctly
+        // Use the converted plain file path for react-native-cloud-storage
+        await CloudStorage.uploadFile(
+          cloudPath,           // remotePath
+          plainFilePath,       // localPath (converted from file:// URI)
+          { mimeType: 'audio/mp4' }, // options with correct MIME type for M4A
+          'documents'          // scope
+        )
+
+        console.log(`☁️ Successfully uploaded file to iCloud (attempt ${attempt}):`, { localPath, cloudPath })
+        return // Success - exit retry loop
+
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        console.error(`❌ Failed to upload file to iCloud (attempt ${attempt}/${maxRetries}):`, lastError.message)
+
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          break
+        }
+
+        // For certain errors, don't retry
+        if (lastError.message.includes('iCloud is only available on iOS') ||
+            lastError.message.includes('not initialized')) {
+          break
+        }
+
+        // Wait before retrying (exponential backoff)
+        const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 5000) // 1s, 2s, 4s (max 5s)
+        console.log(`⏳ Retrying in ${retryDelay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, retryDelay))
       }
-
-      console.log('🔄 Starting iCloud copy process:', { localPath, cloudPath })
-
-      // CRITICAL FIX: Convert file:// URI to plain file system path
-      // react-native-cloud-storage expects plain paths, not file:// URIs
-      const plainFilePath = localPath.startsWith('file://')
-        ? localPath.replace('file://', '')
-        : localPath
-
-      console.log('🔧 Converted file path:', { original: localPath, converted: plainFilePath })
-
-      // Verify the local file exists and is readable
-      const fileInfo = await FileSystem.getInfoAsync(localPath)
-      if (!fileInfo.exists) {
-        throw new Error(`Local file does not exist: ${localPath}`)
-      }
-
-      console.log('📁 Local file info:', {
-        exists: fileInfo.exists,
-        size: fileInfo.size,
-        isDirectory: fileInfo.isDirectory
-      })
-
-      // Add a small delay to ensure file is completely written
-      await new Promise(resolve => setTimeout(resolve, 100))
-
-      // CRITICAL FIX: Use uploadFile() for binary files instead of writeFile()
-      // This preserves binary integrity and handles MIME types correctly
-      // Use the converted plain file path for react-native-cloud-storage
-      await CloudStorage.uploadFile(
-        cloudPath,           // remotePath
-        plainFilePath,       // localPath (converted from file:// URI)
-        { mimeType: 'audio/mp4' }, // options with correct MIME type for M4A
-        'documents'          // scope
-      )
-
-      console.log('☁️ Successfully uploaded file to iCloud:', { localPath, cloudPath })
-    } catch (error) {
-      console.error('❌ Failed to upload file to iCloud:', error)
-      throw error
     }
+
+    // If we get here, all retries failed
+    throw lastError || new Error('Upload failed after all retries')
+    }) // End of fileLockManager.withLock
   }
 
   /**

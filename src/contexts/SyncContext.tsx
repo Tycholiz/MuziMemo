@@ -258,8 +258,17 @@ export function SyncProvider({ children }: SyncProviderProps) {
           retryCount: newRetryCount
         })
 
+        // Handle file lock errors with shorter retry delay
+        const isFileLockError = errorMessage.includes('File is currently locked')
+        const isFileNotFoundError = errorMessage.includes('Local file does not exist') ||
+                                   errorMessage.includes('File disappeared')
+
         if (newRetryCount >= MAX_RETRY_COUNT) {
           console.error(`🚫 File permanently failed after ${MAX_RETRY_COUNT} attempts:`, item.localPath)
+        } else if (isFileLockError) {
+          console.log(`🔒 File locked, will retry shortly: ${item.localPath}`)
+        } else if (isFileNotFoundError) {
+          console.warn(`📁 File not found, may have been moved by audio player: ${item.localPath}`)
         }
 
         setSyncQueue(prev => prev.map(queueItem =>
@@ -439,10 +448,28 @@ export function SyncProvider({ children }: SyncProviderProps) {
       // Try to sync immediately
       try {
         const cloudPath = iCloudService.getCloudPath(filePath)
-        await iCloudService.copyFileToCloud(filePath, cloudPath)
-        console.log('📤 File synced immediately:', filePath)
+
+        // Check if this is a file lock error and handle gracefully
+        try {
+          await iCloudService.copyFileToCloud(filePath, cloudPath)
+          console.log('📤 File synced immediately:', filePath)
+        } catch (lockError) {
+          const errorMessage = lockError instanceof Error ? lockError.message : 'Unknown error'
+
+          // If file is locked (likely by audio player), add to queue for later retry
+          if (errorMessage.includes('File is currently locked') ||
+              errorMessage.includes('Local file does not exist') ||
+              errorMessage.includes('File disappeared')) {
+            console.log('🔒 File locked or temporarily unavailable, adding to sync queue for retry:', filePath)
+            throw lockError // This will trigger the queue addition below
+          } else {
+            // For other errors, re-throw immediately
+            throw lockError
+          }
+        }
       } catch (error) {
-        console.error('❌ Failed to sync file immediately:', error)
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+        console.error('❌ Failed to sync file immediately:', errorMessage)
 
         // Add to queue for retry
         const queueItem: SyncQueueItem = {
@@ -450,11 +477,12 @@ export function SyncProvider({ children }: SyncProviderProps) {
           localPath: filePath,
           relativePath: iCloudService.getCloudPath(filePath),
           retryCount: 0,
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
+          status: 'pending', // Start as pending instead of failed for immediate retry
+          error: errorMessage,
         }
 
         setSyncQueue(prev => [...prev, queueItem])
+        console.log('📋 Added file to sync queue for retry:', filePath)
       }
     },
     [isSyncEnabled, networkState.isConnected]
