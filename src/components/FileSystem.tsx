@@ -886,6 +886,92 @@ export function FileSystemComponent() {
     ])
   }, [selectedItems, folders, audioFiles, fileManager, audioPlayer])
 
+  const handleMultiSelectRestore = useCallback(() => {
+    if (selectedItems.size === 0) return
+    setShowMoveModal(true)
+  }, [selectedItems])
+
+  const handleMultiSelectPermanentlyDelete = useCallback(() => {
+    if (selectedItems.size === 0) return
+
+    // Build list of items to permanently delete
+    const itemsToDelete: { name: string; type: 'audio'; data: AudioFileData }[] = []
+
+    selectedItems.forEach(itemId => {
+      if (itemId.startsWith('audio-')) {
+        const fileName = itemId.replace('audio-', '')
+        const audioFile = audioFiles.find(f => f.name === fileName)
+        if (audioFile) {
+          itemsToDelete.push({ name: fileName, type: 'audio', data: audioFile })
+        }
+      }
+    })
+
+    if (itemsToDelete.length === 0) return
+
+    // Build confirmation message
+    const itemCount = itemsToDelete.length
+    const itemText = itemCount === 1 ? 'item' : 'items'
+
+    let message = `Are you sure you want to permanently delete ${itemCount === 1 ? 'this' : 'these'} ${itemText}? This action cannot be undone.\n\n`
+
+    itemsToDelete.forEach(item => {
+      message += `• ${item.name}\n`
+    })
+
+    Alert.alert('Permanently Delete Items', message.trim(), [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Permanently Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const fullPath = fileManager.getFullPath()
+          const failedItems: string[] = []
+
+          // Optimistic update: remove items from state immediately
+          const audioFilesToRemove = itemsToDelete.map(item => item.data as AudioFileData)
+          setAudioFiles(prev => prev.filter(file => !audioFilesToRemove.some(removed => removed.id === file.id)))
+
+          // Stop playback if any of the selected files are currently playing
+          const playingFileId = audioPlayer.currentClip?.id
+          if (playingFileId && selectedItems.has(`audio-${audioPlayer.currentClip?.name}`)) {
+            audioPlayer.cleanup()
+          }
+
+          // Delete each item
+          for (const item of itemsToDelete) {
+            try {
+              const filePath = `${fullPath}/${item.name}`
+              await FileSystem.deleteAsync(filePath)
+            } catch (error) {
+              console.error(`Failed to permanently delete ${item.name}:`, error)
+              failedItems.push(item.name)
+            }
+          }
+
+          // Handle failed items by rolling back their state
+          if (failedItems.length > 0) {
+            const failedAudioFiles = audioFilesToRemove.filter(audioFile => failedItems.includes(audioFile.name))
+            setAudioFiles(prev => [...prev, ...failedAudioFiles])
+            Alert.alert('Error', `Failed to permanently delete ${failedItems.length} item(s): ${failedItems.join(', ')}`)
+          } else {
+            // Show success toast
+            Toast.show({
+              type: 'success',
+              text1: 'Items permanently deleted',
+              text2: `${itemCount} ${itemText} permanently deleted`,
+              visibilityTime: 4000,
+            })
+          }
+
+          // Exit multi-select mode
+          setIsMultiSelectMode(false)
+          setSelectedItems(new Set())
+        },
+      },
+    ])
+  }, [selectedItems, audioFiles, fileManager, audioPlayer])
+
   const handleEmptyRecyclingBin = useCallback(async () => {
     if (audioFiles.length === 0) return
 
@@ -992,7 +1078,10 @@ export function FileSystemComponent() {
         )}
         {fileManager.getIsInRecentlyDeleted() && audioFiles.length > 0 && (
           <View style={styles.headerMenuContainer}>
-            <RecentlyDeletedMenuModal onEmptyRecyclingBin={handleEmptyRecyclingBin} />
+            <RecentlyDeletedMenuModal
+              onEmptyRecyclingBin={handleEmptyRecyclingBin}
+              onMultiSelect={handleMultiSelectMode}
+            />
           </View>
         )}
       </View>
@@ -1004,6 +1093,9 @@ export function FileSystemComponent() {
           onCancel={handleMultiSelectCancel}
           onMove={handleMultiSelectMove}
           onDelete={handleMultiSelectDelete}
+          isInRecentlyDeleted={fileManager.getIsInRecentlyDeleted()}
+          onRestore={handleMultiSelectRestore}
+          onPermanentlyDelete={handleMultiSelectPermanentlyDelete}
         />
       )}
 

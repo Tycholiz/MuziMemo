@@ -4,6 +4,7 @@ import { RecentlyDeletedMenuModal } from '../RecentlyDeletedMenuModal'
 
 describe('RecentlyDeletedMenuModal', () => {
   const mockOnEmptyRecyclingBin = jest.fn()
+  const mockOnMultiSelect = jest.fn()
 
   beforeEach(() => {
     jest.clearAllMocks()
@@ -11,7 +12,10 @@ describe('RecentlyDeletedMenuModal', () => {
 
   it('renders ellipsis button', () => {
     const { getByTestId } = render(
-      <RecentlyDeletedMenuModal onEmptyRecyclingBin={mockOnEmptyRecyclingBin} />
+      <RecentlyDeletedMenuModal
+        onEmptyRecyclingBin={mockOnEmptyRecyclingBin}
+        onMultiSelect={mockOnMultiSelect}
+      />
     )
 
     expect(getByTestId('recently-deleted-ellipsis-button')).toBeTruthy()
@@ -19,23 +23,47 @@ describe('RecentlyDeletedMenuModal', () => {
 
   it('opens menu when ellipsis button is pressed', () => {
     const { getByTestId, getByText } = render(
-      <RecentlyDeletedMenuModal onEmptyRecyclingBin={mockOnEmptyRecyclingBin} />
+      <RecentlyDeletedMenuModal
+        onEmptyRecyclingBin={mockOnEmptyRecyclingBin}
+        onMultiSelect={mockOnMultiSelect}
+      />
     )
 
     fireEvent.press(getByTestId('recently-deleted-ellipsis-button'))
 
+    expect(getByText('Multi-Select')).toBeTruthy()
     expect(getByText('Empty Recycling Bin')).toBeTruthy()
   })
 
-  it('calls onEmptyRecyclingBin when menu item is pressed', () => {
+  it('calls onMultiSelect when Multi-Select menu item is pressed', () => {
     const { getByTestId, getByText } = render(
-      <RecentlyDeletedMenuModal onEmptyRecyclingBin={mockOnEmptyRecyclingBin} />
+      <RecentlyDeletedMenuModal
+        onEmptyRecyclingBin={mockOnEmptyRecyclingBin}
+        onMultiSelect={mockOnMultiSelect}
+      />
     )
 
     // Open menu
     fireEvent.press(getByTestId('recently-deleted-ellipsis-button'))
 
-    // Press menu item
+    // Press Multi-Select menu item
+    fireEvent.press(getByText('Multi-Select'))
+
+    expect(mockOnMultiSelect).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls onEmptyRecyclingBin when Empty Recycling Bin menu item is pressed', () => {
+    const { getByTestId, getByText } = render(
+      <RecentlyDeletedMenuModal
+        onEmptyRecyclingBin={mockOnEmptyRecyclingBin}
+        onMultiSelect={mockOnMultiSelect}
+      />
+    )
+
+    // Open menu
+    fireEvent.press(getByTestId('recently-deleted-ellipsis-button'))
+
+    // Press Empty Recycling Bin menu item
     fireEvent.press(getByText('Empty Recycling Bin'))
 
     expect(mockOnEmptyRecyclingBin).toHaveBeenCalledTimes(1)
@@ -43,11 +71,15 @@ describe('RecentlyDeletedMenuModal', () => {
 
   it('closes menu when overlay is pressed', () => {
     const { getByTestId, getByText, queryByText } = render(
-      <RecentlyDeletedMenuModal onEmptyRecyclingBin={mockOnEmptyRecyclingBin} />
+      <RecentlyDeletedMenuModal
+        onEmptyRecyclingBin={mockOnEmptyRecyclingBin}
+        onMultiSelect={mockOnMultiSelect}
+      />
     )
 
     // Open menu
     fireEvent.press(getByTestId('recently-deleted-ellipsis-button'))
+    expect(getByText('Multi-Select')).toBeTruthy()
     expect(getByText('Empty Recycling Bin')).toBeTruthy()
 
     // Press overlay to close
@@ -58,5 +90,6 @@ describe('RecentlyDeletedMenuModal', () => {
 
     // Menu should be closed (this is a simplified test - in reality the modal would be hidden)
     expect(mockOnEmptyRecyclingBin).not.toHaveBeenCalled()
+    expect(mockOnMultiSelect).not.toHaveBeenCalled()
   })
 })

@@ -9,6 +9,9 @@ export type MultiSelectToolbarProps = {
   onCancel: () => void
   onMove: () => void
   onDelete: () => void
+  isInRecentlyDeleted?: boolean
+  onRestore?: () => void
+  onPermanentlyDelete?: () => void
 }
 
 /**
@@ -16,7 +19,15 @@ export type MultiSelectToolbarProps = {
  * Appears above breadcrumbs when in multi-select mode
  * Layout: Cancel button (1/3 width) + Move button (1/3 width) + Delete button (1/3 width) with proper margins
  */
-export function MultiSelectToolbar({ selectedCount, onCancel, onMove, onDelete }: MultiSelectToolbarProps) {
+export function MultiSelectToolbar({
+  selectedCount,
+  onCancel,
+  onMove,
+  onDelete,
+  isInRecentlyDeleted = false,
+  onRestore,
+  onPermanentlyDelete
+}: MultiSelectToolbarProps) {
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -27,37 +38,79 @@ export function MultiSelectToolbar({ selectedCount, onCancel, onMove, onDelete }
         <Text style={styles.cancelButtonText}>Cancel</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.moveButton, selectedCount === 0 && styles.moveButtonDisabled]}
-        onPress={onMove}
-        activeOpacity={0.7}
-        disabled={selectedCount === 0}
-      >
-        <Ionicons
-          name="arrow-forward"
-          size={20}
-          color={selectedCount === 0 ? theme.colors.text.secondary : theme.colors.surface.primary}
-        />
-        <Text style={[styles.moveButtonText, selectedCount === 0 && styles.moveButtonTextDisabled]}>
-          Move {selectedCount > 0 ? `(${selectedCount})` : ''}
-        </Text>
-      </TouchableOpacity>
+      {isInRecentlyDeleted ? (
+        <>
+          {/* Restore Button */}
+          <TouchableOpacity
+            style={[styles.restoreButton, selectedCount === 0 && styles.restoreButtonDisabled]}
+            onPress={onRestore}
+            activeOpacity={0.7}
+            disabled={selectedCount === 0}
+          >
+            <Ionicons
+              name="refresh-outline"
+              size={20}
+              color={selectedCount === 0 ? theme.colors.text.secondary : theme.colors.surface.primary}
+            />
+            <Text style={[styles.restoreButtonText, selectedCount === 0 && styles.restoreButtonTextDisabled]}>
+              Restore {selectedCount > 0 ? `(${selectedCount})` : ''}
+            </Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.deleteButton, selectedCount === 0 && styles.deleteButtonDisabled]}
-        onPress={onDelete}
-        activeOpacity={0.7}
-        disabled={selectedCount === 0}
-      >
-        <Ionicons
-          name="trash-outline"
-          size={20}
-          color={selectedCount === 0 ? theme.colors.text.secondary : theme.colors.surface.primary}
-        />
-        <Text style={[styles.deleteButtonText, selectedCount === 0 && styles.deleteButtonTextDisabled]}>
-          Delete {selectedCount > 0 ? `(${selectedCount})` : ''}
-        </Text>
-      </TouchableOpacity>
+          {/* Permanently Delete Button */}
+          <TouchableOpacity
+            style={[styles.permanentDeleteButton, selectedCount === 0 && styles.permanentDeleteButtonDisabled]}
+            onPress={onPermanentlyDelete}
+            activeOpacity={0.7}
+            disabled={selectedCount === 0}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={20}
+              color={selectedCount === 0 ? theme.colors.text.secondary : theme.colors.surface.primary}
+            />
+            <Text style={[styles.permanentDeleteButtonText, selectedCount === 0 && styles.permanentDeleteButtonTextDisabled]}>
+              Permanently Delete {selectedCount > 0 ? `(${selectedCount})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          {/* Move Button */}
+          <TouchableOpacity
+            style={[styles.moveButton, selectedCount === 0 && styles.moveButtonDisabled]}
+            onPress={onMove}
+            activeOpacity={0.7}
+            disabled={selectedCount === 0}
+          >
+            <Ionicons
+              name="arrow-forward"
+              size={20}
+              color={selectedCount === 0 ? theme.colors.text.secondary : theme.colors.surface.primary}
+            />
+            <Text style={[styles.moveButtonText, selectedCount === 0 && styles.moveButtonTextDisabled]}>
+              Move {selectedCount > 0 ? `(${selectedCount})` : ''}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Delete Button */}
+          <TouchableOpacity
+            style={[styles.deleteButton, selectedCount === 0 && styles.deleteButtonDisabled]}
+            onPress={onDelete}
+            activeOpacity={0.7}
+            disabled={selectedCount === 0}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={20}
+              color={selectedCount === 0 ? theme.colors.text.secondary : theme.colors.surface.primary}
+            />
+            <Text style={[styles.deleteButtonText, selectedCount === 0 && styles.deleteButtonTextDisabled]}>
+              Delete {selectedCount > 0 ? `(${selectedCount})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   )
 }
@@ -128,6 +181,50 @@ const styles = StyleSheet.create({
     color: theme.colors.surface.primary,
   },
   deleteButtonTextDisabled: {
+    color: theme.colors.text.secondary,
+  },
+  restoreButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: theme.colors.info,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  restoreButtonDisabled: {
+    backgroundColor: theme.colors.surface.secondary,
+  },
+  restoreButtonText: {
+    fontSize: 16,
+    fontFamily: theme.typography.fontFamily.medium,
+    color: theme.colors.surface.primary,
+  },
+  restoreButtonTextDisabled: {
+    color: theme.colors.text.secondary,
+  },
+  permanentDeleteButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: theme.colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  permanentDeleteButtonDisabled: {
+    backgroundColor: theme.colors.surface.secondary,
+  },
+  permanentDeleteButtonText: {
+    fontSize: 16,
+    fontFamily: theme.typography.fontFamily.medium,
+    color: theme.colors.surface.primary,
+  },
+  permanentDeleteButtonTextDisabled: {
     color: theme.colors.text.secondary,
   },
 })

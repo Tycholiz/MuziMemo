@@ -6,6 +6,7 @@ import { theme } from '@utils/theme'
 
 export type RecentlyDeletedMenuModalProps = {
   onEmptyRecyclingBin: () => void
+  onMultiSelect: () => void
 }
 
 type MenuOption = {
@@ -20,10 +21,19 @@ type MenuOption = {
  * RecentlyDeletedMenuModal Component
  * Provides an ellipsis menu for the Recently Deleted screen with "Empty Recycling Bin" option
  */
-export function RecentlyDeletedMenuModal({ onEmptyRecyclingBin }: RecentlyDeletedMenuModalProps) {
+export function RecentlyDeletedMenuModal({ onEmptyRecyclingBin, onMultiSelect }: RecentlyDeletedMenuModalProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   const menuOptions: MenuOption[] = [
+    {
+      id: 'multi-select',
+      label: 'Multi-Select',
+      icon: 'checkmark-circle-outline',
+      onPress: () => {
+        setIsVisible(false)
+        onMultiSelect()
+      },
+    },
     {
       id: 'empty-recycling-bin',
       label: 'Empty Recycling Bin',
