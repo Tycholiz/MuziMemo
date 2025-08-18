@@ -260,11 +260,14 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
         // Handle file lock errors with shorter retry delay
         const isFileLockError = errorMessage.includes('File is currently locked')
+        const isAudioPlayerLockError = errorMessage.includes('File is currently being used by audio player')
         const isFileNotFoundError = errorMessage.includes('Local file does not exist') ||
                                    errorMessage.includes('File disappeared')
 
         if (newRetryCount >= MAX_RETRY_COUNT) {
           console.error(`🚫 File permanently failed after ${MAX_RETRY_COUNT} attempts:`, item.localPath)
+        } else if (isAudioPlayerLockError) {
+          console.log(`🎵 File locked by audio player, will retry when playback stops: ${item.localPath}`)
         } else if (isFileLockError) {
           console.log(`🔒 File locked, will retry shortly: ${item.localPath}`)
         } else if (isFileNotFoundError) {
@@ -458,6 +461,7 @@ export function SyncProvider({ children }: SyncProviderProps) {
 
           // If file is locked (likely by audio player), add to queue for later retry
           if (errorMessage.includes('File is currently locked') ||
+              errorMessage.includes('File is currently being used by audio player') ||
               errorMessage.includes('Local file does not exist') ||
               errorMessage.includes('File disappeared')) {
             console.log('🔒 File locked or temporarily unavailable, adding to sync queue for retry:', filePath)

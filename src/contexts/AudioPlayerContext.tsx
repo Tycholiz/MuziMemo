@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
+import { fileLockManager } from '../services/iCloudService'
 
 export type AudioClip = {
   id: string
@@ -121,7 +122,14 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     }
 
     configureAudio()
-  }, [])
+
+    // Cleanup on unmount
+    return () => {
+      if (currentClip) {
+        fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+      }
+    }
+  }, [currentClip])
 
   const playClip = useCallback(
     async (clip: AudioClip) => {
@@ -153,6 +161,14 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
         // Case 3: Play new clip (different clip or no current clip)
         console.log('🎵 AudioPlayerContext: Loading new audio clip')
+
+        // CRITICAL FIX: Unregister previous file if any
+        if (currentClip) {
+          fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+        }
+
+        // CRITICAL FIX: Register new file with lock manager to prevent sync conflicts
+        fileLockManager.registerAudioPlayerFile(clip.uri)
 
         // Ensure audio mode is set for main speakers before playing
         try {
@@ -287,12 +303,18 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
   const cleanup = useCallback(() => {
     console.log('🎵 AudioPlayerContext: cleanup called')
+
+    // CRITICAL FIX: Unregister file from lock manager when cleaning up
+    if (currentClip) {
+      fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+    }
+
     audioPlayer.pause()
     setCurrentClip(null)
     setCurrentPosition(0)
     setHasCompleted(false)
     setIsPlayingOverride(false)
-  }, [audioPlayer])
+  }, [audioPlayer, currentClip])
 
   // Sync override state with actual audio player state
   useEffect(() => {

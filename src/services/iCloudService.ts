@@ -3,15 +3,20 @@ import { CloudStorage } from 'react-native-cloud-storage'
 import * as FileSystem from 'expo-file-system'
 import { getRecordingsDirectory, joinPath } from '../utils/pathUtils'
 
-// Simple file lock mechanism to prevent race conditions
+// Enhanced file lock mechanism to prevent race conditions with audio player
 class FileLockManager {
   private locks = new Set<string>()
+  private audioPlayerFiles = new Set<string>() // Track files being used by audio player
 
   async withLock<T>(filePath: string, operation: () => Promise<T>): Promise<T> {
     const normalizedPath = filePath.replace('file://', '')
 
     if (this.locks.has(normalizedPath)) {
       throw new Error(`File is currently locked: ${normalizedPath}`)
+    }
+
+    if (this.audioPlayerFiles.has(normalizedPath)) {
+      throw new Error(`File is currently being used by audio player: ${normalizedPath}`)
     }
 
     this.locks.add(normalizedPath)
@@ -24,11 +29,31 @@ class FileLockManager {
 
   isLocked(filePath: string): boolean {
     const normalizedPath = filePath.replace('file://', '')
-    return this.locks.has(normalizedPath)
+    return this.locks.has(normalizedPath) || this.audioPlayerFiles.has(normalizedPath)
+  }
+
+  // Methods for audio player to register/unregister file usage
+  registerAudioPlayerFile(filePath: string): void {
+    const normalizedPath = filePath.replace('file://', '')
+    this.audioPlayerFiles.add(normalizedPath)
+    console.log('🔒 Audio player registered file:', normalizedPath)
+  }
+
+  unregisterAudioPlayerFile(filePath: string): void {
+    const normalizedPath = filePath.replace('file://', '')
+    this.audioPlayerFiles.delete(normalizedPath)
+    console.log('🔓 Audio player unregistered file:', normalizedPath)
+  }
+
+  getAudioPlayerFiles(): string[] {
+    return Array.from(this.audioPlayerFiles)
   }
 }
 
 const fileLockManager = new FileLockManager()
+
+// Export for use by AudioPlayerContext
+export { fileLockManager }
 
 /**
  * iCloud Service for managing cloud storage operations
@@ -158,8 +183,17 @@ class iCloudServiceClass {
         })
 
         // RACE CONDITION FIX: Add progressive delay to avoid conflicts with audio player
-        const delay = attempt * 200 // 200ms, 400ms, 600ms
-        await new Promise(resolve => setTimeout(resolve, delay))
+        // Use longer delay if audio player is using this file
+        const isAudioPlayerFile = fileLockManager.getAudioPlayerFiles().includes(plainFilePath)
+        const baseDelay = attempt * 200 // 200ms, 400ms, 600ms
+        const audioPlayerDelay = isAudioPlayerFile ? 2000 : 0 // Extra 2 seconds for audio player files
+        const totalDelay = baseDelay + audioPlayerDelay
+
+        if (isAudioPlayerFile) {
+          console.log(`🎵 File is being used by audio player, adding extra delay: ${totalDelay}ms`)
+        }
+
+        await new Promise(resolve => setTimeout(resolve, totalDelay))
 
         // RACE CONDITION FIX: Verify file is still accessible before upload
         const finalCheck = await FileSystem.getInfoAsync(plainFilePath)
