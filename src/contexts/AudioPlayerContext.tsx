@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import { Platform } from 'react-native'
 import { useAudioPlayer, setAudioModeAsync } from 'expo-audio'
+import { fileLockManager } from '../services/iCloudService'
 
 export type AudioClip = {
   id: string
@@ -78,6 +79,18 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
             console.log('🎵 AudioPlayerContext: Audio completed - setting hasCompleted=true, isPlayingOverride=false')
             setHasCompleted(true)
             setIsPlayingOverride(false) // Stop playing when audio completes
+
+            // CRITICAL FIX: Release file lock when audio completes
+            if (currentClip) {
+              fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+              console.log('🔓 Released file lock after audio completion:', currentClip.uri)
+
+              // Trigger sync retry for this file after a short delay
+              setTimeout(() => {
+                console.log('🔄 Triggering sync retry after audio completion:', currentClip.uri)
+                // Note: We'll implement this trigger in the sync context
+              }, 1000)
+            }
           }
         }, 16) // 16ms = ~60 FPS for smooth animation
       }
@@ -121,7 +134,14 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
     }
 
     configureAudio()
-  }, [])
+
+    // Cleanup on unmount
+    return () => {
+      if (currentClip) {
+        fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+      }
+    }
+  }, [currentClip])
 
   const playClip = useCallback(
     async (clip: AudioClip) => {
@@ -153,6 +173,14 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
         // Case 3: Play new clip (different clip or no current clip)
         console.log('🎵 AudioPlayerContext: Loading new audio clip')
+
+        // CRITICAL FIX: Unregister previous file if any
+        if (currentClip) {
+          fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+        }
+
+        // CRITICAL FIX: Register new file with lock manager to prevent sync conflicts
+        fileLockManager.registerAudioPlayerFile(clip.uri)
 
         // Ensure audio mode is set for main speakers before playing
         try {
@@ -287,12 +315,18 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
 
   const cleanup = useCallback(() => {
     console.log('🎵 AudioPlayerContext: cleanup called')
+
+    // CRITICAL FIX: Unregister file from lock manager when cleaning up
+    if (currentClip) {
+      fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+    }
+
     audioPlayer.pause()
     setCurrentClip(null)
     setCurrentPosition(0)
     setHasCompleted(false)
     setIsPlayingOverride(false)
-  }, [audioPlayer])
+  }, [audioPlayer, currentClip])
 
   // Sync override state with actual audio player state
   useEffect(() => {
@@ -310,6 +344,18 @@ export function AudioPlayerProvider({ children }: AudioPlayerProviderProps) {
         console.log('🎵 AudioPlayerContext: Audio completion detected via playing state change')
         setHasCompleted(true)
         setIsPlayingOverride(false)
+
+        // CRITICAL FIX: Release file lock when audio completes via state change
+        if (currentClip) {
+          fileLockManager.unregisterAudioPlayerFile(currentClip.uri)
+          console.log('🔓 Released file lock after audio completion (state change):', currentClip.uri)
+
+          // Trigger sync retry for this file after a short delay
+          setTimeout(() => {
+            console.log('🔄 Triggering sync retry after audio completion (state change):', currentClip.uri)
+            // Note: We'll implement this trigger in the sync context
+          }, 1000)
+        }
       }
     }
 

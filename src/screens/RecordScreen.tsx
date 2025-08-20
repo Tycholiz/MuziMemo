@@ -17,6 +17,7 @@ import {
 import type { Folder, FileNavigatorFolder, DropdownOption } from '../components/index'
 import { useAudioRecording, type AudioQuality } from '../hooks/useAudioRecording'
 import { useFileManager } from '../contexts/FileManagerContext'
+import { useSyncContext } from '../contexts/SyncContext'
 import { useMediaPlayerSpacing } from '../hooks/useMediaPlayerSpacing'
 import { theme } from '../utils/theme'
 import { formatDurationFromSeconds, generateRecordingFilename } from '../utils/formatUtils'
@@ -40,6 +41,7 @@ export default function RecordScreen() {
   const initialFolder = Array.isArray(params.initialFolder) ? params.initialFolder[0] : params.initialFolder
 
   const fileManager = useFileManager()
+  const syncContext = useSyncContext()
   const { bottomPadding } = useMediaPlayerSpacing()
 
   // State for audio quality
@@ -124,6 +126,8 @@ export default function RecordScreen() {
   const loadFolders = useCallback(async () => {
     setLoading(true)
     try {
+      // Set sync state in FileSystemService
+      fileSystemService.setSyncEnabled(syncContext.isSyncEnabled)
       await fileSystemService.initialize()
 
       // Recursively load all folders to handle nested folder paths
@@ -180,7 +184,7 @@ export default function RecordScreen() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [syncContext.isSyncEnabled])
 
   // Audio quality options (expo-audio only supports HIGH_QUALITY and LOW_QUALITY presets)
   const audioQualityOptions: DropdownOption[] = [
@@ -281,6 +285,7 @@ export default function RecordScreen() {
       const targetFilePath = joinPath(targetFolderPath, fileName)
 
       console.log('🎵 saveRecordingToFolder:', {
+        recordingUri,
         selectedFolderPath,
         targetFolderPath,
         targetFilePath,
@@ -293,14 +298,58 @@ export default function RecordScreen() {
           from: recordingUri,
           to: targetFilePath,
         })
-        // Recording saved successfully - no dialog popup needed
+        console.log('✅ Recording saved locally:', targetFilePath)
       } catch (copyError) {
         // If copy fails, try moving the file instead
         await FileSystem.moveAsync({
           from: recordingUri,
           to: targetFilePath,
         })
-        // Recording saved successfully - no dialog popup needed
+        console.log('✅ Recording moved locally:', targetFilePath)
+      }
+
+      // CRITICAL FIX: Add small delay to ensure file system operations complete
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      // CRITICAL FIX: Verify the file was actually saved before proceeding
+      const savedFileInfo = await FileSystem.getInfoAsync(targetFilePath)
+      if (!savedFileInfo.exists) {
+        throw new Error(`Failed to save recording - file does not exist at target path: ${targetFilePath}`)
+      }
+      console.log('✅ Verified file saved successfully:', {
+        path: targetFilePath,
+        size: savedFileInfo.size,
+        exists: savedFileInfo.exists
+      })
+
+      // Automatic background sync with delay to prevent corruption
+      if (syncContext.isSyncEnabled) {
+        console.log('📝 Recording saved with sync enabled - scheduling automatic sync in 5 seconds')
+
+        // Schedule automatic sync after 5-second delay
+        // This ensures AudioMetadataService has time to extract metadata
+        // and the file is fully written before sync begins
+        setTimeout(async () => {
+          try {
+            // CRITICAL FIX: Verify file still exists before attempting sync
+            const preSyncFileInfo = await FileSystem.getInfoAsync(targetFilePath)
+            if (!preSyncFileInfo.exists) {
+              console.error('❌ File disappeared before sync could start:', targetFilePath)
+              return
+            }
+            console.log('✅ File verified before sync:', {
+              path: targetFilePath,
+              size: preSyncFileInfo.size,
+              exists: preSyncFileInfo.exists
+            })
+
+            await syncContext.addToSyncQueue(targetFilePath)
+            console.log('☁️ Recording automatically added to sync queue:', targetFilePath)
+          } catch (syncError) {
+            console.error('❌ Failed to add recording to automatic sync queue:', syncError)
+            // Don't show error to user - periodic background sync will retry
+          }
+        }, 5000) // 5-second delay
       }
     } catch (error) {
       console.error('Failed to save recording:', error)
